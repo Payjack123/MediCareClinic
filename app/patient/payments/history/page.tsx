@@ -185,16 +185,16 @@ export default function PaymentHistoryPage() {
                             <div className="flex items-center justify-center gap-2">
                               {isPending ? (
                                 <>
-                                  <Link href={`/patient/payments/invoices?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-xs font-bold bg-white shadow-sm">
+                                  <Link href={`/patient/payments/invoices/details?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-xs font-bold bg-white shadow-sm">
                                     <Eye size={14} /> Xem chi tiết
                                   </Link>
-                                  <Link href={`/patient/payments/invoices?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-white bg-[#2563EB] rounded-lg hover:bg-blue-600 transition text-xs font-bold shadow-sm">
+                                  <Link href={`/patient/payments/invoices/checkout?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-white bg-[#2563EB] rounded-lg hover:bg-blue-600 transition text-xs font-bold shadow-sm">
                                     <CreditCard size={14} /> Thanh toán
                                   </Link>
                                 </>
                               ) : (
                                 <>
-                                  <Link href={`/patient/payments/invoices?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-xs font-bold bg-white shadow-sm">
+                                  <Link href={`/patient/payments/invoices/details?id=${inv.id}`} className="flex items-center gap-1.5 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-xs font-bold bg-white shadow-sm">
                                     <Eye size={14} /> Xem chi tiết
                                   </Link>
                                   <button className="flex items-center justify-center w-8 h-8 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition bg-white shadow-sm">

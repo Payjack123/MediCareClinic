@@ -1,14 +1,16 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronLeft, Loader2, Landmark, Wallet, Users, ShieldCheck, Lock
 } from 'lucide-react';
 import { getPatientBillingData, confirmInvoicePayment } from '@/app/patient/payments/invoices/actions';
 
-export default function InvoicePaymentPage({ searchParams }: { searchParams: { id: string } }) {
+export default function InvoicePaymentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ export default function InvoicePaymentPage({ searchParams }: { searchParams: { i
   }
 
   const { invoices } = data;
-  const activeInvoice = invoices.find((inv: any) => inv.id === searchParams.id);
+  const activeInvoice = invoices.find((inv: any) => inv.id === id);
 
   if (!activeInvoice) {
     return (

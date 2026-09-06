@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, Bell, Check, Search, ArrowLeft, ArrowRight, UserCircle2, Clock, Plus, Filter, Info, Trash2, HeartPulse, Pill, TestTube, FileText, LayoutDashboard, Settings, Activity, LogOut, Wallet, Star, ShieldCheck, Stethoscope, ChevronRight, X, Phone, Mail, MapPin, User, Loader2, Link2, Download, Eye, Calendar, History, Smile, Bone, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Users, Bell, Check, Search, ArrowLeft, ArrowRight, UserCircle2, Clock, Plus, Filter, Info, Trash2, HeartPulse, Pill, TestTube, FileText, LayoutDashboard, Settings, Activity, LogOut, Wallet, Star, ShieldCheck, Stethoscope, ChevronRight, X, Phone, Mail, MapPin, User, Loader2, Link2, Download, Eye, Calendar, History, Smile, Bone, CheckCircle2, Landmark, Lock } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
 
@@ -15,6 +15,8 @@ export default function PatientAppointmentsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'BANK' | 'EWALLET' | 'COUNTER'>('BANK');
+  const [paymentCode, setPaymentCode] = useState('');
 
   const [userData, setUserData] = useState<any>(null);
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
@@ -154,11 +156,30 @@ export default function PatientAppointmentsPage() {
     fetchTimes();
   }, [bookingData.doctorId, bookingData.date]);
 
-  const handleConfirmBooking = async () => {
+  // Polling check trạng thái thanh toán SePay
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 6 && paymentCode) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/appointments/check-payment?code=${paymentCode}`);
+          const data = await res.json();
+          if (data.paid) {
+            clearInterval(interval);
+            setStep(7); // Thành công
+          }
+        } catch (e) { }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [step, paymentCode]);
+
+  const handleConfirmBooking = async (overrideCode?: string | null, overrideStatus?: string) => {
     setIsSubmitting(true);
     const fullDate = bookingData.date.split('-').reverse().join('/');
 
     const codes: string[] = [];
+    const pCode = overrideCode || '';
 
     // Tạo lịch cho từng người
     for (const patient of patients) {
@@ -168,7 +189,8 @@ export default function PatientAppointmentsPage() {
         date: fullDate,
         time: patient.time,
         // serialize thêm tên/sđt vào reason
-        reason: `Người khám: ${patient.name} - Mã BN: ${patient.patientCode || 'Không có'} - CCCD: ${patient.cccd || 'Không có'} - SĐT: ${patient.phone} - ĐC: ${patient.address}. Lý do: ${patient.reason}`
+        reason: (pCode ? `Mã thanh toán: ${pCode} - ` : '') + `Người khám: ${patient.name} - Mã BN: ${patient.patientCode || 'Không có'} - CCCD: ${patient.cccd || 'Không có'} - SĐT: ${patient.phone} - ĐC: ${patient.address}. Lý do: ${patient.reason}`,
+        status: overrideStatus || 'CHỜ XÁC NHẬN'
       });
       if (res.success && res.appointmentCode) {
         codes.push(res.appointmentCode);
@@ -179,7 +201,11 @@ export default function PatientAppointmentsPage() {
 
     if (codes.length > 0) {
       setBookingData(prev => ({ ...prev, finalCodes: codes }));
-      setStep(5);
+      if (overrideStatus === 'CHỜ THANH TOÁN') {
+        setStep(6);
+      } else {
+        setStep(7);
+      }
     } else {
       alert("Đã xảy ra lỗi khi tạo lịch khám!");
     }
@@ -244,7 +270,7 @@ export default function PatientAppointmentsPage() {
           {/* =======================================
               TAB 1: WIZARD ĐẶT LỊCH
           ======================================= */}
-          <div className={`mx-auto transition-all duration-500 ${step === 5 ? 'max-w-7xl' : 'max-w-4xl'}`}>
+          <div className={`mx-auto transition-all duration-500 ${step === 7 ? 'max-w-7xl' : 'max-w-4xl'}`}>
 
             {/* Stepper removed */}
 
@@ -567,7 +593,7 @@ export default function PatientAppointmentsPage() {
                                 {p.patientCode || 'KHÁCH LẺ'}
                               </span>
                             </div>
-                            
+
                             {/* Card Body */}
                             <div className="p-4 space-y-4">
                               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -590,7 +616,7 @@ export default function PatientAppointmentsPage() {
                                   <p className="font-bold text-gray-900">{p.patientCode || 'Không có'}</p>
                                 </div>
                               </div>
-                              
+
                               {p.reason && (
                                 <>
                                   <div className="h-px bg-gray-100 w-full"></div>
@@ -651,7 +677,7 @@ export default function PatientAppointmentsPage() {
                   <div className="mt-auto pt-6">
                     <button
                       disabled={isSubmitting}
-                      onClick={handleConfirmBooking}
+                      onClick={() => setStep(5)}
                       className="w-full bg-[#2563EB] text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:bg-blue-400"
                     >
                       {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />} Xác nhận đặt lịch ngay
@@ -660,8 +686,139 @@ export default function PatientAppointmentsPage() {
                 </div>
               )}
 
-              {/* STEP 5: THÀNH CÔNG */}
+              {/* STEP 5: THANH TOÁN */}
               {step === 5 && (
+                <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8 bg-gray-50/50">
+                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+                    <button onClick={() => setStep(4)} className="p-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-900">Thanh toán hóa đơn</h2>
+                      <p className="text-gray-500 text-sm mt-1">Vui lòng chọn phương thức thanh toán để hoàn tất đặt lịch.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="text-center mb-8 pb-8 border-b border-gray-100">
+                      <h2 className="font-bold text-gray-500 mb-2">Số tiền cần thanh toán</h2>
+                      <p className="font-black text-4xl xl:text-5xl text-[#2563EB]">
+                        {patients.reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} <span className="text-3xl">₫</span>
+                      </p>
+                    </div>
+
+                    <h3 className="font-bold text-gray-900 mb-4 text-lg">Chọn phương thức thanh toán</h3>
+
+                    <div className="space-y-4 mb-8">
+                      {/* Chuyển khoản ngân hàng */}
+                      <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'BANK' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
+                        <div className="pt-0.5">
+                          <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'BANK'} onChange={() => setPaymentMethod('BANK')} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-900 text-base">Chuyển khoản ngân hàng</p>
+                          <p className="text-sm text-gray-500 mt-1">Chuyển khoản qua số tài khoản của phòng khám</p>
+                        </div>
+                        <div className="flex items-center text-[#2563EB]">
+                          <Landmark size={32} />
+                        </div>
+                      </label>
+
+                      {/* Thanh toán tại quầy */}
+                      <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'COUNTER' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
+                        <div className="pt-0.5">
+                          <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'COUNTER'} onChange={() => setPaymentMethod('COUNTER')} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-900 text-base">Thanh toán tại quầy</p>
+                          <p className="text-sm text-gray-500 mt-1">Giao dịch trực tiếp bằng tiền mặt hoặc quẹt thẻ tại lễ tân</p>
+                        </div>
+                        <div className="flex items-center text-gray-400">
+                          <Users size={32} />
+                        </div>
+                      </label>
+                    </div>
+
+                    <button
+                      disabled={isSubmitting}
+                      onClick={async () => {
+                        if (paymentMethod === 'BANK') {
+                          const newCode = `DK${Math.floor(10000 + Math.random() * 90000)}`;
+                          setPaymentCode(newCode);
+                          await handleConfirmBooking(newCode, 'CHỜ THANH TOÁN');
+                        } else {
+                          await handleConfirmBooking(null, 'CHỜ XÁC NHẬN');
+                        }
+                      }}
+                      className="w-full bg-[#2563EB] hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
+                      Tiếp tục thanh toán
+                    </button>
+
+                    <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500 text-center">
+                      <ShieldCheck size={16} className="text-green-600" /> Toàn bộ giao dịch và thông tin thẻ được mã hóa bảo mật tuyệt đối.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 6: MÃ QR CHUYỂN KHOẢN */}
+              {step === 6 && (
+                <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8 bg-gray-50/50">
+                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+                    <button onClick={() => setStep(5)} className="p-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-900">Quét mã QR thanh toán</h2>
+                      <p className="text-gray-500 text-sm mt-1">Mở ứng dụng ngân hàng của bạn và quét mã QR bên dưới.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center max-w-lg mx-auto w-full">
+                    <div className="bg-[#2563EB] text-white w-full py-4 rounded-t-xl text-center font-bold text-lg mb-6 shadow-md">
+                      MB Bank
+                    </div>
+
+                    <div className="p-4 bg-white border-2 border-dashed border-[#2563EB] rounded-2xl shadow-sm mb-8 flex justify-center">
+                      <img
+                        src={`https://img.vietqr.io/image/MB-0968973608-compact.png?amount=${patients.reduce((sum, p) => sum + p.doctorPrice, 0)}&addInfo=${paymentCode}`}
+                        alt="QR Code Chuyển Khoản"
+                        className="w-[200px] h-[200px] object-contain"
+                      />
+                    </div>
+
+                    <div className="w-full space-y-4 text-sm mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
+                      <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                        <span className="text-gray-500 font-medium">Số tiền:</span>
+                        <strong className="text-[#2563EB] text-xl">{patients.reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} ₫</strong>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 font-medium">Số tài khoản:</span>
+                        <strong className="text-gray-900 text-base tracking-wider">0968973608</strong>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 font-medium">Ngân hàng:</span>
+                        <strong className="text-gray-900">MB Bank</strong>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500 font-medium">Nội dung bắt buộc:</span>
+                        <strong className="text-gray-900 bg-yellow-100 px-2 py-1 rounded">{paymentCode}</strong>
+                      </div>
+                    </div>
+
+                    <button
+                      disabled={true}
+                      className="w-full bg-blue-50 text-[#2563EB] border border-blue-200 py-4 rounded-xl font-bold text-lg shadow-sm transition-all flex justify-center items-center gap-2"
+                    >
+                      <Loader2 size={24} className="animate-spin" />
+                      Hệ thống đang tự động xác nhận...
+                    </button>
+                    <p className="text-xs text-gray-400 mt-4 text-center">Giao diện sẽ tự động chuyển sau khi ngân hàng báo thành công (thường từ 5 - 15 giây).</p>
+                    <p className="text-xs text-gray-400 mt-4 text-center">Hệ thống sẽ tự động xác nhận sau khi nhận được tiền.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 7: THÀNH CÔNG */}
+              {step === 7 && (
                 <div className="p-8 flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-500">
                   <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
                     <Check size={48} strokeWidth={3} />

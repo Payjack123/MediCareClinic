@@ -1,0 +1,64 @@
+{
+  "content": "DK23422",
+  "transferAmount": 1000
+}
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 15:15:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK40216 FT26250445342377 k2CLNLWW/789027",
+  "transferType": "in",
+  "description": "BankAPINotify DK40216 FT26250445342377 k2CLNLWW/789027",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250428269733",
+  "accumulated": 0,
+  "id": 79570815
+}
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 15:15:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK40216 FT26250445342377 k2CLNLWW/789027",
+  "transferType": "in",
+  "description": "BankAPINotify DK40216 FT26250445342377 k2CLNLWW/789027",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250428269733",
+  "accumulated": 0,
+  "id": 79570815
+}
+{
+  "content": "DK40216",
+  "transferAmount": 1000
+}
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 15:22:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK13177 FT26250077204520 k2CTW3SH/828438",
+  "transferType": "in",
+  "description": "BankAPINotify DK13177 FT26250077204520 k2CTW3SH/828438",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250062101010",
+  "accumulated": 0,
+  "id": 79572107
+}
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 15:22:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK13177 FT26250077204520 k2CTW3SH/828438",
+  "transferType": "in",
+  "description": "BankAPINotify DK13177 FT26250077204520 k2CTW3SH/828438",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250062101010",
+  "accumulated": 0,
+  "id": 79572107
+}

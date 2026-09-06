@@ -1,14 +1,16 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronLeft, CalendarDays, Loader2, Wallet, Users, Info, Building2, FileText, User
 } from 'lucide-react';
 import { getPatientBillingData } from '@/app/patient/payments/invoices/actions';
 
-export default function InvoiceDetailPage({ searchParams }: { searchParams: { id: string } }) {
+export default function InvoiceDetailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +37,7 @@ export default function InvoiceDetailPage({ searchParams }: { searchParams: { id
   }
 
   const { patientInfo, invoices } = data;
-  const activeInvoice = invoices.find((inv: any) => inv.id === searchParams.id);
+  const activeInvoice = invoices.find((inv: any) => inv.id === id);
 
   if (!activeInvoice) {
     return (

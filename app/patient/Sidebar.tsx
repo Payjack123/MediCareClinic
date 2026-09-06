@@ -70,7 +70,7 @@ export default function PatientSidebar({ activePage }: { activePage: string }) {
         <Link href="/patient/payments/history" className={getMenuItemClass('history')}>
           <FileText size={18} /> Danh sách hóa đơn
         </Link>
-        <Link href="/patient/payments/invoices" className={getMenuItemClass('invoices')}>
+        <Link href="/patient/payments/invoices/pending" className={getMenuItemClass('invoices')}>
           <Wallet size={18} /> Thanh toán viện phí
         </Link>
         <Link href="/patient/payments/insurance" className={getMenuItemClass('insurance')}>

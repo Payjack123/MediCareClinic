@@ -67,7 +67,7 @@ export async function getBookedTimes(doctorId: number, date: string) {
 }
 
 // 3. XÁC NHẬN ĐẶT LỊCH
-export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string }) {
+export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string }) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
@@ -87,7 +87,7 @@ export async function createAppointment(data: { doctorId: number, specialty: str
         bookingDate: data.date,
         bookingTime: data.time,
         reason: data.reason,
-        status: 'CHỜ XÁC NHẬN',
+        status: data.status || 'CHỜ XÁC NHẬN',
         appointmentCode: generatedCode
       }
     });
