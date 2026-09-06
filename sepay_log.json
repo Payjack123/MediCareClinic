@@ -62,3 +62,31 @@
   "accumulated": 0,
   "id": 79572107
 }
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 16:11:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK82213 FT26250023942038 k2CT43AK/148323",
+  "transferType": "in",
+  "description": "BankAPINotify DK82213 FT26250023942038 k2CT43AK/148323",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250246169890",
+  "accumulated": 0,
+  "id": 79582064
+}
+{
+  "gateway": "MBBank",
+  "transactionDate": "2026-09-06 16:11:00",
+  "accountNumber": "0968973608",
+  "subAccount": null,
+  "code": null,
+  "content": "DK82213 FT26250023942038 k2CT43AK/148323",
+  "transferType": "in",
+  "description": "BankAPINotify DK82213 FT26250023942038 k2CT43AK/148323",
+  "transferAmount": 2000,
+  "referenceCode": "FT26250246169890",
+  "accumulated": 0,
+  "id": 79582064
+}

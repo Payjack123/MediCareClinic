@@ -33,14 +33,43 @@ export async function POST(req: Request) {
     });
 
     if (appointments.length > 0) {
-      // Cập nhật trạng thái thành ĐÃ THANH TOÁN
-      await prisma.appointment.updateMany({
-        where: {
-          id: { in: appointments.map(a => a.id) }
-        },
-        data: { status: 'ĐÃ THANH TOÁN' }
-      });
-      return NextResponse.json({ success: true, message: 'Payment updated' });
+      const splitAmount = Math.round((data.transferAmount || 0) / appointments.length);
+
+      for (const apt of appointments) {
+        // 1. Cập nhật trạng thái Lịch khám
+        await prisma.appointment.update({
+          where: { id: apt.id },
+          data: { status: 'ĐÃ THANH TOÁN' }
+        });
+
+        // 2. Tạo Hóa đơn (Invoice) lưu lịch sử giao dịch
+        await prisma.invoice.create({
+          data: {
+            invoiceCode: `INV-${apt.id}-${Date.now().toString().slice(-6)}`,
+            appointmentId: apt.id,
+            patientId: apt.patientId,
+            doctorId: apt.doctorId,
+            totalAmount: splitAmount,
+            finalAmount: splitAmount,
+            status: 'Đã thanh toán',
+            paymentMethod: data.gateway || 'Bank Transfer',
+            paymentDate: data.transactionDate ? new Date(data.transactionDate) : new Date(),
+            paymentRef: data.referenceCode || paymentCode,
+            items: {
+              create: [
+                {
+                  name: 'Phí khám bệnh',
+                  price: splitAmount,
+                  quantity: 1,
+                  total: splitAmount
+                }
+              ]
+            }
+          }
+        });
+      }
+
+      return NextResponse.json({ success: true, message: 'Payment & Invoice updated' });
     }
 
     return NextResponse.json({ success: false, message: 'Appointment not found or already paid' });
