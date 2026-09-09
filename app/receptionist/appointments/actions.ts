@@ -18,7 +18,7 @@ export async function getAppointments(dateStr: string, search: string, statusFil
       whereClause.status = statusFilter;
     }
 
-    // Lọc theo tìm kiếm (Mã lịch hẹn, tên bệnh nhân, SĐT)
+    // Lọc theo tìm kiếm (Mã lịch hẹn, tên bệnh nhân, SĐT, Mã bệnh nhân)
     if (search) {
       whereClause.OR = [
         { appointmentCode: { contains: search } },
@@ -26,7 +26,8 @@ export async function getAppointments(dateStr: string, search: string, statusFil
           patient: {
             OR: [
               { fullName: { contains: search } },
-              { phone: { contains: search } }
+              { phone: { contains: search } },
+              { patientProfile: { patientCode: { contains: search } } }
             ]
           }
         },
@@ -37,7 +38,9 @@ export async function getAppointments(dateStr: string, search: string, statusFil
     const appointments = await prisma.appointment.findMany({
       where: whereClause,
       include: {
-        patient: true,
+        patient: {
+          include: { patientProfile: true }
+        },
         doctor: true
       },
       orderBy: [
@@ -50,6 +53,7 @@ export async function getAppointments(dateStr: string, search: string, statusFil
     const formattedData = appointments.map((apt: any) => {
       let displayPatientName = apt.patient.fullName;
       let displayPhone = apt.patient.phone || 'Chưa cập nhật';
+      let patientCode = apt.patient.patientProfile?.patientCode || 'Chưa cập nhật';
       
       // Xử lý logic người thân
       if (apt.reason && apt.reason.startsWith('Người khám:')) {
@@ -57,11 +61,13 @@ export async function getAppointments(dateStr: string, search: string, statusFil
         if (nameMatch) displayPatientName = nameMatch[1].trim();
         const phoneMatch = apt.reason.match(/- SĐT: (.*?) - ĐC:/);
         if (phoneMatch) displayPhone = phoneMatch[1].trim();
+        patientCode = 'Người thân';
       }
 
       return {
         id: apt.id,
-        appointmentCode: apt.appointmentCode || 'N/A',
+        appointmentCode: apt.appointmentCode || `LH${apt.bookingDate.replace(/\//g, '').substring(0, 6)}-${String(apt.id).padStart(5, '0')}`,
+        patientCode: patientCode,
         patientName: displayPatientName,
         phone: displayPhone,
         bookingDate: apt.bookingDate,

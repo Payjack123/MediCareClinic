@@ -2,29 +2,35 @@
 
 import prisma from '@/lib/prisma';
 
-export async function searchAppointment(query: string, searchType: string) {
+export async function searchAppointment(query: string, searchType?: string) {
   try {
     const todayDate = new Date();
     const todayStr = `${String(todayDate.getDate()).padStart(2, '0')}/${String(todayDate.getMonth() + 1).padStart(2, '0')}/${todayDate.getFullYear()}`;
 
+    const cleanQuery = query.trim();
     let whereClause: any = {};
 
-    if (searchType === 'Mã lịch hẹn') {
-      // Tìm chính xác theo mã lịch hẹn lưu trong Database (trường appointmentCode)
-      whereClause = { appointmentCode: query.trim() };
-    } else {
-      // Khi tìm bằng SĐT, Mã BN, CCCD -> Tìm lịch hẹn CHƯA CHECK-IN ở bất kỳ ngày nào
+    // Auto-detect query type if searchType is not explicitly provided
+    if (cleanQuery.startsWith('LH')) {
+      whereClause = { appointmentCode: cleanQuery };
+    } else if (cleanQuery.startsWith('BN')) {
       whereClause = {
-        status: 'CHỜ XÁC NHẬN', 
+        status: 'CHỜ XÁC NHẬN',
+        patient: { patientProfile: { patientCode: cleanQuery } }
       };
-
-      if (searchType === 'Số điện thoại') {
-        whereClause.patient = { phone: query };
-      } else if (searchType === 'Mã bệnh nhân') {
-        whereClause.patient = { patientProfile: { patientCode: query } };
-      } else if (searchType === 'CCCD / CMND') {
-        whereClause.patient = { patientProfile: { cccd: query } };
-      }
+    } else if (/^\d{10,11}$/.test(cleanQuery)) {
+      whereClause = {
+        status: 'CHỜ XÁC NHẬN',
+        patient: { phone: cleanQuery }
+      };
+    } else if (/^\d{12}$/.test(cleanQuery)) {
+      whereClause = {
+        status: 'CHỜ XÁC NHẬN',
+        patient: { patientProfile: { cccd: cleanQuery } }
+      };
+    } else {
+      // Fallback: try appointment code
+      whereClause = { appointmentCode: cleanQuery };
     }
 
     const appointments = await prisma.appointment.findMany({

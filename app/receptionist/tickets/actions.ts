@@ -58,10 +58,11 @@ export async function getCheckedInAppointments(dateStr: string) {
         gender: isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật'),
         dob: isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật'),
         age: appointment.patient.dob ? new Date().getFullYear() - parseInt(yob) : 0,
-        code: appointment.appointmentCode || 'N/A',
+        code: appointment.appointmentCode || `LH${appointment.bookingDate.replace(/\//g, '').substring(0, 6)}-${String(appointment.id).padStart(5, '0')}`,
         patientCode: isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientCode || 'Chưa cập nhật'),
         time: appointment.bookingTime,
         doctor: `BS. ${appointment.doctor.fullName}`,
+        doctorId: appointment.doctorId,
         specialty: appointment.specialty,
         room: appointment.room || 'Phòng 201 - Tầng 2', // Default fallback
         checkinTime: appointment.updatedAt ? new Date(appointment.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
@@ -82,79 +83,89 @@ export async function getCheckedInAppointments(dateStr: string) {
 // 2. Issue a queue number for a checked-in patient
 export async function issueQueueNumber(appointmentId: number, dateStr: string) {
   try {
-    // 1. Find the current highest queue number for this date
-    const todayAppointments = await prisma.appointment.findMany({
-      where: {
-        bookingDate: dateStr,
-        queueNumber: { not: null }
-      } as any,
-      select: { queueNumber: true }
-    });
-
-    let nextNumber = 1;
-    if (todayAppointments.length > 0) {
-      // Parse numbers from A001, A025, etc.
-      const numbers = todayAppointments
-        .map((a: any) => parseInt(a.queueNumber?.replace('A', '') || '0'))
-        .filter((n: number) => !isNaN(n));
+    const result = await prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.findUnique({
+        where: { id: appointmentId }
+      });
       
-      if (numbers.length > 0) {
-        nextNumber = Math.max(...numbers) + 1;
+      if (!appointment) throw new Error('Không tìm thấy lịch hẹn');
+      if (appointment.status === 'ĐÃ CẤP SỐ') throw new Error('Lịch hẹn đã được cấp số');
+
+      const todayAppointments = await tx.appointment.findMany({
+        where: {
+          doctorId: appointment.doctorId,
+          bookingDate: dateStr,
+          queueNumber: { not: null }
+        },
+        select: { queueNumber: true }
+      });
+
+      let nextNumber = 1;
+      if (todayAppointments.length > 0) {
+        const numbers = todayAppointments
+          .map((a: any) => parseInt(a.queueNumber?.replace('A', '') || '0'))
+          .filter((n: number) => !isNaN(n));
+        
+        if (numbers.length > 0) {
+          nextNumber = Math.max(...numbers) + 1;
+        }
       }
-    }
 
-    const newQueueString = `A${String(nextNumber).padStart(3, '0')}`; // A001, A025
+      const newQueueString = `A${String(nextNumber).padStart(3, '0')}`;
 
-    // 2. Update the appointment with the new queue number and change status to ĐÃ CẤP SỐ
-    const updated = await prisma.appointment.update({
-      where: { id: appointmentId },
-      data: {
-        status: 'ĐÃ CẤP SỐ',
-        queueNumber: newQueueString
-      } as any
+      const updated = await tx.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          status: 'ĐÃ CẤP SỐ',
+          queueNumber: newQueueString
+        }
+      });
+
+      return { success: true, queueNumber: newQueueString };
     });
 
-    return { success: true, queueNumber: newQueueString };
-  } catch (error) {
+    return result;
+  } catch (error: any) {
     console.error('Lỗi khi cấp số:', error);
-    return { success: false, message: 'Không thể cấp số lúc này.' };
+    return { success: false, message: error.message || 'Không thể cấp số lúc này.' };
   }
 }
 
 // 3. Get Queue Stats for Sidebar
-export async function getRoomQueueStats(dateStr: string) {
+export async function getRoomQueueStats(dateStr: string, doctorId?: number) {
   try {
+    const whereClause: any = {
+      bookingDate: dateStr,
+      queueNumber: { not: null }
+    };
+    
+    if (doctorId) {
+      whereClause.doctorId = doctorId;
+    }
+
     const queueList = await prisma.appointment.findMany({
-      where: {
-        bookingDate: dateStr,
-        queueNumber: { not: null }
-      } as any,
+      where: whereClause,
       include: {
         patient: true,
         doctor: true
       },
-      orderBy: { queueNumber: 'asc' } as any
+      orderBy: { queueNumber: 'asc' }
     });
 
-    // Mock stats calculation - in real system this would map to actual status transitions
-    // For now, we will assign statuses based on current queue position vs total
-    // Let's assume the current active number is half-way through
-    
-    const formattedQueue = queueList.map((a: any, index: number) => {
+    const formattedQueue = queueList.map((a: any) => {
       let qStatus = 'Chưa gọi';
-      
-      // Simple mock logic for demonstration
-      if (index === 0) qStatus = 'Đã khám';
-      else if (index === 1) qStatus = 'Đang khám';
-      else if (index === 2) qStatus = 'Kế tiếp';
-      else if (index < 5) qStatus = 'Đang chờ';
+      if (a.status === 'HOÀN THÀNH') qStatus = 'Đã khám';
+      else if (a.status === 'ĐANG KHÁM') qStatus = 'Đang khám';
+      else if (a.status === 'ĐÃ CẤP SỐ') qStatus = 'Đang chờ';
       
       return {
         queueNumber: a.queueNumber,
         patientName: a.patient.fullName,
         doctorName: `BS. ${a.doctor.fullName}`,
         time: a.bookingTime,
-        status: qStatus
+        status: qStatus,
+        room: a.room || 'Phòng khám',
+        rawStatus: a.status
       };
     });
 

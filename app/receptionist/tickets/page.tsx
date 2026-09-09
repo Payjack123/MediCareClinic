@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Calendar, RefreshCcw, User, Phone, MapPin, 
-  Printer, ArrowRight, Info, CheckCircle2, Check, ChevronLeft, ChevronRight, Activity, Loader2
+  Printer, ArrowRight, Info, CheckCircle2, Check, ChevronLeft, ChevronRight, Activity, Loader2, Clock
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { getCheckedInAppointments, issueQueueNumber, getRoomQueueStats } from './actions';
 
 export default function TicketsPage() {
@@ -14,8 +15,9 @@ export default function TicketsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isIssuing, setIsIssuing] = useState(false);
   
-  // States for filters
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
   const [filterSpecialty, setFilterSpecialty] = useState('all');
   const [filterRoom, setFilterRoom] = useState('all');
@@ -33,19 +35,26 @@ export default function TicketsPage() {
     const [year, month, day] = filterDate.split('-');
     const formattedDate = `${day}/${month}/${year}`;
     
-    const [ptsRes, queueRes] = await Promise.all([
-      getCheckedInAppointments(formattedDate),
-      getRoomQueueStats(formattedDate)
-    ]);
-
+    const ptsRes = await getCheckedInAppointments(formattedDate);
+    
+    let targetDoctorId: number | undefined;
+    
     if (ptsRes.success) {
       setPatients(ptsRes.data);
       if (ptsRes.data.length > 0 && !selectedPatientId) {
-        setSelectedPatientId(ptsRes.data[0].id);
+        // If there's an initial search, try to select that patient automatically
+        const matched = ptsRes.data.find((p: any) => p.code === initialSearch || p.patientCode === initialSearch);
+        const autoSelectedId = matched ? matched.id : ptsRes.data[0].id;
+        setSelectedPatientId(autoSelectedId);
+        targetDoctorId = ptsRes.data.find((p: any) => p.id === autoSelectedId)?.doctorId;
       } else if (ptsRes.data.length === 0) {
         setSelectedPatientId(null);
+      } else {
+        targetDoctorId = ptsRes.data.find((p: any) => p.id === selectedPatientId)?.doctorId;
       }
     }
+      
+    const queueRes = await getRoomQueueStats(formattedDate, targetDoctorId);
     
     if (queueRes.success) {
       setQueueList(queueRes.queueList);
@@ -63,7 +72,7 @@ export default function TicketsPage() {
       // Reload data
       await fetchData();
     } else {
-      alert(res.message);
+      alert((res as any).message || 'Có lỗi xảy ra');
     }
     setIsIssuing(false);
   };
@@ -71,8 +80,9 @@ export default function TicketsPage() {
   // Lọc
   const filteredPatients = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.phone.includes(searchQuery);
+      (p.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.patientCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.phone || '').includes(searchQuery);
     
     const matchSpecialty = filterSpecialty === 'all' || p.specialty === filterSpecialty;
     const matchRoom = filterRoom === 'all' || p.room === filterRoom;
@@ -414,102 +424,54 @@ export default function TicketsPage() {
           {/* QUEUE SIDEBAR */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 text-base">Hàng đợi hiện tại - Phòng 201</h3>
+              <h3 className="font-bold text-gray-800 text-base">Hàng đợi hiện tại {selectedPatient ? `- ${selectedPatient.room}` : ''}</h3>
             </div>
             
             {/* STATS */}
-            <div className="grid grid-cols-4 gap-2 p-4 border-b border-gray-100 bg-gray-50/50 text-center">
+            <div className="grid grid-cols-3 gap-2 p-4 border-b border-gray-100 bg-gray-50/50 text-center">
               <div className="bg-white rounded-xl p-2 border border-gray-100 shadow-sm flex flex-col items-center justify-center h-16">
-                <div className="text-lg font-black text-green-600 leading-none">3</div>
+                <div className="text-lg font-black text-green-600 leading-none">{queueList.filter(q => q.status === 'Đang khám').length}</div>
                 <div className="text-[9px] font-bold text-gray-500 uppercase mt-1">Đang khám</div>
               </div>
               <div className="bg-white rounded-xl p-2 border border-gray-100 shadow-sm flex flex-col items-center justify-center h-16">
-                <div className="text-lg font-black text-orange-500 leading-none">5</div>
+                <div className="text-lg font-black text-orange-500 leading-none">{queueList.filter(q => q.status === 'Đang chờ').length}</div>
                 <div className="text-[9px] font-bold text-gray-500 uppercase mt-1">Đang chờ</div>
               </div>
               <div className="bg-blue-50/50 rounded-xl p-2 border border-blue-100 flex flex-col items-center justify-center h-16">
-                <div className="text-lg font-black text-blue-700 leading-none">16</div>
+                <div className="text-lg font-black text-blue-700 leading-none">{queueList.filter(q => q.status === 'Đã khám').length}</div>
                 <div className="text-[9px] font-bold text-blue-800 uppercase mt-1">Đã khám</div>
-              </div>
-              <div className="bg-gray-100/50 rounded-xl p-2 border border-gray-200 flex flex-col items-center justify-center h-16">
-                <div className="text-lg font-black text-gray-600 leading-none">2</div>
-                <div className="text-[9px] font-bold text-gray-500 uppercase mt-1">Bỏ lượt</div>
               </div>
             </div>
 
             {/* QUEUE LIST */}
-            <div className="p-4 space-y-3">
-              
-              {/* Item: Đang khám */}
-              <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100">
-                <div className="w-12 h-12 bg-green-50 text-green-700 font-bold text-base rounded-lg flex items-center justify-center shrink-0">
-                  A023
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-block px-1.5 py-0.5 bg-green-500 text-white text-[9px] font-bold rounded uppercase mb-1">Đang khám</span>
-                  <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">Nguyễn Minh Đức</h4>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">BS. Nguyễn Văn Bình</p>
-                </div>
-                <div className="text-[10px] text-gray-400 font-medium whitespace-nowrap self-start mt-1 flex items-center gap-1">
-                   08:10
-                </div>
-              </div>
-
-              {/* Item: Đang chờ */}
-              <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100">
-                <div className="w-12 h-12 bg-orange-50 text-orange-600 font-bold text-base rounded-lg flex items-center justify-center shrink-0">
-                  A024
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-block px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[9px] font-bold rounded uppercase mb-1">Đang chờ</span>
-                  <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">Vũ Thị Hạnh</h4>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">BS. Nguyễn Văn Bình</p>
-                </div>
-                <div className="text-[10px] text-gray-400 font-medium whitespace-nowrap self-start mt-1">08:20</div>
-              </div>
-
-              {/* Item: Kế tiếp (Highlighted) */}
-              <div className="flex items-center gap-3 bg-orange-50/50 p-3 rounded-xl border border-orange-200 relative overflow-hidden shadow-sm">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>
-                <div className="w-12 h-12 bg-white text-orange-600 font-bold text-base border border-orange-100 rounded-lg flex items-center justify-center shrink-0 shadow-sm ml-1">
-                  A025
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-block px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded uppercase mb-1">Kế tiếp</span>
-                  <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">Nguyễn Văn An</h4>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">BS. Nguyễn Văn Bình</p>
-                </div>
-                <div className="text-[10px] text-orange-600 font-bold flex items-center gap-0.5 whitespace-nowrap self-start mt-1">
-                  08:30 <ChevronRight size={14}/>
-                </div>
-              </div>
-
-              {/* Item: Đang chờ */}
-              <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-gray-100">
-                <div className="w-12 h-12 bg-orange-50 text-orange-600 font-bold text-base rounded-lg flex items-center justify-center shrink-0">
-                  A026
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-block px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[9px] font-bold rounded uppercase mb-1">Đang chờ</span>
-                  <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">Trần Thị Mai</h4>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">BS. Nguyễn Văn Bình</p>
-                </div>
-                <div className="text-[10px] text-gray-400 font-medium whitespace-nowrap self-start mt-1">08:35</div>
-              </div>
-
-              {/* Item: Chưa gọi */}
-              <div className="flex items-center gap-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100 opacity-60">
-                <div className="w-12 h-12 bg-gray-100 text-gray-600 font-bold text-base rounded-lg flex items-center justify-center shrink-0">
-                  A027
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-block px-1.5 py-0.5 bg-gray-200 text-gray-600 text-[9px] font-bold rounded uppercase mb-1">Chưa gọi</span>
-                  <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">Lê Quang Huy</h4>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">BS. Nguyễn Văn Bình</p>
-                </div>
-                <div className="text-[10px] text-gray-400 font-medium whitespace-nowrap self-start mt-1">08:45</div>
-              </div>
-
+            <div className="p-4 space-y-3 min-h-[200px] max-h-[400px] overflow-y-auto">
+              {queueList.length === 0 ? (
+                <div className="text-center text-gray-500 text-sm py-8">Chưa có dữ liệu hàng đợi.</div>
+              ) : (
+                queueList.map((item, idx) => {
+                  const isKhambenh = item.status === 'Đang khám';
+                  const isCho = item.status === 'Đang chờ';
+                  const isXong = item.status === 'Đã khám';
+                  
+                  return (
+                    <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border ${isKhambenh ? 'bg-green-50/50 border-green-200 shadow-sm' : isCho ? 'bg-white border-orange-100' : 'bg-gray-50/50 border-gray-100 opacity-60'}`}>
+                      <div className={`w-12 h-12 font-bold text-base rounded-lg flex items-center justify-center shrink-0 ${isKhambenh ? 'bg-green-100 text-green-700' : isCho ? 'bg-orange-50 text-orange-600' : 'bg-gray-200 text-gray-600'}`}>
+                        {item.queueNumber}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded uppercase mb-1 ${isKhambenh ? 'bg-green-500 text-white' : isCho ? 'bg-orange-100 text-orange-700' : 'bg-gray-200 text-gray-600'}`}>
+                          {item.status}
+                        </span>
+                        <h4 className="font-bold text-sm text-gray-900 leading-tight truncate">{item.patientName}</h4>
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{item.doctorName}</p>
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-medium whitespace-nowrap self-start mt-1 flex items-center gap-1">
+                        <Clock size={12} /> {item.time}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
             
             <div className="p-3 border-t border-gray-100 flex justify-center">
@@ -527,32 +489,20 @@ export default function TicketsPage() {
             <div className="p-5 space-y-3.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">Phòng khám</span>
-                <span className="font-semibold text-gray-900">Phòng 201 - Tầng 2</span>
+                <span className="font-semibold text-gray-900">{selectedPatient ? selectedPatient.room : 'Chưa xác định'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Bác sĩ phụ trách</span>
-                <span className="font-semibold text-gray-900">BS. Nguyễn Văn Bình</span>
+                <span className="font-semibold text-gray-900">{selectedPatient ? selectedPatient.doctor : 'Chưa xác định'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Khoa / Chuyên khoa</span>
-                <span className="font-semibold text-gray-900">Nội tổng quát</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Thời gian làm việc</span>
-                <span className="font-semibold text-gray-900">07:30 - 11:30</span>
+                <span className="font-semibold text-gray-900">{selectedPatient ? selectedPatient.specialty : 'Chưa xác định'}</span>
               </div>
               <div className="pt-3.5 mt-3.5 border-t border-gray-100 border-dashed space-y-3.5">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Tổng số lịch hôm nay</span>
-                  <span className="font-black text-gray-900">24</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Đã check-in</span>
-                  <span className="font-bold text-blue-600">12 (50%)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Chưa check-in</span>
-                  <span className="font-bold text-orange-500">12 (50%)</span>
+                  <span className="text-gray-500">Đã nhận số</span>
+                  <span className="font-bold text-blue-600">{queueList.length}</span>
                 </div>
               </div>
             </div>
