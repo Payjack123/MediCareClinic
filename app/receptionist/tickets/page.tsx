@@ -7,8 +7,9 @@ import {
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getCheckedInAppointments, issueQueueNumber, getRoomQueueStats } from './actions';
+import { Suspense } from 'react';
 
-export default function TicketsPage() {
+function TicketsContent() {
   const [patients, setPatients] = useState<any[]>([]);
   const [queueList, setQueueList] = useState<any[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
@@ -512,5 +513,17 @@ export default function TicketsPage() {
       </div>
       )}
     </div>
+  );
+}
+
+export default function TicketsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center p-10">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+      </div>
+    }>
+      <TicketsContent />
+    </Suspense>
   );
 }

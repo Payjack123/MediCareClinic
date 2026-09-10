@@ -7,7 +7,7 @@ import {
   Printer, ArrowRight, RotateCw, Clock, User, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { searchAppointment, confirmCheckIn, getQueueAndHistory } from './actions';
+import { searchAppointment, confirmCheckIn, getQueueAndHistory, confirmPayment, cancelNoShow } from './actions';
 
 export default function CheckInPage() {
   const [searchType, setSearchType] = useState('Mã lịch hẹn');
@@ -22,6 +22,8 @@ export default function CheckInPage() {
   const [successMsg, setSuccessMsg] = useState('');
   
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [queueNumber, setQueueNumber] = useState<string | null>(null);
   
   const [queue, setQueue] = useState<any[]>([]);
@@ -86,6 +88,37 @@ export default function CheckInPage() {
     }
     
     setIsCheckingIn(false);
+  };
+
+  const handlePayment = async () => {
+    if (!appointment) return;
+    setIsPaying(true);
+    setError('');
+    
+    const res = await confirmPayment(appointment.id);
+    if (res.success) {
+      setSuccessMsg('Đã thu tiền thành công!');
+      setAppointments(appointments.map(a => a.id === appointment.id ? { ...a, paymentStatus: 'ĐÃ THANH TOÁN' } : a));
+    } else {
+      setError(res.error || 'Có lỗi xảy ra khi thu tiền.');
+    }
+    setIsPaying(false);
+  };
+
+  const handleNoShow = async () => {
+    if (!appointment) return;
+    if (!confirm('Bạn có chắc chắn muốn hủy lịch và đánh dấu bệnh nhân này bùng kèo?')) return;
+    setIsCancelling(true);
+    setError('');
+
+    const res = await cancelNoShow(appointment.id);
+    if (res.success) {
+      setSuccessMsg('Đã đánh dấu bùng kèo thành công!');
+      setAppointments(appointments.map(a => a.id === appointment.id ? { ...a, status: 'ĐÃ HỦY' } : a));
+    } else {
+      setError(res.error || 'Có lỗi xảy ra khi hủy.');
+    }
+    setIsCancelling(false);
   };
 
   return (
@@ -220,6 +253,14 @@ export default function CheckInPage() {
                       <Clock size={16} className="text-gray-400" />
                       <span className="text-sm text-gray-800 font-medium">Khung: {appointment.bookingTime}</span>
                     </div>
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md ${appointment.paymentMethod === 'CHUYỂN KHOẢN' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {appointment.paymentMethod}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-md ${appointment.paymentStatus === 'ĐÃ THANH TOÁN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {appointment.paymentStatus}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -254,18 +295,42 @@ export default function CheckInPage() {
                     </div>
                   )}
 
-                  <button 
-                    onClick={handleCheckIn}
-                    disabled={isCheckingIn || appointment.status !== 'CHỜ XÁC NHẬN'}
-                    className={`flex items-center justify-center gap-2 px-12 py-4 text-white font-bold rounded-xl text-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
-                      appointment.status !== 'CHỜ XÁC NHẬN' 
-                        ? 'bg-gray-400 cursor-not-allowed shadow-none hover:scale-100' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-200'
-                    }`}
-                  >
-                    {isCheckingIn ? <Loader2 size={24} className="animate-spin" /> : <Check size={24} />}
-                    {appointment.status !== 'CHỜ XÁC NHẬN' ? 'ĐÃ CHECK-IN' : 'XÁC NHẬN CHECK-IN'}
-                  </button>
+                  <div className="flex flex-col w-full max-w-sm gap-3 mt-4">
+                    {appointment.paymentMethod === 'TẠI QUẦY' && appointment.paymentStatus !== 'ĐÃ THANH TOÁN' && appointment.status === 'CHỜ XÁC NHẬN' && (
+                      <button 
+                        onClick={handlePayment}
+                        disabled={isPaying}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-md transition-all shadow-md w-full"
+                      >
+                        {isPaying ? <Loader2 size={20} className="animate-spin" /> : <Ticket size={20} />}
+                        THU TIỀN TẠI QUẦY
+                      </button>
+                    )}
+
+                    <button 
+                      onClick={handleCheckIn}
+                      disabled={isCheckingIn || appointment.status !== 'CHỜ XÁC NHẬN' || (appointment.paymentMethod === 'TẠI QUẦY' && appointment.paymentStatus !== 'ĐÃ THANH TOÁN')}
+                      className={`flex items-center justify-center gap-2 px-6 py-4 text-white font-bold rounded-xl text-lg transition-all shadow-lg w-full ${
+                        appointment.status !== 'CHỜ XÁC NHẬN' || (appointment.paymentMethod === 'TẠI QUẦY' && appointment.paymentStatus !== 'ĐÃ THANH TOÁN')
+                          ? 'bg-gray-400 cursor-not-allowed shadow-none' 
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-200'
+                      }`}
+                    >
+                      {isCheckingIn ? <Loader2 size={24} className="animate-spin" /> : <Check size={24} />}
+                      {appointment.status !== 'CHỜ XÁC NHẬN' ? 'ĐÃ CHECK-IN' : 'XÁC NHẬN CHECK-IN'}
+                    </button>
+
+                    {appointment.status === 'CHỜ XÁC NHẬN' && (
+                      <button 
+                        onClick={handleNoShow}
+                        disabled={isCancelling}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl text-md transition-all w-full mt-2"
+                      >
+                        {isCancelling ? <Loader2 size={20} className="animate-spin" /> : <span className="text-lg leading-none">❌</span>}
+                        HỦY & ĐÁNH DẤU BÙNG KÈO
+                      </button>
+                    )}
+                  </div>
                   
                   {appointment.status === 'ĐÃ XÁC NHẬN' && (
                     <Link 

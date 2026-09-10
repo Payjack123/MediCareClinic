@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { getPatientBillingData } from '@/app/patient/payments/invoices/actions';
 
-export default function InvoiceDetailPage() {
+function InvoiceDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
@@ -190,5 +190,17 @@ export default function InvoiceDetailPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function InvoiceDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#2563EB] animate-spin" />
+      </div>
+    }>
+      <InvoiceDetailContent />
+    </Suspense>
   );
 }

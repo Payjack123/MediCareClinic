@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import {
   CalendarDays, Calendar, Hourglass, CheckCircle2, XCircle, X, UserCircle2,
   Search, CalendarRange, Clock, MapPin, User, Stethoscope, Loader2,
-  Info, Trash2, Star, CheckCircle, AlertCircle, ArrowRight, Bell, Activity
+  Info, Trash2, Star, CheckCircle, AlertCircle, ArrowRight, Activity
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
+import NotificationBell from '@/components/NotificationBell';
 import { getMyAppointmentsData, cancelAppointment } from './actions';
 
 export default function MyAppointmentsPage() {
@@ -152,12 +153,7 @@ export default function MyAppointmentsPage() {
               </div>
             </div>
             <div className="flex items-center gap-6 ml-auto">
-              <div className="relative">
-                <button className="relative p-2.5 text-gray-500 hover:bg-gray-100 rounded-full transition">
-                  <Bell size={20} />
-                  <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-              </div>
+              <NotificationBell />
               <div className="flex items-center gap-3 cursor-pointer group">
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{userData?.fullName}</p>

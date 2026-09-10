@@ -35,6 +35,7 @@ model User {
   prescriptions         Prescription[]   @relation("PatientPrescriptions")
   invoicesAsPatient     Invoice[]        @relation("PatientInvoices")
   invoicesAsDoctor      Invoice[]        @relation("DoctorInvoices")
+  notifications         Notification[]
 
   @@map("users")
 }
@@ -46,6 +47,7 @@ model PatientProfile {
   cccd        String? @db.VarChar(20)
   bhyt        String? @db.VarChar(30)
   insurance   String? @db.VarChar(100)
+  noShowCount Int     @default(0)
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -102,6 +104,8 @@ model Appointment {
   room            String?
   reason          String?      @db.Text
   status          String       @default("CHỜ XÁC NHẬN")
+  paymentMethod   String       @default("TẠI QUẦY")
+  paymentStatus   String       @default("CHƯA THANH TOÁN")
   createdAt       DateTime     @default(now())
   doctor          User         @relation("DoctorAppointments", fields: [doctorId], references: [id])
   patient         User         @relation("PatientAppointments", fields: [patientId], references: [id])
@@ -185,6 +189,20 @@ model LabTest {
   patient    User     @relation(fields: [patientId], references: [id])
 
   @@index([patientId], map: "LabTest_patientId_fkey")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  type      String   @default("INFO")
+  link      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model SystemSetting {

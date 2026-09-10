@@ -94,6 +94,8 @@ export async function searchAppointment(query: string, searchType?: string) {
         bookingDate: appointment.bookingDate,
         bookingTime: appointment.bookingTime,
         status: appointment.status, // CHỜ XÁC NHẬN, ĐÃ XÁC NHẬN, etc.
+        paymentMethod: appointment.paymentMethod,
+        paymentStatus: appointment.paymentStatus,
         doctorName: `BS. ${appointment.doctor.fullName}`,
         specialty: appointment.specialty,
         room: appointment.room || 'Chưa xếp phòng',
@@ -114,6 +116,9 @@ export async function confirmCheckIn(appointmentId: number) {
     const app = await prisma.appointment.findUnique({ where: { id: appointmentId } });
     if (!app) return { success: false, error: "Lịch hẹn không tồn tại." };
     if (app.status !== 'CHỜ XÁC NHẬN') return { success: false, error: "Lịch hẹn đã được xử lý." };
+    if (app.paymentMethod === 'TẠI QUẦY' && app.paymentStatus !== 'ĐÃ THANH TOÁN') {
+      return { success: false, error: "Bệnh nhân chưa thanh toán. Vui lòng thu tiền trước khi Check-in." };
+    }
 
     await prisma.appointment.update({
       where: { id: appointmentId },
@@ -124,6 +129,54 @@ export async function confirmCheckIn(appointmentId: number) {
   } catch (error) {
     console.error("Error confirming check-in:", error);
     return { success: false, error: "Lỗi hệ thống khi check-in." };
+  }
+}
+
+export async function confirmPayment(appointmentId: number) {
+  try {
+    const app = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    if (!app) return { success: false, error: "Lịch hẹn không tồn tại." };
+
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { paymentStatus: 'ĐÃ THANH TOÁN' }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error confirming payment:", error);
+    return { success: false, error: "Lỗi hệ thống khi thu tiền." };
+  }
+}
+
+export async function cancelNoShow(appointmentId: number) {
+  try {
+    const app = await prisma.appointment.findUnique({ 
+      where: { id: appointmentId },
+      include: { patient: { include: { patientProfile: true } } }
+    });
+    if (!app) return { success: false, error: "Lịch hẹn không tồn tại." };
+
+    await prisma.$transaction(async (tx: any) => {
+      // 1. Đổi trạng thái lịch hẹn
+      await tx.appointment.update({
+        where: { id: appointmentId },
+        data: { status: 'ĐÃ HỦY' }
+      });
+
+      // 2. Tăng điểm noShowCount
+      if (app.patient.patientProfile) {
+        await tx.patientProfile.update({
+          where: { userId: app.patientId },
+          data: { noShowCount: { increment: 1 } }
+        });
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error cancelling no-show:", error);
+    return { success: false, error: "Lỗi hệ thống khi hủy bùng kèo." };
   }
 }
 

@@ -67,17 +67,16 @@ export async function getBookedTimes(doctorId: number, date: string) {
 }
 
 // 3. XÁC NHẬN ĐẶT LỊCH
-export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string }) {
+export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string, paymentMethod?: string }) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
     if (!userIdStr) return { success: false, message: 'Chưa đăng nhập' };
 
-    // Cho phép đặt trùng giờ theo yêu cầu
-
-
-    // Sinh mã lịch hẹn tự động, ví dụ: LH + 6 số cuối timestamp + 2 số random
+    // Sinh mã lịch hẹn tự động
     const generatedCode = `LH${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+    const paymentMethod = data.paymentMethod || 'TẠI QUẦY';
+    const paymentStatus = paymentMethod === 'CHUYỂN KHOẢN' ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN';
 
     const newApt = await prisma.appointment.create({
       data: {
@@ -88,8 +87,10 @@ export async function createAppointment(data: { doctorId: number, specialty: str
         bookingTime: data.time,
         reason: data.reason,
         status: data.status || 'CHỜ XÁC NHẬN',
-        appointmentCode: generatedCode
-      }
+        appointmentCode: generatedCode,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentStatus
+      } as any // Use 'any' temporarily to avoid TS errors until prisma generate is recognized
     });
 
     return { success: true, appointmentCode: generatedCode };

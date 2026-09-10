@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home, UserCheck, Ticket, Users, CalendarDays, CalendarClock, CalendarRange,
-  CreditCard, FileText, ShieldPlus, BarChart3, Settings, Headset, HeartPulse,
-  Search, Bell, MessageSquare, LogOut
+  Search, MessageSquare, LogOut, HeartPulse, CreditCard, FileText, ShieldPlus, BarChart3, Settings, Headset
 } from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -128,13 +128,8 @@ export default function ReceptionistLayout({ children }: { children: React.React
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 block h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
-                  3
-                </span>
-              </button>
+            <div className="flex items-center gap-6">
+              <NotificationBell />
               <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
                 <MessageSquare size={20} />
                 <span className="absolute top-1.5 right-1.5 block h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">

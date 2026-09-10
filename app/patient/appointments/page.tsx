@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { CalendarDays, Users, Bell, Check, Search, ArrowLeft, ArrowRight, UserCircle2, Clock, Plus, Filter, Info, Trash2, HeartPulse, Pill, TestTube, FileText, LayoutDashboard, Settings, Activity, LogOut, Wallet, Star, ShieldCheck, Stethoscope, ChevronRight, X, Phone, Mail, MapPin, User, Loader2, Link2, Download, Eye, Calendar, History, Smile, Bone, CheckCircle2, Landmark, Lock } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
+import NotificationBell from '@/components/NotificationBell';
 
 import { getPatientAppointmentData, getBookedTimes, createAppointment, findPatientByQuery } from '@/app/patient/appointments/actions';
 
@@ -190,7 +191,8 @@ export default function PatientAppointmentsPage() {
         time: patient.time,
         // serialize thêm tên/sđt vào reason
         reason: (pCode ? `Mã thanh toán: ${pCode} - ` : '') + `Người khám: ${patient.name} - Mã BN: ${patient.patientCode || 'Không có'} - CCCD: ${patient.cccd || 'Không có'} - SĐT: ${patient.phone} - ĐC: ${patient.address}. Lý do: ${patient.reason}`,
-        status: overrideStatus || 'CHỜ XÁC NHẬN'
+        status: overrideStatus || 'CHỜ XÁC NHẬN',
+        paymentMethod: paymentMethod === 'BANK' ? 'CHUYỂN KHOẢN' : 'TẠI QUẦY'
       });
       if (res.success && res.appointmentCode) {
         codes.push(res.appointmentCode);
@@ -250,11 +252,9 @@ export default function PatientAppointmentsPage() {
               <h1 className="text-xl font-bold text-gray-900">Quản lý Lịch khám</h1>
             </div>
           </div>
-          <div className="flex items-center gap-5 ml-auto">
-            <button className="relative p-2.5 text-gray-500 hover:bg-blue-50 hover:text-[#2563EB] rounded-full transition bg-white border border-gray-200 shadow-sm">
-              <Bell size={20} />
-            </button>
-            <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
+          <div className="flex items-center gap-6 ml-auto">
+            <NotificationBell />
+            <div className="flex items-center gap-3 pl-6 border-l border-gray-200 cursor-pointer group">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{userData?.fullName}</p>
                 <p className="text-xs text-gray-500 font-medium">Bệnh nhân ({userData?.patientCode})</p>
@@ -723,18 +723,35 @@ export default function PatientAppointmentsPage() {
                       </label>
 
                       {/* Thanh toán tại quầy */}
-                      <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'COUNTER' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
-                        <div className="pt-0.5">
-                          <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'COUNTER'} onChange={() => setPaymentMethod('COUNTER')} />
+                      {userData?.patientProfile?.noShowCount >= 3 ? (
+                        <div className="p-5 rounded-xl border-2 border-red-200 bg-red-50 opacity-80">
+                          <div className="flex gap-4">
+                            <div className="pt-0.5">
+                              <input type="radio" disabled className="w-4 h-4 text-gray-400 mt-1 cursor-not-allowed" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-bold text-gray-900 text-base">Thanh toán tại quầy</p>
+                              <p className="text-sm text-red-600 mt-1 font-medium">Tài khoản của bạn đã vi phạm quy định hủy lịch quá 3 lần. Bạn chỉ có thể chọn Thanh toán chuyển khoản.</p>
+                            </div>
+                            <div className="flex items-center text-gray-400">
+                              <Users size={32} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-gray-900 text-base">Thanh toán tại quầy</p>
-                          <p className="text-sm text-gray-500 mt-1">Giao dịch trực tiếp bằng tiền mặt hoặc quẹt thẻ tại lễ tân</p>
-                        </div>
-                        <div className="flex items-center text-gray-400">
-                          <Users size={32} />
-                        </div>
-                      </label>
+                      ) : (
+                        <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'COUNTER' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
+                          <div className="pt-0.5">
+                            <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'COUNTER'} onChange={() => setPaymentMethod('COUNTER')} />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-gray-900 text-base">Thanh toán tại quầy</p>
+                            <p className="text-sm text-gray-500 mt-1">Giao dịch trực tiếp bằng tiền mặt hoặc quẹt thẻ tại lễ tân</p>
+                          </div>
+                          <div className="flex items-center text-gray-400">
+                            <Users size={32} />
+                          </div>
+                        </label>
+                      )}
                     </div>
 
                     <button
