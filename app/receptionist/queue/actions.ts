@@ -12,7 +12,7 @@ export async function getQueueList(dateStr: string) {
         status: { in: ['ĐÃ CẤP SỐ', 'ĐANG KHÁM', 'HOÀN THÀNH', 'BỎ LƯỢT'] }
       },
       include: {
-        patient: true,
+        patient: { include: { patientProfile: true } },
         doctor: true
       },
       orderBy: [
@@ -20,35 +20,56 @@ export async function getQueueList(dateStr: string) {
       ]
     });
 
-    const result = appointments.map((appointment: any) => {
+    const result = await Promise.all(appointments.map(async (appointment: any) => {
       let displayPatientName = appointment.patient.fullName;
       let displayPhone = appointment.patient.phone || 'Chưa cập nhật';
       let displayReason = appointment.reason || 'Khám tổng quát';
       let isForRelative = false;
+      let extractedPatientCode = 'Chưa cập nhật';
 
       // Extract relative info if booked for someone else
       if (appointment.reason && appointment.reason.startsWith('Người khám:')) {
         isForRelative = true;
-        const nameMatch = appointment.reason.match(/Người khám: (.*?) - CCCD:/);
+        const nameMatch = appointment.reason.match(/Người khám: (.*?) - Mã BN:/);
         if (nameMatch) displayPatientName = nameMatch[1].trim();
+
+        const codeMatch = appointment.reason.match(/- Mã BN: (.*?) - CCCD:/);
+        if (codeMatch) {
+          extractedPatientCode = codeMatch[1].trim();
+          if (extractedPatientCode === 'Không có') extractedPatientCode = 'Chưa cập nhật';
+        }
         const phoneMatch = appointment.reason.match(/- SĐT: (.*?) - ĐC:/);
         if (phoneMatch) displayPhone = phoneMatch[1].trim();
         const reasonMatch = appointment.reason.match(/\. Lý do:\s*(.*)/);
         if (reasonMatch) displayReason = reasonMatch[1].trim();
       }
 
-      // Format birth year & age
-      let yob = 'Chưa cập nhật';
-      if (appointment.patient.dob) {
-        yob = appointment.patient.dob.substring(0, 4);
-        if (!yob.startsWith('19') && !yob.startsWith('20')) {
-          const parts = appointment.patient.dob.split('-');
-          if (parts.length === 3) yob = parts[0];
+      let finalGender = isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật');
+      let finalDob = isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật');
+      let finalPatientCode = isForRelative ? extractedPatientCode : (appointment.patient.patientProfile?.patientCode || 'Chưa cập nhật');
+
+      // Fetch relative details if possible
+      if (isForRelative && extractedPatientCode !== 'Chưa cập nhật') {
+        try {
+          const relativeUser = await prisma.user.findFirst({
+            where: { patientProfile: { patientCode: extractedPatientCode } }
+          });
+          if (relativeUser) {
+            finalGender = relativeUser.gender || 'Chưa cập nhật';
+            finalDob = relativeUser.dob || 'Chưa cập nhật';
+          }
+        } catch (e) {
+          console.error("Lỗi khi tìm người thân:", e);
         }
       }
-      const age = appointment.patient.dob && yob !== 'Chưa cập nhật' 
-        ? new Date().getFullYear() - parseInt(yob) 
-        : 0;
+
+      let age = 0;
+      if (finalDob && finalDob !== 'Chưa cập nhật') {
+        const parts = finalDob.split('-');
+        if (parts.length === 3) {
+          age = new Date().getFullYear() - parseInt(parts[0]);
+        }
+      }
 
       // Calculate waiting time if status is 'ĐÃ CẤP SỐ'
       // Mock calculation for UI purposes based on updated time
@@ -67,12 +88,12 @@ export async function getQueueList(dateStr: string) {
         id: appointment.id,
         queueNumber: appointment.queueNumber || 'N/A',
         name: displayPatientName,
-        gender: isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật'),
+        gender: finalGender,
         age: age,
-        dob: isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật'),
+        dob: finalDob,
         phone: displayPhone,
         appointmentCode: appointment.appointmentCode || 'N/A',
-        patientCode: isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientCode || 'Chưa cập nhật'),
+        patientCode: finalPatientCode,
         appointmentTime: appointment.bookingTime,
         checkInTime: checkInTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         waitTime: `${waitingMinutes} phút`,
@@ -83,7 +104,7 @@ export async function getQueueList(dateStr: string) {
         reason: displayReason,
         hasInsurance: true // Mock data for now
       };
-    });
+    }));
 
     return { success: true, data: result };
   } catch (error) {

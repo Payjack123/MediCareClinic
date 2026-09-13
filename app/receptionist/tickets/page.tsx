@@ -355,7 +355,7 @@ function TicketsContent() {
                         </div>
                         <div>
                           <span className="text-xs text-gray-500 block mb-1">Giờ hẹn</span>
-                          <span className="font-bold text-gray-900">{selectedPatient.time} - {String(parseInt(selectedPatient.time.split(':')[0]) + 1).padStart(2,'0')}:{selectedPatient.time.split(':')[1] || '00'}</span>
+                          <span className="font-bold text-gray-900">{selectedPatient.time}</span>
                         </div>
                       </div>
 

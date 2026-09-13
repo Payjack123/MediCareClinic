@@ -80,3 +80,64 @@ export async function getPatients(searchQuery: string, statusFilter: string) {
     return { success: false, data: [], message: 'Đã xảy ra lỗi' };
   }
 }
+
+import bcrypt from "bcryptjs";
+
+export async function createPatientRecord(data: {
+  fullName: string;
+  phone: string;
+  email: string;
+  cccd: string;
+  bhyt: string;
+  dob: string;
+  gender: string;
+  address: string;
+}) {
+  try {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: data.email },
+          { phone: data.phone }
+        ]
+      }
+    });
+
+    if (existingUser) {
+      return { success: false, message: "Email hoặc Số điện thoại đã tồn tại trên hệ thống!" };
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash("123456", salt); // Mật khẩu mặc định
+
+    // Tạo mã BN ngẫu nhiên
+    const randomCode = Math.floor(100000 + Math.random() * 900000);
+    const patientCode = `BN${randomCode}`;
+
+    const newUser = await prisma.user.create({
+      data: {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        passwordHash: hashedPassword,
+        role: "PATIENT",
+        dob: data.dob,
+        gender: data.gender,
+        address: data.address,
+        status: "Hoạt động",
+        patientProfile: {
+          create: {
+            patientCode: patientCode,
+            cccd: data.cccd,
+            bhyt: data.bhyt
+          }
+        }
+      }
+    });
+
+    return { success: true, message: "Thêm bệnh nhân thành công", patientCode: patientCode };
+  } catch (error) {
+    console.error("Lỗi khi thêm bệnh nhân:", error);
+    return { success: false, message: "Đã xảy ra lỗi hệ thống" };
+  }
+}

@@ -13,11 +13,11 @@ export async function GET(req: Request) {
       where: {
         reason: { contains: code }
       },
-      select: { status: true }
+      select: { paymentStatus: true }
     });
 
     // Nếu tìm thấy đơn khám và tất cả đều đã cập nhật thành ĐÃ THANH TOÁN
-    if (appointments.length > 0 && appointments.every(a => a.status === 'ĐÃ THANH TOÁN')) {
+    if (appointments.length > 0 && appointments.every(a => a.paymentStatus === 'ĐÃ THANH TOÁN')) {
       return NextResponse.json({ paid: true });
     }
 

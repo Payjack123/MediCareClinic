@@ -14,7 +14,16 @@ export async function getPatientAppointmentData() {
 
     const user = await prisma.user.findUnique({ 
       where: { id: userId },
-      select: { id: true, fullName: true, phone: true, address: true, patientProfile: true } 
+      select: { 
+        id: true, 
+        fullName: true, 
+        email: true,
+        phone: true, 
+        dob: true,
+        gender: true,
+        address: true, 
+        patientProfile: true 
+      } 
     });
 
     if (user && (!user.patientProfile?.patientCode || user.patientProfile?.patientCode === 'BN-NEW')) {
@@ -76,7 +85,7 @@ export async function createAppointment(data: { doctorId: number, specialty: str
     // Sinh mã lịch hẹn tự động
     const generatedCode = `LH${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
     const paymentMethod = data.paymentMethod || 'TẠI QUẦY';
-    const paymentStatus = paymentMethod === 'CHUYỂN KHOẢN' ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN';
+    const paymentStatus = 'CHƯA THANH TOÁN';
 
     const newApt = await prisma.appointment.create({
       data: {

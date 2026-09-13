@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Activity, ArrowLeft, Loader2, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Apple } from 'lucide-react';
+import { Mail, Lock, User, Activity, ArrowLeft, Loader2, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Send } from 'lucide-react';
 import { registerUser, UserRole } from '@/app/(auth)/actions/auth';
+import { sendOtp } from '@/app/(auth)/actions/otp';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,6 +19,34 @@ export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('PATIENT');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // OTP States
+  const [otpCode, setOtpCode] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleSendOtp = async () => {
+    if (!email) {
+      setError('Vui lòng nhập email trước khi gửi OTP!');
+      return;
+    }
+    setError('');
+    setSuccessMsg('');
+    setIsSendingOtp(true);
+    try {
+      const res = await sendOtp(email);
+      if (res.success) {
+        setIsOtpSent(true);
+        setSuccessMsg(res.message);
+      } else {
+        setError(res.message);
+      }
+    } catch (err) {
+      setError('Lỗi khi gửi OTP!');
+    }
+    setIsSendingOtp(false);
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +65,10 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const res = await registerUser(fullName, email, password, selectedRole);
+      // Truyền thêm otpCode vào registerUser
+      const res = await registerUser(fullName, email, password, selectedRole, otpCode);
       if (res.success) {
-        alert('Tạo tài khoản thành công! Vui lòng đăng nhập.');
+        alert(res.message || 'Thành công! Vui lòng đăng nhập.');
         router.push('/login'); 
       } else {
         setError(res.message); 
@@ -161,6 +191,13 @@ export default function RegisterPage() {
             </div>
           )}
 
+          {successMsg && (
+            <div className="mb-6 flex items-start gap-3 text-green-700 bg-green-50 p-4 rounded-xl text-sm font-medium border border-green-100 animate-in fade-in">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-green-500 mt-0.5" />
+              <p>{successMsg}</p>
+            </div>
+          )}
+
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Họ và tên</label>
@@ -191,12 +228,47 @@ export default function RegisterPage() {
                   required 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
-                  disabled={isLoading} 
-                  className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-slate-300 disabled:bg-slate-50" 
+                  disabled={isLoading || isOtpSent} 
+                  className="block w-full pl-11 pr-24 py-3 border border-slate-200 rounded-xl text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-slate-300 disabled:bg-slate-50" 
                   placeholder="email@gmail.com" 
                 />
+                {!isOtpSent && (
+                  <button 
+                    type="button" 
+                    onClick={handleSendOtp}
+                    disabled={isSendingOtp}
+                    className="absolute inset-y-1.5 right-1.5 px-3 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold flex items-center transition-colors disabled:opacity-50"
+                  >
+                    {isSendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Gửi mã'}
+                  </button>
+                )}
               </div>
             </div>
+
+            {isOtpSent && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mã OTP (6 số)</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors group-focus-within:text-blue-600">
+                    <ShieldCheck className="h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                  </div>
+                  <input 
+                    type="text" 
+                    required 
+                    maxLength={6}
+                    value={otpCode} 
+                    onChange={(e) => setOtpCode(e.target.value)} 
+                    disabled={isLoading} 
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-slate-900 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-slate-300 disabled:bg-slate-50 tracking-widest font-mono text-lg" 
+                    placeholder="------" 
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-2 flex justify-between">
+                  <span>Kiểm tra mã OTP (Mock console)</span>
+                  <button type="button" onClick={handleSendOtp} className="text-blue-600 hover:underline">Gửi lại mã</button>
+                </p>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

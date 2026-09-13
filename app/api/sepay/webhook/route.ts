@@ -39,7 +39,10 @@ export async function POST(req: Request) {
         // 1. Cập nhật trạng thái Lịch khám
         await prisma.appointment.update({
           where: { id: apt.id },
-          data: { status: 'ĐÃ THANH TOÁN' }
+          data: { 
+            status: 'CHỜ XÁC NHẬN',
+            paymentStatus: 'ĐÃ THANH TOÁN'
+          }
         });
 
         // 2. Tạo Hóa đơn (Invoice) lưu lịch sử giao dịch

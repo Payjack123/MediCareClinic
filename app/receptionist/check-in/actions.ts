@@ -59,17 +59,24 @@ export async function searchAppointment(query: string, searchType?: string) {
     });
 
     // Format the response for the frontend (Map to array)
-    const result = appointments.map(appointment => {
+    const result = await Promise.all(appointments.map(async appointment => {
       let displayPatientName = appointment.patient.fullName;
       let displayPhone = appointment.patient.phone || 'Chưa cập nhật';
       let displayCccd = appointment.patient.patientProfile?.cccd || 'Chưa cập nhật';
       let isForRelative = false;
+      let extractedPatientCode = 'Chưa cập nhật';
 
       // Extract real patient info if booked for someone else
       if (appointment.reason && appointment.reason.startsWith('Người khám:')) {
         isForRelative = true;
-        const nameMatch = appointment.reason.match(/Người khám: (.*?) - CCCD:/);
+        const nameMatch = appointment.reason.match(/Người khám: (.*?) - Mã BN:/);
         if (nameMatch) displayPatientName = nameMatch[1].trim();
+
+        const codeMatch = appointment.reason.match(/- Mã BN: (.*?) - CCCD:/);
+        if (codeMatch) {
+          extractedPatientCode = codeMatch[1].trim();
+          if (extractedPatientCode === 'Không có') extractedPatientCode = 'Chưa cập nhật';
+        }
 
         const cccdMatch = appointment.reason.match(/- CCCD: (.*?) - SĐT:/);
         if (cccdMatch) {
@@ -81,15 +88,37 @@ export async function searchAppointment(query: string, searchType?: string) {
         if (phoneMatch) displayPhone = phoneMatch[1].trim();
       }
 
+      let finalGender = isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật');
+      let finalDob = isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật');
+      let finalPatientCode = isForRelative ? extractedPatientCode : (appointment.patient.patientProfile?.patientCode || 'Chưa cập nhật');
+      let finalBhyt = isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientProfile?.bhyt || 'Chưa cập nhật');
+
+      // Fetch relative details if possible
+      if (isForRelative && extractedPatientCode !== 'Chưa cập nhật') {
+        try {
+          const relativeUser = await prisma.user.findFirst({
+            where: { patientProfile: { patientCode: extractedPatientCode } },
+            include: { patientProfile: true }
+          });
+          if (relativeUser) {
+            finalGender = relativeUser.gender || 'Chưa cập nhật';
+            finalDob = relativeUser.dob || 'Chưa cập nhật';
+            finalBhyt = relativeUser.patientProfile?.bhyt || 'Chưa cập nhật';
+          }
+        } catch (e) {
+          console.error("Lỗi khi tìm người thân:", e);
+        }
+      }
+
       return {
         id: appointment.id,
         patientName: displayPatientName,
-        patientCode: isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientProfile?.patientCode || 'Chưa cập nhật'),
-        dob: isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật'),
-        gender: isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật'),
+        patientCode: finalPatientCode,
+        dob: finalDob,
+        gender: finalGender,
         phone: displayPhone,
         cccd: displayCccd,
-        bhyt: isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientProfile?.bhyt || 'Chưa cập nhật'),
+        bhyt: finalBhyt,
         appointmentCode: appointment.appointmentCode || `LH${appointment.bookingDate.replace(/\//g, '').substring(0, 6)}-${String(appointment.id).padStart(5, '0')}`,
         bookingDate: appointment.bookingDate,
         bookingTime: appointment.bookingTime,
@@ -101,7 +130,7 @@ export async function searchAppointment(query: string, searchType?: string) {
         room: appointment.room || 'Chưa xếp phòng',
         createdAt: appointment.createdAt.toLocaleString('vi-VN'),
       };
-    });
+    }));
 
     return { success: true, data: result };
 
@@ -202,7 +231,7 @@ export async function getQueueAndHistory() {
         patientName: a.patient.fullName,
         time: a.bookingTime,
         status: a.status, // ĐÃ XÁC NHẬN -> Đang chờ, ĐANG KHÁM -> Đang khám
-        code: `A${String(a.id).padStart(3, '0')}` // Mock sequence number
+        code: a.queueNumber || `LH${String(a.id).slice(-4)}`
       }));
 
     const history = todayAppointments
@@ -215,7 +244,7 @@ export async function getQueueAndHistory() {
         date: a.bookingDate,
         time: a.bookingTime,
         status: 'Đã vào khám',
-        code: `A${String(a.id).padStart(3, '0')}`
+        code: a.queueNumber || `LH${String(a.id).slice(-4)}`
       }));
 
     return { success: true, data: { queue, history } };

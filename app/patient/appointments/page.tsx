@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, Users, Bell, Check, Search, ArrowLeft, ArrowRight, UserCircle2, Clock, Plus, Filter, Info, Trash2, HeartPulse, Pill, TestTube, FileText, LayoutDashboard, Settings, Activity, LogOut, Wallet, Star, ShieldCheck, Stethoscope, ChevronRight, X, Phone, Mail, MapPin, User, Loader2, Link2, Download, Eye, Calendar, History, Smile, Bone, CheckCircle2, Landmark, Lock } from 'lucide-react';
+import { CalendarDays, Users, Bell, Check, Search, ArrowLeft, ArrowRight, UserCircle2, Clock, Plus, Filter, Info, Trash2, HeartPulse, Pill, TestTube, FileText, LayoutDashboard, Settings, Activity, LogOut, Wallet, Star, ShieldCheck, Stethoscope, ChevronRight, X, Phone, Mail, MapPin, User, Loader2, Link2, Download, Eye, Calendar, History, Smile, Bone, CheckCircle2, Landmark, Lock, Save } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 
 import { getPatientAppointmentData, getBookedTimes, createAppointment, findPatientByQuery } from '@/app/patient/appointments/actions';
+import { updatePatientProfile } from '@/app/patient/settings/actions';
 
 export default function PatientAppointmentsPage() {
   const router = useRouter();
@@ -48,6 +49,14 @@ export default function PatientAppointmentsPage() {
   const [searchPatientResult, setSearchPatientResult] = useState<any>(null);
   const [isSearchingPatient, setIsSearchingPatient] = useState(false);
   const [searchPatientError, setSearchPatientError] = useState('');
+
+  // States for Missing Info Modal
+  const [isMissingInfoModalOpen, setIsMissingInfoModalOpen] = useState(false);
+  const [isSavingMissingInfo, setIsSavingMissingInfo] = useState(false);
+  const [pendingDoctorDoc, setPendingDoctorDoc] = useState<any>(null);
+  const [missingInfoForm, setMissingInfoForm] = useState({
+    fullName: '', email: '', phone: '', dob: '', gender: 'Nam', address: '', cccd: ''
+  });
 
   const handleAddNewPatient = (foundPatientData: any = null) => {
     const newId = Date.now();
@@ -359,6 +368,21 @@ export default function PatientAppointmentsPage() {
                             </button>
                             <button
                               onClick={() => {
+                                if (!userData?.phone || !userData?.patientProfile?.cccd || !userData?.address || !userData?.dob) {
+                                  setMissingInfoForm({
+                                    fullName: userData?.fullName || '',
+                                    email: userData?.email || '',
+                                    phone: userData?.phone || '',
+                                    dob: userData?.dob || '',
+                                    gender: userData?.gender || 'Nam',
+                                    address: userData?.address || '',
+                                    cccd: userData?.patientProfile?.cccd || ''
+                                  });
+                                  setPendingDoctorDoc(doc);
+                                  setIsMissingInfoModalOpen(true);
+                                  return;
+                                }
+
                                 setBookingData({ ...bookingData, doctor: doc.name, doctorId: doc.id, doctorPrice: doc.rawPrice });
                                 setPatients(patients.map(p => p.id === patients[0].id ? {
                                   ...p,
@@ -1038,12 +1062,35 @@ export default function PatientAppointmentsPage() {
                 </button>
                 <button
                   onClick={() => {
+                    if (!userData?.phone || !userData?.patientProfile?.cccd || !userData?.address || !userData?.dob) {
+                      setMissingInfoForm({
+                        fullName: userData?.fullName || '',
+                        email: userData?.email || '',
+                        phone: userData?.phone || '',
+                        dob: userData?.dob || '',
+                        gender: userData?.gender || 'Nam',
+                        address: userData?.address || '',
+                        cccd: userData?.patientProfile?.cccd || ''
+                      });
+                      setPendingDoctorDoc(selectedDoctorDetail);
+                      setSelectedDoctorDetail(null);
+                      setIsMissingInfoModalOpen(true);
+                      return;
+                    }
+
                     setBookingData({
                       ...bookingData,
                       doctor: selectedDoctorDetail.name,
                       doctorId: selectedDoctorDetail.id,
                       doctorPrice: selectedDoctorDetail.rawPrice
                     });
+                    setPatients(patients.map(p => p.id === patients[0].id ? {
+                      ...p,
+                      specialty: bookingData.specialty,
+                      doctor: selectedDoctorDetail.name,
+                      doctorId: selectedDoctorDetail.id,
+                      doctorPrice: selectedDoctorDetail.rawPrice
+                    } : p));
                     setSelectedDoctorDetail(null);
                     setStep(3);
                   }}
@@ -1316,6 +1363,98 @@ export default function PatientAppointmentsPage() {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Missing Info */}
+      {isMissingInfoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-blue-50/50">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2"><User size={20} className="text-[#2563EB]"/> Cập nhật thông tin cá nhân</h3>
+                <p className="text-sm text-gray-500 mt-1">Vui lòng điền đầy đủ thông tin để tiếp tục đặt lịch khám.</p>
+              </div>
+              <button onClick={() => setIsMissingInfoModalOpen(false)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <form id="missingInfoForm" onSubmit={async (e) => {
+                e.preventDefault();
+                if (!missingInfoForm.phone || !missingInfoForm.cccd || !missingInfoForm.address || !missingInfoForm.dob) {
+                  alert("Vui lòng điền đầy đủ số điện thoại, CCCD, địa chỉ và ngày sinh!");
+                  return;
+                }
+                setIsSavingMissingInfo(true);
+                const res = await updatePatientProfile(missingInfoForm);
+                setIsSavingMissingInfo(false);
+                
+                if (res.success) {
+                  // Update current userData state so it doesn't prompt again
+                  setUserData({
+                    ...userData,
+                    ...missingInfoForm,
+                    patientProfile: {
+                      ...userData.patientProfile,
+                      cccd: missingInfoForm.cccd
+                    }
+                  });
+                  // Update patients[0] state
+                  setPatients(patients.map((p, idx) => idx === 0 ? {
+                    ...p,
+                    phone: missingInfoForm.phone,
+                    address: missingInfoForm.address,
+                    cccd: missingInfoForm.cccd,
+                    specialty: bookingData.specialty,
+                    doctor: pendingDoctorDoc.name,
+                    doctorId: pendingDoctorDoc.id,
+                    doctorPrice: pendingDoctorDoc.rawPrice
+                  } : p));
+                  
+                  // Proceed to step 3
+                  setBookingData({ ...bookingData, doctor: pendingDoctorDoc.name, doctorId: pendingDoctorDoc.id, doctorPrice: pendingDoctorDoc.rawPrice });
+                  setIsMissingInfoModalOpen(false);
+                  setStep(3);
+                } else {
+                  alert(res.message);
+                }
+              }} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Số điện thoại *</label>
+                  <input required value={missingInfoForm.phone} onChange={e => setMissingInfoForm({...missingInfoForm, phone: e.target.value})} type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none font-medium text-gray-900"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Căn cước công dân *</label>
+                  <input required value={missingInfoForm.cccd} onChange={e => setMissingInfoForm({...missingInfoForm, cccd: e.target.value})} type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none font-medium text-gray-900"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Ngày sinh *</label>
+                  <input required value={missingInfoForm.dob} onChange={e => setMissingInfoForm({...missingInfoForm, dob: e.target.value})} type="date" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none font-medium text-gray-900"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Giới tính</label>
+                  <select value={missingInfoForm.gender} onChange={e => setMissingInfoForm({...missingInfoForm, gender: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none font-medium text-gray-900">
+                    <option value="Nam">Nam</option><option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Địa chỉ *</label>
+                  <input required value={missingInfoForm.address} onChange={e => setMissingInfoForm({...missingInfoForm, address: e.target.value})} type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none font-medium text-gray-900" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP"/>
+                </div>
+              </form>
+            </div>
+            
+            <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 mt-auto">
+              <button disabled={isSavingMissingInfo} onClick={() => setIsMissingInfoModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 transition-colors">
+                Hủy bỏ
+              </button>
+              <button disabled={isSavingMissingInfo} form="missingInfoForm" type="submit" className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#2563EB] hover:bg-blue-700 shadow-md transition-colors flex items-center gap-2 disabled:opacity-70">
+                {isSavingMissingInfo ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Cập nhật & Tiếp tục
+              </button>
             </div>
           </div>
         </div>

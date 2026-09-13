@@ -75,14 +75,14 @@ export default function CustomersPage() {
 
             {/* Menu Desktop */}
               <div className="hidden md:flex space-x-8 font-medium text-sm items-center">
-              <Link href="/Index/dashboard" className="text-white hover:text-yellow-400 transition">Trang chủ</Link>
-              <Link href="/Index/community" className="text-white hover:text-yellow-400 transition">Cộng đồng</Link>
-              <Link href="/Index/customers" className="text-yellow-400 font-bold transition">Khách hàng</Link>
-              <Link href="/Index/products" className="text-white hover:text-yellow-400 transition">Sản phẩm</Link>
-              <Link href="/Index/features" className="text-white hover:text-yellow-400 transition ">Tính năng </Link>
-              <Link href="/Index/training" className="text-white hover:text-yellow-400 transition">Đào tạo</Link>
-              <Link href="/Index/documentation" className="text-white hover:text-yellow-400 transition">Tài liệu</Link>
-              <Link href="/Index/about" className="text-white hover:text-yellow-400 transition">Giới thiệu</Link>
+              <Link href="/index/dashboard" className="text-white hover:text-yellow-400 transition">Trang chủ</Link>
+              <Link href="/index/community" className="text-white hover:text-yellow-400 transition">Cộng đồng</Link>
+              <Link href="/index/customers" className="text-yellow-400 font-bold transition">Khách hàng</Link>
+              <Link href="/index/products" className="text-white hover:text-yellow-400 transition">Sản phẩm</Link>
+              <Link href="/index/features" className="text-white hover:text-yellow-400 transition ">Tính năng </Link>
+              <Link href="/index/training" className="text-white hover:text-yellow-400 transition">Đào tạo</Link>
+              <Link href="/index/documentation" className="text-white hover:text-yellow-400 transition">Tài liệu</Link>
+              <Link href="/index/about" className="text-white hover:text-yellow-400 transition">Giới thiệu</Link>
             </div>
           </div>
         </div>

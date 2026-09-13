@@ -263,3 +263,14 @@ model InvoiceItem {
 
   @@index([invoiceId], map: "InvoiceItem_invoiceId_fkey")
 }
+
+model OtpCode {
+  id         Int      @id @default(autoincrement())
+  email      String   @db.VarChar(100)
+  code       String   @db.VarChar(10)
+  expiresAt  DateTime
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([email])
+}

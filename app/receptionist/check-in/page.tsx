@@ -369,7 +369,7 @@ export default function CheckInPage() {
               ) : (
                 queue.map((item, idx) => (
                   <div key={idx} className={`flex items-center gap-4 p-3 rounded-xl border ${item.status === 'ĐANG KHÁM' ? 'bg-green-50/50 border-green-100' : 'bg-orange-50/30 border-orange-100'}`}>
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-sm ${item.status === 'ĐANG KHÁM' ? 'bg-green-50 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                    <div className={`px-3 min-w-[3rem] h-12 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 whitespace-nowrap ${item.status === 'ĐANG KHÁM' ? 'bg-green-50 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
                       {item.code}
                     </div>
                     <div className="flex-1">
@@ -408,7 +408,7 @@ export default function CheckInPage() {
                 history.map((item, idx) => (
                   <div key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="text-gray-500 font-bold text-sm w-10">{item.code}</div>
+                      <div className="text-gray-500 font-bold text-sm shrink-0 min-w-[3rem] whitespace-nowrap">{item.code}</div>
                       <div>
                         <h4 className="font-bold text-gray-800 text-sm">{item.patientName}</h4>
                         <p className="text-xs text-gray-500 mt-0.5">{item.date}</p>

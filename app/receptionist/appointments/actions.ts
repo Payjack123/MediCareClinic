@@ -57,11 +57,15 @@ export async function getAppointments(dateStr: string, search: string, statusFil
       
       // Xử lý logic người thân
       if (apt.reason && apt.reason.startsWith('Người khám:')) {
-        const nameMatch = apt.reason.match(/Người khám: (.*?) - CCCD:/);
+        const nameMatch = apt.reason.match(/Người khám: (.*?) - Mã BN:/);
         if (nameMatch) displayPatientName = nameMatch[1].trim();
+        const codeMatch = apt.reason.match(/- Mã BN: (.*?) - CCCD:/);
+        if (codeMatch) {
+          patientCode = codeMatch[1].trim();
+          if (patientCode === 'Không có') patientCode = 'Chưa cập nhật';
+        }
         const phoneMatch = apt.reason.match(/- SĐT: (.*?) - ĐC:/);
         if (phoneMatch) displayPhone = phoneMatch[1].trim();
-        patientCode = 'Người thân';
       }
 
       return {

@@ -12,7 +12,11 @@ export async function getCheckedInAppointments(dateStr: string) {
         status: { in: ['ĐÃ XÁC NHẬN', 'ĐÃ CẤP SỐ'] } // Only patients who have checked in or already have a queue number
       },
       include: {
-        patient: true,
+        patient: {
+          include: {
+            patientProfile: true
+          }
+        },
         doctor: true
       },
       orderBy: [
@@ -20,16 +24,23 @@ export async function getCheckedInAppointments(dateStr: string) {
       ]
     });
 
-    const result = appointments.map((appointment: any) => {
+    const result = await Promise.all(appointments.map(async (appointment: any) => {
       let displayPatientName = appointment.patient.fullName;
       let displayPhone = appointment.patient.phone || 'Chưa cập nhật';
-      let displayCccd = appointment.patient.cccd || 'Chưa cập nhật';
+      let displayCccd = appointment.patient.patientProfile?.cccd || 'Chưa cập nhật';
       let isForRelative = false;
+      let extractedPatientCode = 'Chưa cập nhật';
 
       if (appointment.reason && appointment.reason.startsWith('Người khám:')) {
         isForRelative = true;
-        const nameMatch = appointment.reason.match(/Người khám: (.*?) - CCCD:/);
+        const nameMatch = appointment.reason.match(/Người khám: (.*?) - Mã BN:/);
         if (nameMatch) displayPatientName = nameMatch[1].trim();
+
+        const codeMatch = appointment.reason.match(/- Mã BN: (.*?) - CCCD:/);
+        if (codeMatch) {
+          extractedPatientCode = codeMatch[1].trim();
+          if (extractedPatientCode === 'Không có') extractedPatientCode = 'Chưa cập nhật';
+        }
 
         const cccdMatch = appointment.reason.match(/- CCCD: (.*?) - SĐT:/);
         if (cccdMatch) {
@@ -41,12 +52,31 @@ export async function getCheckedInAppointments(dateStr: string) {
         if (phoneMatch) displayPhone = phoneMatch[1].trim();
       }
 
+      let finalGender = isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật');
+      let finalDob = isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật');
+      let finalPatientCode = isForRelative ? extractedPatientCode : (appointment.patient.patientProfile?.patientCode || 'Chưa cập nhật');
+
+      // Fetch relative details if possible
+      if (isForRelative && extractedPatientCode !== 'Chưa cập nhật') {
+        try {
+          const relativeUser = await prisma.user.findFirst({
+            where: { patientProfile: { patientCode: extractedPatientCode } }
+          });
+          if (relativeUser) {
+            finalGender = relativeUser.gender || 'Chưa cập nhật';
+            finalDob = relativeUser.dob || 'Chưa cập nhật';
+          }
+        } catch (e) {
+          console.error("Lỗi khi tìm người thân:", e);
+        }
+      }
+
       // Format birth year
       let yob = 'Chưa cập nhật';
-      if (appointment.patient.dob) {
-        yob = appointment.patient.dob.substring(0, 4); // YYYY-MM-DD
+      if (finalDob !== 'Chưa cập nhật') {
+        yob = finalDob.substring(0, 4); // YYYY-MM-DD
         if (!yob.startsWith('19') && !yob.startsWith('20')) {
-          const parts = appointment.patient.dob.split('-');
+          const parts = finalDob.split('-');
           if (parts.length === 3) yob = parts[0]; // Format is sometimes YYYY-MM-DD
         }
       }
@@ -55,11 +85,11 @@ export async function getCheckedInAppointments(dateStr: string) {
         id: appointment.id,
         name: displayPatientName,
         yob: yob,
-        gender: isForRelative ? 'Chưa cập nhật' : (appointment.patient.gender || 'Chưa cập nhật'),
-        dob: isForRelative ? 'Chưa cập nhật' : (appointment.patient.dob || 'Chưa cập nhật'),
-        age: appointment.patient.dob ? new Date().getFullYear() - parseInt(yob) : 0,
+        gender: finalGender,
+        dob: finalDob,
+        age: finalDob !== 'Chưa cập nhật' && yob !== 'Chưa cập nhật' ? new Date().getFullYear() - parseInt(yob) : 0,
         code: appointment.appointmentCode || `LH${appointment.bookingDate.replace(/\//g, '').substring(0, 6)}-${String(appointment.id).padStart(5, '0')}`,
-        patientCode: isForRelative ? 'Chưa cập nhật' : (appointment.patient.patientCode || 'Chưa cập nhật'),
+        patientCode: finalPatientCode,
         time: appointment.bookingTime,
         doctor: `BS. ${appointment.doctor.fullName}`,
         doctorId: appointment.doctorId,
@@ -71,7 +101,7 @@ export async function getCheckedInAppointments(dateStr: string) {
         address: appointment.patient.address || 'Chưa cập nhật',
         queueNumber: (appointment as any).queueNumber || null // Type workaround for newly added field
       };
-    });
+    }));
 
     return { success: true, data: result };
   } catch (error) {

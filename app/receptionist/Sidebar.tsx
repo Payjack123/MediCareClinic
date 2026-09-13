@@ -76,14 +76,14 @@ export default function ReceptionistLayout({ children }: { children: React.React
           </Link>
 
           <Subtitle>THANH TOÁN</Subtitle>
-          <Link href="/receptionist/fee" className={getLinkClass('fee')}>
-            <CreditCard size={20} className={getIconClass('fee')} /> Thu phí
+          <Link href="/receptionist/insurance" className={getLinkClass('insurance')}>
+            <ShieldPlus size={20} className={getIconClass('insurance')} /> BHYT
           </Link>
           <Link href="/receptionist/invoices" className={getLinkClass('invoices')}>
             <FileText size={20} className={getIconClass('invoices')} /> Hóa đơn
           </Link>
-          <Link href="/receptionist/insurance" className={getLinkClass('insurance')}>
-            <ShieldPlus size={20} className={getIconClass('insurance')} /> BHYT
+          <Link href="/receptionist/fee" className={getLinkClass('fee')}>
+            <CreditCard size={20} className={getIconClass('fee')} /> Thu phí
           </Link>
 
           <Subtitle>BÁO CÁO</Subtitle>

@@ -4,30 +4,56 @@
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import { verifyOtp } from './otp';
 
 // Tự định nghĩa kiểu để chống lỗi TypeScript
 export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST';
 
 // 1. HÀM ĐĂNG KÝ
-export async function registerUser(fullName: string, email: string, password: string, roleInput: UserRole) {
+export async function registerUser(fullName: string, email: string, password: string, roleInput: UserRole, otpCode?: string) {
   try {
+    if (otpCode) {
+      const verifyRes = await verifyOtp(email, otpCode);
+      if (!verifyRes.success) {
+        return { success: false, message: verifyRes.message };
+      }
+    } else {
+      // Bắt buộc OTP cho luồng đăng ký mới
+      return { success: false, message: 'Vui lòng xác thực mã OTP trước khi đăng ký!' };
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
 
-    if (existingUser) {
-      return { success: false, message: 'Email này đã được sử dụng!' };
-    }
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    if (existingUser) {
+      // NẾU TỒN TẠI VÀ CHƯA CÓ LỊCH SỬ THAY ĐỔI MK HOẶC CHỈ LÀ HỒ SƠ LỄ TÂN TẠO -> CLAIM ACCOUNT
+      // Ta sẽ cập nhật mật khẩu và tên (nếu muốn) cho user này
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          fullName, // Cập nhật tên theo người dùng nhập mới
+          passwordHash: hashedPassword
+        }
+      });
+      return { success: true, message: 'Đồng bộ tài khoản thành công! Bạn có thể đăng nhập.' };
+    }
+
+    // NẾU CHƯA TỒN TẠI -> TẠO MỚI BÌNH THƯỜNG
     await prisma.user.create({
       data: {
         fullName,
         email,
         passwordHash: hashedPassword,
-        role: roleInput // Sẽ lưu là 'PATIENT', 'DOCTOR', hoặc 'ADMIN'
+        role: roleInput,
+        patientProfile: roleInput === 'PATIENT' ? {
+          create: {
+            patientCode: `BN${Math.floor(100000 + Math.random() * 900000)}`
+          }
+        } : undefined
       }
     });
 
