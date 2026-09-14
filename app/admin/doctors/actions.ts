@@ -1,132 +1,218 @@
-// app/actions/admin-doctors.ts
 'use server';
 
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
-// 1. LẤY DANH SÁCH BÁC SĨ & KPI
-export async function getAdminDoctorsData() {
+export async function getDoctors(filters?: { search?: string, specialty?: string, status?: string }) {
   try {
-    const doctors = await prisma.user.findMany({
-      where: { role: 'DOCTOR' },
-      include: {
-        doctorProfile: true,
-        appointmentsAsDoctor: true,
-      }
-    });
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
 
-    const formattedDoctors = doctors.map(doc => {
-      let age = 30; 
-      if (doc.dob) {
-        const year = doc.dob.split('/')[2];
-        if (year) age = new Date().getFullYear() - parseInt(year);
-      }
+    if (userRole !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
 
-      const totalExams = doc.appointmentsAsDoctor.length;
-      const completed = doc.appointmentsAsDoctor.filter(a => a.status === 'HOÀN THÀNH').length;
+    const whereClause: any = { role: 'DOCTOR' };
 
-      return {
-        id: `BS${doc.id.toString().padStart(3, '0')}`,
-        rawId: doc.id,
-        name: doc.fullName,
-        gender: doc.gender || 'Nam',
-        age: age,
-        
-        // KÉO DỮ LIỆU THẬT TỪ TI DB ĐỂ LỌC
-        specialty: doc.doctorProfile?.specialty || 'Chưa cập nhật',
-        status: doc.doctorProfile?.status || 'Đang làm việc',
-        
-        phone: doc.phone || 'Chưa cập nhật',
-        email: doc.email,
-        rating: doc.doctorProfile?.rating || 5.0,
-        totalExams: totalExams,
-        completed: completed,
-        onTime: '100%',
-        room: 'Phòng Tiêu chuẩn',
-        schedule: doc.doctorProfile?.schedule || [
-          { day: 'Thứ 2', time: '08:00 - 17:00', room: 'Phòng 101' },
-          { day: 'Thứ 4', time: '08:00 - 17:00', room: 'Phòng 101' },
-        ],
-        certificates: doc.doctorProfile?.certificates || [],
-        avatar: doc.avatar || `https://ui-avatars.com/api/?name=${doc.fullName.replace(/ /g, '+')}&background=random`
-      };
-    });
+    // Tìm kiếm (Tên, Mã, SĐT)
+    if (filters?.search) {
+      whereClause.OR = [
+        { fullName: { contains: filters.search } },
+        { phone: { contains: filters.search } },
+        { doctorProfile: { doctorCode: { contains: filters.search } } }
+      ];
+    }
 
-    const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const todayAppts = await prisma.appointment.count({ where: { bookingDate: todayStr } });
+    // Lọc khoa và trạng thái thông qua bảng phụ DoctorProfile
+    const profileFilter: any = {};
+    let hasProfileFilter = false;
+
+    if (filters?.specialty) {
+      profileFilter.specialty = filters.specialty;
+      hasProfileFilter = true;
+    }
     
-    // Đếm số lượng bác sĩ đang làm việc / nghỉ phép
-    const workingCount = formattedDoctors.filter(d => d.status === 'Đang làm việc').length;
-    const leaveCount = formattedDoctors.filter(d => d.status === 'Nghỉ phép').length;
-    const specialties = new Set(formattedDoctors.map(d => d.specialty).filter(s => s !== 'Chưa cập nhật'));
+    if (filters?.status) {
+      profileFilter.status = filters.status;
+      hasProfileFilter = true;
+    }
 
-    const avgRating = formattedDoctors.length > 0 
-      ? (formattedDoctors.reduce((sum, d) => sum + d.rating, 0) / formattedDoctors.length).toFixed(1)
-      : '0.0';
+    if (hasProfileFilter) {
+      whereClause.doctorProfile = {
+        ...whereClause.doctorProfile,
+        ...profileFilter
+      };
+    }
 
-    return {
-      success: true,
-      data: {
-        doctors: formattedDoctors,
-        kpis: {
-          total: formattedDoctors.length,
-          working: workingCount, 
-          todayExams: todayAppts,
-          avgRating: avgRating,
-          specialties: specialties.size,
-          onLeave: leaveCount
-        }
-      }
-    };
+    const doctors = await prisma.user.findMany({
+      where: whereClause,
+      include: {
+        doctorProfile: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return { success: true, data: doctors };
   } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi khi lấy dữ liệu bác sĩ' };
+    console.error("Lỗi lấy danh sách bác sĩ:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }
 
-// 2. THÊM BÁC SĨ MỚI
-export async function addDoctor(data: { name: string, phone: string, email: string, dob: string, gender: string, specialty: string, status: string }) {
+export async function getDoctorSpecialties() {
   try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('123456', salt);
+    const specialties = await prisma.doctorProfile.findMany({
+      select: { specialty: true },
+      distinct: ['specialty']
+    });
+    return { success: true, data: specialties.map(s => s.specialty).filter(Boolean) };
+  } catch (error) {
+    return { success: false, data: [] };
+  }
+}
 
-    await prisma.user.create({
-      data: {
-        fullName: data.name,
-        email: data.email,
-        phone: data.phone,
-        dob: data.dob,
-        gender: data.gender,
-        passwordHash: hashedPassword,
-        role: 'DOCTOR',
-        doctorProfile: {
-          create: {
-            specialty: data.specialty,
-            status: data.status, // LƯU TRẠNG THÁI VÀO DB
-            experience: '5', 
-            rating: 5.0,
-            price: 150000,
-          }
-        }
+export async function createDoctor(data: any) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    // Validate email/phone duplicate
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: data.email },
+          { phone: data.phone }
+        ]
       }
     });
 
-    return { success: true, message: 'Thêm bác sĩ thành công! Mật khẩu mặc định: 123456' };
-  } catch (error: any) {
-    if (error.code === 'P2002') return { success: false, message: 'Email này đã tồn tại!' };
-    return { success: false, message: 'Lỗi server khi thêm bác sĩ.' };
+    if (existingUser) {
+      return { success: false, message: 'Email hoặc Số điện thoại đã được sử dụng!' };
+    }
+
+    const existingCode = await prisma.doctorProfile.findFirst({
+      where: { doctorCode: data.doctorCode }
+    });
+
+    if (existingCode && data.doctorCode) {
+      return { success: false, message: 'Mã bác sĩ đã tồn tại!' };
+    }
+
+    // Default password is their phone number
+    const hashedPassword = await bcrypt.hash(data.phone, 10);
+
+    // Create user and profile in a transaction
+    const newDoctor = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          passwordHash: hashedPassword,
+          role: 'DOCTOR'
+        }
+      });
+
+      await tx.doctorProfile.create({
+        data: {
+          userId: user.id,
+          doctorCode: data.doctorCode,
+          specialty: data.specialty,
+          degree: data.degree,
+          experience: data.experience,
+          status: 'Hoạt động', // Đang làm việc / Hoạt động
+          certificateNumber: data.certificateNumber || null,
+        }
+      });
+
+      return user;
+    });
+
+    return { success: true, data: newDoctor, message: 'Thêm bác sĩ thành công' };
+  } catch (error) {
+    console.error("Lỗi thêm bác sĩ:", error);
+    return { success: false, message: 'Lỗi máy chủ khi tạo bác sĩ' };
   }
 }
 
-// 3. XÓA BÁC SĨ (Giữ nguyên)
-export async function deleteDoctor(userId: number) {
+export async function getDoctorById(id: number) {
   try {
-    await prisma.$transaction([
-      prisma.doctorProfile.deleteMany({ where: { userId } }),
-      prisma.user.delete({ where: { id: userId } })
-    ]);
-    return { success: true, message: 'Đã xóa bác sĩ!' };
+    const doctor = await prisma.user.findUnique({
+      where: { id, role: 'DOCTOR' },
+      include: { doctorProfile: true }
+    });
+
+    if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
+
+    return { success: true, data: doctor };
   } catch (error) {
-    return { success: false, message: 'Không thể xóa bác sĩ này.' };
+    console.error("Lỗi lấy thông tin bác sĩ:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
+  }
+}
+
+export async function updateDoctor(id: number, data: any) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    // Check code duplication for other doctors
+    if (data.doctorCode) {
+      const existingCode = await prisma.doctorProfile.findFirst({
+        where: { doctorCode: data.doctorCode, userId: { not: id } }
+      });
+      if (existingCode) return { success: false, message: 'Mã bác sĩ đã tồn tại!' };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email,
+        }
+      });
+
+      await tx.doctorProfile.update({
+        where: { userId: id },
+        data: {
+          doctorCode: data.doctorCode,
+          specialty: data.specialty,
+          degree: data.degree,
+          experience: data.experience,
+          certificateNumber: data.certificateNumber
+        }
+      });
+    });
+
+    return { success: true, message: 'Cập nhật thành công' };
+  } catch (error) {
+    console.error("Lỗi cập nhật bác sĩ:", error);
+    return { success: false, message: 'Lỗi máy chủ khi cập nhật' };
+  }
+}
+
+export async function updateDoctorStatus(id: number, status: string) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    await prisma.doctorProfile.update({
+      where: { userId: id },
+      data: { status }
+    });
+
+    return { success: true, message: 'Cập nhật trạng thái thành công' };
+  } catch (error) {
+    console.error("Lỗi cập nhật trạng thái:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }

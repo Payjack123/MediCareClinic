@@ -1,112 +1,174 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import dayjs from 'dayjs';
 
-// 1. LẤY TOÀN BỘ DỮ LIỆU LỊCH KHÁM, BỆNH NHÂN, BÁC SĨ
-export async function getAdminAppointmentsData() {
+export async function getAppointments(filters?: { search?: string, date?: string, status?: string }) {
   try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    const whereClause: any = {};
+
+    if (filters?.search) {
+      whereClause.OR = [
+        { appointmentCode: { contains: filters.search } },
+        { patient: { fullName: { contains: filters.search } } },
+        { patient: { phone: { contains: filters.search } } },
+        { patient: { patientProfile: { patientCode: { contains: filters.search } } } }
+      ];
+    }
+
+    if (filters?.date) {
+      // Expected date format 'YYYY-MM-DD', DB stores as 'DD/MM/YYYY' or 'YYYY-MM-DD' depending on convention
+      // Let's assume DB stores as 'DD/MM/YYYY' since that's what we used in creating previously or we can check the format
+      // Let's just pass whatever the input is directly if it matches the format, 
+      // but usually the DB has string bookingDate
+      whereClause.bookingDate = filters.date; 
+    }
+    
+    if (filters?.status) {
+      whereClause.status = filters.status;
+    }
+
     const appointments = await prisma.appointment.findMany({
+      where: whereClause,
       include: {
         patient: { include: { patientProfile: true } },
-        doctor: {
-          include: { doctorProfile: true }
-        }
+        doctor: { include: { doctorProfile: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [
+        { bookingDate: 'desc' },
+        { bookingTime: 'asc' }
+      ]
     });
 
-    // Lấy danh sách bệnh nhân và bác sĩ để đổ vào Select Box khi Admin thêm lịch mới
-    const patientsList = await prisma.user.findMany({
-      where: { role: 'PATIENT' },
-      select: { id: true, fullName: true, phone: true }
-    });
-
-    const doctorsList = await prisma.user.findMany({
-      where: { role: 'DOCTOR' },
-      include: { doctorProfile: true }
-    });
-
-    const formattedAppts = appointments.map(apt => {
-      // Tính tuổi bệnh nhân
-      let age = 'N/A';
-      if (apt.patient.dob) {
-        const year = apt.patient.dob.split('/')[2] || apt.patient.dob.split('-')[0];
-        if (year) age = (new Date().getFullYear() - parseInt(year)).toString();
-      }
-
-      return {
-        rawId: apt.id,
-        id: `LK${apt.id.toString().padStart(4, '0')}`,
-        patientId: apt.patientId,
-        patient: apt.patient.fullName,
-        patientCode: apt.patient.patientProfile?.patientCode || `BN${apt.patientId}`,
-        phone: apt.patient.phone || 'Chưa cập nhật',
-        age: age,
-        gender: apt.patient.gender || 'Nam',
-        doctorId: apt.doctorId,
-        doctor: apt.doctor.fullName,
-        specialty: apt.specialty,
-        date: apt.bookingDate, // Định dạng: dd/mm/yyyy
-        time: apt.bookingTime,
-        room: `Phòng ${apt.doctor.doctorProfile?.specialty || 'Khám'}`, // Giả lập tên phòng dựa trên khoa
-        status: apt.status,
-        reason: apt.reason || 'Không có ghi chú'
-      };
-    });
-
-    return { 
-      success: true, 
-      data: { 
-        appointments: formattedAppts, 
-        patients: patientsList, 
-        doctors: doctorsList 
-      } 
-    };
+    return { success: true, data: appointments };
   } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi server khi lấy dữ liệu lịch khám' };
+    console.error("Lỗi lấy danh sách lịch hẹn:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }
 
-// 2. ADMIN TẠO LỊCH KHÁM MỚI
-export async function createAdminAppointment(data: { patientId: number, doctorId: number, specialty: string, date: string, time: string, reason: string }) {
+export async function getInitialDataForCreate() {
   try {
-    // Kiểm tra trùng lịch
-    const existing = await prisma.appointment.findFirst({
-      where: { doctorId: data.doctorId, bookingDate: data.date, bookingTime: data.time, status: { not: 'ĐÃ HỦY' } }
-    });
-
-    if (existing) {
-      return { success: false, message: 'Bác sĩ này đã có lịch vào khung giờ trên!' };
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    await prisma.appointment.create({
+    const patients = await prisma.user.findMany({
+      where: { role: 'PATIENT', status: 'Hoạt động' },
+      include: { patientProfile: true },
+      orderBy: { fullName: 'asc' }
+    });
+
+    const doctors = await prisma.user.findMany({
+      where: { role: 'DOCTOR' },
+      include: { doctorProfile: true },
+      orderBy: { fullName: 'asc' }
+    });
+
+    return { success: true, data: { patients, doctors } };
+  } catch (error) {
+    console.error("Lỗi lấy dữ liệu khởi tạo:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
+  }
+}
+
+export async function createAppointment(data: {
+  patientId: number;
+  doctorId: number;
+  specialty: string;
+  bookingDate: string; // DD/MM/YYYY
+  bookingTime: string; // 08:00 - 10:00
+  room?: string;
+  reason?: string;
+}) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    // Tự sinh mã lịch hẹn: LH[YYMMDD]-[PatientID]
+    const dateParts = data.bookingDate.split('/'); // DD/MM/YYYY
+    let shortDate = dayjs().format('YYMMDD');
+    if (dateParts.length === 3) {
+      shortDate = `${dateParts[2].slice(-2)}${dateParts[1]}${dateParts[0]}`;
+    }
+    
+    // To ensure uniqueness, add random suffix if needed, but patientId + date should be unique enough for one day.
+    // We can just append a small random number or the count for that day.
+    const countToday = await prisma.appointment.count({
+      where: { bookingDate: data.bookingDate }
+    });
+    
+    const code = `LH${shortDate}-${String(data.patientId).padStart(4, '0')}-${countToday + 1}`;
+
+    const newAppointment = await prisma.appointment.create({
       data: {
+        appointmentCode: code,
         patientId: data.patientId,
         doctorId: data.doctorId,
         specialty: data.specialty,
-        bookingDate: data.date,
-        bookingTime: data.time,
-        reason: data.reason,
-        status: 'ĐÃ XÁC NHẬN' // Admin tạo thì tự động xác nhận luôn
+        bookingDate: data.bookingDate,
+        bookingTime: data.bookingTime,
+        room: data.room || 'Chưa xếp',
+        reason: data.reason || '',
+        status: 'Đã đặt'
       }
     });
 
-    return { success: true, message: 'Tạo lịch khám thành công!' };
+    return { success: true, data: newAppointment, message: 'Tạo lịch hẹn thành công' };
   } catch (error) {
-    return { success: false, message: 'Lỗi khi tạo lịch khám' };
+    console.error("Lỗi tạo lịch hẹn:", error);
+    return { success: false, message: 'Lỗi máy chủ khi tạo lịch hẹn' };
   }
 }
 
-// 3. ADMIN CẬP NHẬT TRẠNG THÁI (HỦY LỊCH)
-export async function updateAdminAppointmentStatus(id: number, newStatus: string) {
+export async function getAppointmentById(id: number) {
   try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: { 
+        patient: { include: { patientProfile: true } },
+        doctor: { include: { doctorProfile: true } },
+      }
+    });
+
+    if (!appointment) return { success: false, message: 'Không tìm thấy lịch hẹn' };
+
+    return { success: true, data: appointment };
+  } catch (error) {
+    console.error("Lỗi lấy thông tin lịch hẹn:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
+  }
+}
+
+export async function updateAppointmentStatus(id: number, status: string) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
     await prisma.appointment.update({
       where: { id },
-      data: { status: newStatus }
+      data: { status }
     });
-    return { success: true, message: `Đã cập nhật trạng thái thành: ${newStatus}` };
+
+    return { success: true, message: `Chuyển trạng thái thành ${status}` };
   } catch (error) {
-    return { success: false, message: 'Lỗi cập nhật trạng thái' };
+    console.error("Lỗi cập nhật trạng thái lịch hẹn:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }

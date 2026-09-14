@@ -1,115 +1,142 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import dayjs from 'dayjs';
 
-export async function getAdminMedicalRecordsData() {
+export async function getExaminations(filters?: { search?: string, fromDate?: string, toDate?: string, specialty?: string }) {
   try {
-    // Kéo toàn bộ hồ sơ khám bệnh (Examination) từ TiDB
-    const records = await prisma.examination.findMany({
-      include: {
-        appointment: true,
-        patient: {
-          include: {
-            patientProfile: true,
-            healthMetric: true,
-            prescriptions: { include: { items: true }, orderBy: { createdAt: 'desc' }, take: 1 },
-            labTests: { orderBy: { date: 'desc' } }
-          }
-        },
-        doctor: {
-          include: {
-            doctorProfile: true
-          }
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    const whereClause: any = {};
+
+    if (filters?.search) {
+      whereClause.OR = [
+        { patient: { fullName: { contains: filters.search } } },
+        { patient: { phone: { contains: filters.search } } },
+        { patient: { patientProfile: { patientCode: { contains: filters.search } } } },
+        { appointment: { appointmentCode: { contains: filters.search } } }
+      ];
+    }
+
+    // Lọc theo khoảng ngày (dựa trên createdAt của Examination hoặc bookingDate của Appointment)
+    // Để đơn giản, ta lọc theo createdAt của Examination
+    if (filters?.fromDate || filters?.toDate) {
+      whereClause.createdAt = {};
+      if (filters.fromDate) {
+        // Chuyển từ DD/MM/YYYY sang YYYY-MM-DD để Prisma query
+        const parts = filters.fromDate.split('/');
+        if (parts.length === 3) {
+          const from = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00Z`);
+          whereClause.createdAt.gte = from;
         }
+      }
+      if (filters.toDate) {
+        const parts = filters.toDate.split('/');
+        if (parts.length === 3) {
+          const to = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T23:59:59Z`);
+          whereClause.createdAt.lte = to;
+        }
+      }
+    }
+
+    if (filters?.specialty) {
+      whereClause.appointment = {
+        specialty: filters.specialty
+      };
+    }
+
+    const records = await prisma.examination.findMany({
+      where: whereClause,
+      include: {
+        patient: { include: { patientProfile: true } },
+        doctor: { include: { doctorProfile: true } },
+        appointment: true
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    // Tính toán KPI
-    let totalRecords = records.length;
-    let createdToday = 0;
-    let inTreatment = 0;
-    let completed = 0;
-    let uniqueDoctors = new Set();
-    
-    const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return { success: true, data: records };
+  } catch (error) {
+    console.error("Lỗi lấy danh sách hồ sơ:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
+  }
+}
 
-    const formattedRecords = records.map(record => {
-      const dateStr = new Date(record.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const timeStr = new Date(record.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+export async function getExaminationDetail(id: number) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
 
-      // Cập nhật KPI
-      if (dateStr === todayStr) createdToday++;
-      if (record.appointment.status === 'HOÀN THÀNH') completed++;
-      else inTreatment++;
-      uniqueDoctors.add(record.doctorId);
-
-      // Tính tuổi bệnh nhân
-      let age = 'N/A';
-      if (record.patient.dob) {
-         const year = record.patient.dob.split('/')[2] || record.patient.dob.split('-')[0];
-         if (year) age = (new Date().getFullYear() - parseInt(year)).toString();
+    const record = await prisma.examination.findUnique({
+      where: { id },
+      include: { 
+        patient: { include: { patientProfile: true } },
+        doctor: { include: { doctorProfile: true } },
+        appointment: true
       }
-
-      // Xử lý trạng thái và màu sắc
-      let status = record.appointment.status === 'HOÀN THÀNH' ? 'Hoàn thành' : 'Đang điều trị';
-      let statusColor = status === 'Hoàn thành' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200';
-
-      return {
-        id: record.id,
-        baCode: `BA-${new Date(record.createdAt).getFullYear().toString().slice(2)}${String(new Date(record.createdAt).getMonth()+1).padStart(2,'0')}-${record.id.toString().padStart(3, '0')}`,
-        patient: record.patient.fullName,
-        patientId: record.patient.patientProfile?.patientCode || `BN${record.patient.id.toString().padStart(4, '0')}`,
-        age: age,
-        gender: record.patient.gender || 'Nam',
-        bloodType: 'O+',
-        bhyt: record.patient.patientProfile?.bhyt ? 'Có' : 'Không',
-        doctor: `BS. ${record.doctor.fullName}`,
-        specialty: record.doctor.doctorProfile?.specialty || record.appointment.specialty || 'Nội tổng quát',
-        date: dateStr,
-        time: timeStr,
-        status: status,
-        statusColor: statusColor,
-        diagnosis: record.diagnosis || 'Đang theo dõi',
-        symptoms: record.symptoms || 'Không có ghi nhận',
-        notes: record.notes || 'Không có ghi chú',
-        vitals: {
-          heartRate: record.patient.healthMetric?.heartRate || '--',
-          bloodPressure: record.patient.healthMetric?.bloodPressure || '--/--',
-          temperature: '37.0°C', 
-          bmi: record.patient.healthMetric?.bmi || '--'
-        },
-        prescription: record.patient.prescriptions[0] || null,
-        labTests: record.patient.labTests || [],
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt
-      };
     });
 
-    // Lấy danh sách chuyên khoa & bác sĩ để làm bộ lọc
-    const doctorsList = Array.from(new Set(formattedRecords.map(r => r.doctor)));
-    const specialtiesList = Array.from(new Set(formattedRecords.map(r => r.specialty)));
+    if (!record) return { success: false, message: 'Không tìm thấy hồ sơ' };
 
-    return {
-      success: true,
-      data: {
-        records: formattedRecords,
-        filters: {
-          doctors: doctorsList,
-          specialties: specialtiesList
-        },
-        kpis: {
-          total: totalRecords,
-          createdToday,
-          inTreatment,
-          completed,
-          withAttachments: Math.floor(totalRecords * 0.4), // Mock số lượng có file đính kèm
-          doctorsCount: uniqueDoctors.size
+    // Lấy thêm các thông tin liên quan (đơn thuốc, xét nghiệm trong cùng khoảng thời gian)
+    // Ta lấy các đơn thuốc, xét nghiệm của patientId đó, và được tạo ra vào cùng ngày với examination này
+    const examDate = dayjs(record.createdAt).format('YYYY-MM-DD');
+    const startOfDay = new Date(`${examDate}T00:00:00Z`);
+    const endOfDay = new Date(`${examDate}T23:59:59Z`);
+
+    const prescriptions = await prisma.prescription.findMany({
+      where: {
+        patientId: record.patientId,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      },
+      include: { items: true }
+    });
+
+    const labTests = await prisma.labTest.findMany({
+      where: {
+        patientId: record.patientId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
         }
       }
+    });
+
+    // Lịch sử khám (các examination khác của bệnh nhân này, trước ngày khám này)
+    const history = await prisma.examination.findMany({
+      where: {
+        patientId: record.patientId,
+        id: { not: record.id },
+        createdAt: { lt: record.createdAt }
+      },
+      include: {
+        doctor: true,
+        appointment: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+
+    return { 
+      success: true, 
+      data: {
+        ...record,
+        prescriptions,
+        labTests,
+        history
+      } 
     };
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu bệnh án (Admin):', error);
-    return { success: false, message: 'Lỗi server' };
+    console.error("Lỗi lấy chi tiết hồ sơ:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }

@@ -1,256 +1,290 @@
 'use client';
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  LayoutDashboard, Users, CalendarDays, FileText, Pill, TestTube, 
-  Settings, LogOut, Search, Activity, User, Building2, 
-  ShieldCheck, History, Wallet, CheckCircle2, Lock, KeyRound,
-  UserPlus, Eye, Edit, Shield, Check, X, Unlock, RefreshCw
+  Search, Bell, Clock, ShieldCheck, Plus, Users, 
+  Lock, Unlock, KeyRound, X, Save
 } from 'lucide-react';
+import dayjs from 'dayjs';
+import toast from 'react-hot-toast';
 
-export default function AdminAccountManagementPage() {
+import Sidebar from '@/app/admin/Sidebar';
+import { 
+  getUsers, createUser, toggleUserLock, resetUserPassword,
+  getRBACConfig, saveRBACConfig 
+} from '@/app/admin/users/actions';
+
+export default function AdminUsersPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('accounts');
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<'USERS' | 'RBAC'>('USERS');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogout = () => {
-    // localStorage.removeItem('token');
-    router.push('/login');
+  // --- STATE CHO TAB USERS ---
+  const [users, setUsers] = useState<any[]>([]);
+  const [filters, setFilters] = useState({ search: '', role: '', status: '' });
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'PATIENT' });
+
+  // --- STATE CHO TAB RBAC ---
+  const [rbacConfig, setRbacConfig] = useState<any>({});
+  const [selectedRole, setSelectedRole] = useState('ADMIN');
+  
+  const ROLES_MAP: Record<string, string> = {
+    ADMIN: 'Admin Quản Trị',
+    BAC_SI: 'Bác Sĩ',
+    LE_TAN: 'Lễ Tân',
+    BENH_NHAN: 'Bệnh Nhân'
   };
 
-  // 1. Mock Data: Tài khoản Users
-  const users = [
-    { id: 'U001', name: 'Nguyễn Văn A', email: 'admin@clinic.com', role: 'Admin', roleColor: 'bg-red-100 text-red-700 border-red-200', status: 'Hoạt động' },
-    { id: 'U002', name: 'BS. Trần Minh Bình', email: 'bs.binhtm@clinic.com', role: 'Bác sĩ', roleColor: 'bg-blue-100 text-blue-700 border-blue-200', status: 'Hoạt động' },
-    { id: 'U003', name: 'Lê Văn Cường', email: 'cuonglv@gmail.com', role: 'Bệnh nhân', roleColor: 'bg-green-100 text-green-700 border-green-200', status: 'Hoạt động' },
-    { id: 'U004', name: 'BS. Nguyễn Thị Lan', email: 'bs.lannt@clinic.com', role: 'Bác sĩ', roleColor: 'bg-blue-100 text-blue-700 border-blue-200', status: 'Hoạt động' },
-    { id: 'U005', name: 'Phạm Thị D', email: 'phamthid@gmail.com', role: 'Bệnh nhân', roleColor: 'bg-green-100 text-green-700 border-green-200', status: 'Đã khóa' },
+  const PERMISSIONS = [
+    { key: 'VIEW', label: 'Xem (View)' },
+    { key: 'CREATE', label: 'Thêm (Create)' },
+    { key: 'UPDATE', label: 'Sửa (Update)' },
+    { key: 'DELETE', label: 'Xóa (Delete)' },
+    { key: 'EXPORT', label: 'Xuất file (Export)' }
   ];
 
-  // 2. Mock Data: Permission Matrix (Cố định 3 vai trò)
-  const modules = [
-    { name: 'Dashboard', admin: 'full', doctor: 'full', patient: 'full' },
-    { name: 'Quản lý Bác sĩ', admin: 'full', doctor: 'none', patient: 'none' },
-    { name: 'Quản lý Bệnh nhân', admin: 'full', doctor: 'view', patient: 'own' },
-    { name: 'Quản lý Lịch khám', admin: 'full', doctor: 'full', patient: 'full' },
-    { name: 'Hồ sơ bệnh án', admin: 'full', doctor: 'full', patient: 'own' },
-    { name: 'Đơn thuốc', admin: 'full', doctor: 'full', patient: 'own' },
-    { name: 'Xét nghiệm', admin: 'full', doctor: 'full', patient: 'own' },
-    { name: 'Báo cáo', admin: 'full', doctor: 'none', patient: 'none' },
-    { name: 'Quản lý Tài khoản (RBAC)', admin: 'full', doctor: 'none', patient: 'none' },
-    { name: 'Cài đặt hệ thống', admin: 'full', doctor: 'none', patient: 'own_profile' },
-  ];
+  const MODULES = ['Dashboard', 'Bác_sĩ', 'Bệnh_nhân', 'Lịch_hẹn', 'Hồ_sơ_bệnh_án', 'Hóa_đơn', 'Thu_phí', 'Khoa_phòng', 'Dịch_vụ', 'RBAC'];
 
-  const renderPermissionIcon = (access: string) => {
-    if (access === 'full') return <span className="inline-flex items-center gap-1.5 text-green-600 font-bold"><Check size={16}/> Có</span>;
-    if (access === 'view') return <span className="inline-flex items-center gap-1.5 text-blue-600 font-bold"><Eye size={16}/> Chỉ xem</span>;
-    if (access === 'own') return <span className="inline-flex items-center gap-1.5 text-blue-600 font-bold"><Eye size={16}/> Chỉ của mình</span>;
-    if (access === 'own_profile') return <span className="inline-flex items-center gap-1.5 text-gray-600 font-bold"><Settings size={14}/> Hồ sơ cá nhân</span>;
-    return <span className="inline-flex items-center gap-1.5 text-gray-400 font-bold"><X size={16}/> Không</span>;
+  const fetchData = async () => {
+    setIsLoading(true);
+    
+    // Tải Users
+    const uRes = await getUsers();
+    if (uRes.success && uRes.data) {
+      let filtered = uRes.data;
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        filtered = filtered.filter((u: any) => u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
+      }
+      if (filters.role) filtered = filtered.filter((u: any) => u.role === filters.role);
+      if (filters.status) filtered = filtered.filter((u: any) => u.status === filters.status);
+      setUsers(filtered);
+    } else if (uRes.message === 'Không có quyền truy cập') {
+      router.push('/login');
+    }
+
+    // Tải RBAC Config
+    const rRes = await getRBACConfig();
+    if (rRes.success && rRes.data) {
+      setRbacConfig(rRes.data);
+    }
+
+    setIsLoading(false);
   };
+
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, activeTab]);
+
+  const handleLogout = () => router.push('/login');
+
+  // --- HANDLERS CHO USERS ---
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.fullName) {
+      toast.error('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+    const tId = toast.loading('Đang tạo tài khoản...');
+    const res = await createUser(newUser);
+    if (res.success) {
+      toast.success(res.message, { id: tId });
+      setIsAddModalOpen(false);
+      setNewUser({ fullName: '', email: '', password: '', role: 'PATIENT' });
+      fetchData();
+    } else {
+      toast.error(res.message, { id: tId });
+    }
+  };
+
+  const handleToggleLock = async (id: number, currentStatus: string) => {
+    if (!confirm(currentStatus === 'Hoạt động' ? 'Bạn muốn KHÓA tài khoản này?' : 'Bạn muốn MỞ KHÓA tài khoản này?')) return;
+    const res = await toggleUserLock(id, currentStatus);
+    if (res.success) {
+      toast.success(res.message);
+      fetchData();
+    }
+  };
+
+  const handleResetPassword = async (id: number) => {
+    if (!confirm('Bạn có chắc muốn Reset mật khẩu về mặc định (123456)?')) return;
+    const res = await resetUserPassword(id);
+    if (res.success) toast.success(res.message);
+  };
+
+  // --- HANDLERS CHO RBAC ---
+  const handleTogglePermission = (mod: string, perm: string) => {
+    const updatedConfig = { ...rbacConfig };
+    if (!updatedConfig[selectedRole][mod]) updatedConfig[selectedRole][mod] = [];
+    
+    const permsList = updatedConfig[selectedRole][mod];
+    if (permsList.includes(perm)) {
+      updatedConfig[selectedRole][mod] = permsList.filter((p: string) => p !== perm);
+    } else {
+      updatedConfig[selectedRole][mod].push(perm);
+    }
+    setRbacConfig(updatedConfig);
+  };
+
+  const handleSaveRBAC = async () => {
+    const tId = toast.loading('Đang lưu cấu hình...');
+    const res = await saveRBACConfig(rbacConfig);
+    if (res.success) {
+      toast.success(res.message, { id: tId });
+    } else {
+      toast.error(res.message, { id: tId });
+    }
+  };
+
+  const currentDateTime = dayjs().format('DD/MM/YYYY HH:mm');
 
   return (
-    <div className="min-h-screen flex bg-gray-50 font-sans text-gray-800 overflow-hidden">
-      
-      {/* ==========================================
-          1. SIDEBAR (Chuẩn thiết kế Dashboard)
-      ========================================== */}
-      <aside className="w-64 bg-[#0F172A] text-gray-300 flex flex-col h-screen sticky top-0 shrink-0 shadow-xl z-20">
-        <div className="h-20 flex items-center justify-center border-b border-gray-800 bg-[#0B1120]">
-          <div className="flex items-center gap-2 text-white">
-            <Activity className="text-[#2563EB]" size={28}/>
-            <span className="font-bold text-xl tracking-tight">ADMIN<span className="text-[#2563EB]">PRO</span></span>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-6 px-3 custom-scrollbar">
-          <div className="space-y-1">
-            <p className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">1. Tổng quan</p>
-            <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <LayoutDashboard size={18}/> Dashboard & Báo cáo
-            </Link>
-          </div>
-
-          <div className="space-y-1">
-            <p className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">2. Phòng khám</p>
-            <Link href="/admin/doctors" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <User size={18}/> Quản lý Bác sĩ
-            </Link>
-            <Link href="/admin/patients" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <Users size={18}/> Quản lý Bệnh nhân
-            </Link>
-            <Link href="/admin/appointments" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <CalendarDays size={18}/> Quản lý Lịch khám
-            </Link>
-            <Link href="/admin/records" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <FileText size={18}/> Hồ sơ bệnh án
-            </Link>
-            <Link href="/admin/prescriptions" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <Pill size={18}/> Quản lý Đơn thuốc
-            </Link>
-            
-          </div>
-
-          <div className="space-y-1">
-            <p className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">3. Hệ thống</p>
-            {/* Active Menu */}
-            <Link href="/admin/users" className="flex items-center gap-3 px-4 py-2.5 bg-[#2563EB] text-white rounded-xl font-medium shadow-md transition-all text-sm">
-              <ShieldCheck size={18}/> Phân quyền (RBAC)
-            </Link>
-            <Link href="/admin/departments" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <Building2 size={18}/> Khoa phòng & Dịch vụ
-            </Link>
-            <Link href="/admin/billing" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <Wallet size={18}/> Thanh toán & Viện phí
-            </Link>
-          </div>
-
-          <div className="space-y-1">
-            <p className="px-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">4. Cấu hình</p>
-            <Link href="/admin/settings" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 hover:text-white rounded-xl transition-all text-sm">
-              <Settings size={18}/> Cài đặt chung
-            </Link>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-gray-800 bg-[#0B1120]">
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all text-sm font-bold">
-            <LogOut size={18}/> Đăng xuất
-          </button>
-        </div>
-      </aside>
-
-      {/* ==========================================
-          2. MAIN CONTENT AREA
-      ========================================== */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 relative">
+    <div className="min-h-screen flex bg-slate-50 font-sans text-slate-800 overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
         {/* TOP HEADER */}
-        <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-50 p-2 rounded-lg"><ShieldCheck className="text-[#2563EB]" size={24}/></div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Quản lý Tài khoản & Phân quyền</h1>
-              <p className="text-xs text-gray-500 font-medium">Hệ thống phân quyền cố định (Admin, Bác sĩ, Bệnh nhân)</p>
-            </div>
+        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm">
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="text-blue-600"/> Quản lý Tài Khoản & RBAC
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsAddUserModalOpen(true)}
-              className="bg-[#2563EB] text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all flex items-center gap-2 text-sm"
-            >
-              <UserPlus size={18}/> Cấp tài khoản mới
-            </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-gray-200 cursor-pointer">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-gray-900">Quản trị viên</p>
+          <div className="flex items-center gap-6">
+            <div className="text-sm font-medium text-slate-500 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 flex items-center gap-2">
+              <Clock size={16}/> {currentDateTime}
+            </div>
+            
+            <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
+              <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition">
+                <Bell size={20}/>
+              </button>
+              <div className="flex items-center gap-3 cursor-pointer group" onClick={handleLogout}>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Admin</p>
+                  <p className="text-xs text-slate-500">Super Admin</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold border-2 border-white shadow-sm group-hover:bg-blue-600 transition-colors">
+                  AD
+                </div>
               </div>
-              <div className="w-10 h-10 rounded-full bg-[#172554] text-white flex items-center justify-center font-bold border-2 border-white shadow-sm">AD</div>
             </div>
           </div>
         </header>
 
+        {/* TABS */}
+        <div className="bg-white border-b border-slate-200 px-8 flex gap-8 shrink-0">
+          <button 
+            className={`py-4 font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'USERS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            onClick={() => setActiveTab('USERS')}
+          >
+            <Users size={18}/> Quản Lý Tài Khoản
+          </button>
+          <button 
+            className={`py-4 font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'RBAC' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            onClick={() => setActiveTab('RBAC')}
+          >
+            <ShieldCheck size={18}/> Ma Trận Phân Quyền (RBAC)
+          </button>
+        </div>
+
         {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto p-8 animate-in fade-in duration-500">
           
-          {/* 6 KPI CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-            {[
-              { label: 'Admin', value: '1', icon: Shield, color: 'text-red-600', bg: 'bg-red-50' },
-              { label: 'Bác sĩ', value: '15', icon: User, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Bệnh nhân', value: '2,540', icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Quyền hệ thống', value: '35', icon: KeyRound, color: 'text-purple-600', bg: 'bg-purple-50' },
-              { label: 'Đang hoạt động', value: '2,556', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Nhật ký log', value: '120', icon: History, color: 'text-orange-600', bg: 'bg-orange-50' },
-            ].map((kpi, idx) => (
-              <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all duration-300">
-                <div className={`w-12 h-12 ${kpi.bg} ${kpi.color} rounded-2xl flex items-center justify-center shrink-0`}><kpi.icon size={24}/></div>
-                <div>
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">{kpi.label}</p>
-                  <p className="text-2xl font-black text-gray-900 leading-tight">{kpi.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* TABS & CONTENT AREA */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
-            
-            {/* TABS NAVIGATION */}
-            <div className="flex px-4 border-b border-gray-100 bg-gray-50 shrink-0">
-              {[
-                { id: 'accounts', label: 'Quản lý Tài khoản', icon: Users },
-                { id: 'matrix', label: 'Ma trận Phân quyền', icon: ShieldCheck },
-                { id: 'logs', label: 'Nhật ký Hoạt động', icon: History }
-              ].map((tab) => (
-                <button 
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-4 px-5 font-bold text-sm border-b-2 transition-all ${activeTab === tab.id ? 'border-[#2563EB] text-[#2563EB] bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                  <tab.icon size={18}/> {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* TAB CONTENT */}
-            <div className="flex-1 overflow-y-auto bg-white p-6 custom-scrollbar">
+          {/* ================= TAB 1: USERS ================= */}
+          {activeTab === 'USERS' && (
+            <div className="space-y-6">
               
-              {/* TAB 1: DANH SÁCH TÀI KHOẢN */}
-              {activeTab === 'accounts' && (
-                <div className="animate-in fade-in">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="relative w-72">
-                      <input type="text" placeholder="Tìm tên, email..." className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2563EB] outline-none transition-all"/>
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
-                    </div>
-                    <select className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2563EB] outline-none">
-                      <option>Vai trò (Tất cả)</option>
-                      <option>Admin</option>
-                      <option>Bác sĩ</option>
-                      <option>Bệnh nhân</option>
-                    </select>
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row items-center gap-4 justify-between">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative group">
+                    <input 
+                      type="text" 
+                      placeholder="Tìm Tên, Email..." 
+                      className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 w-64 transition-all outline-none"
+                      value={filters.search} onChange={e => setFilters({...filters, search: e.target.value})}
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18}/>
                   </div>
+                  <select 
+                    className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none w-44"
+                    value={filters.role} onChange={e => setFilters({...filters, role: e.target.value})}
+                  >
+                    <option value="">Tất cả Vai trò</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="DOCTOR">Bác sĩ</option>
+                    <option value="RECEPTIONIST">Lễ tân</option>
+                    <option value="PATIENT">Bệnh nhân</option>
+                  </select>
+                  <select 
+                    className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none w-44"
+                    value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
+                  >
+                    <option value="">Tất cả Trạng thái</option>
+                    <option value="Hoạt động">Hoạt động</option>
+                    <option value="Khóa">Bị khóa</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2.5 rounded-xl font-bold transition flex items-center gap-2 text-sm shadow-sm"
+                >
+                  <Plus size={18}/> Tạo tài khoản
+                </button>
+              </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
+              {isLoading ? (
+                <div className="py-20 flex justify-center"><div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs tracking-wider">
                         <tr>
-                          <th className="px-5 py-4">Tài khoản</th>
-                          <th className="px-5 py-4">Email</th>
-                          <th className="px-5 py-4">Vai trò</th>
-                          <th className="px-5 py-4">Trạng thái</th>
-                          <th className="px-5 py-4 text-center">Thao tác</th>
+                          <th className="px-6 py-4">ID</th>
+                          <th className="px-6 py-4">Họ Tên & Email</th>
+                          <th className="px-6 py-4">Vai trò</th>
+                          <th className="px-6 py-4">Ngày tạo</th>
+                          <th className="px-6 py-4">Trạng thái</th>
+                          <th className="px-6 py-4 text-right">Thao tác</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {users.map(u => (
-                          <tr key={u.id} className="hover:bg-gray-50 transition">
-                            <td className="px-5 py-3 font-bold text-gray-900 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 border border-gray-300 shadow-sm">{u.name.charAt(0)}</div>
-                              {u.name}
+                      <tbody className="divide-y divide-slate-100">
+                        {users.map((u: any) => (
+                          <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-500">#{u.id}</td>
+                            <td className="px-6 py-4">
+                              <p className="font-bold text-slate-900">{u.fullName || 'Chưa cập nhật'}</p>
+                              <p className="text-xs text-slate-500">{u.email}</p>
                             </td>
-                            <td className="px-5 py-3 text-gray-600">{u.email}</td>
-                            <td className="px-5 py-3">
-                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${u.roleColor}`}>
-                                {u.role === 'Admin' ? '👨‍💼 Admin' : u.role === 'Bác sĩ' ? '👨‍⚕️ Bác sĩ' : '👤 Bệnh nhân'}
+                            <td className="px-6 py-4">
+                              <span className="px-3 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                                {u.role}
                               </span>
                             </td>
-                            <td className="px-5 py-3">
-                              {u.status === 'Hoạt động' 
-                                ? <span className="text-green-600 font-bold flex items-center gap-1.5"><CheckCircle2 size={14}/> Hoạt động</span>
-                                : <span className="text-red-500 font-bold flex items-center gap-1.5"><Lock size={14}/> Đã khóa</span>
-                              }
+                            <td className="px-6 py-4 text-slate-500">{dayjs(u.createdAt).format('DD/MM/YYYY')}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-3 py-1 text-xs font-bold rounded-lg ${u.status === 'Hoạt động' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                {u.status}
+                              </span>
                             </td>
-                            <td className="px-5 py-3 text-center">
-                              <div className="flex justify-center gap-2">
-                                <button className="p-1.5 text-gray-400 hover:text-[#2563EB] hover:bg-blue-50 rounded transition" title="Chỉnh sửa vai trò"><Edit size={16}/></button>
-                                <button className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded transition" title="Đặt lại mật khẩu"><RefreshCw size={16}/></button>
-                                <button className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition" title={u.status === 'Đã khóa' ? 'Mở khóa' : 'Khóa tài khoản'}>
-                                  {u.status === 'Đã khóa' ? <Unlock size={16}/> : <Lock size={16}/>}
-                                </button>
-                              </div>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              <button 
+                                onClick={() => handleResetPassword(u.id)}
+                                className="inline-flex items-center justify-center p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition" title="Reset Mật Khẩu"
+                              >
+                                <KeyRound size={16}/>
+                              </button>
+                              <button 
+                                onClick={() => handleToggleLock(u.id, u.status)}
+                                className={`inline-flex items-center justify-center p-2 rounded-lg transition ${u.status === 'Hoạt động' ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'}`}
+                                title={u.status === 'Hoạt động' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                              >
+                                {u.status === 'Hoạt động' ? <Lock size={16}/> : <Unlock size={16}/>}
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -259,142 +293,164 @@ export default function AdminAccountManagementPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* TAB 2: MA TRẬN PHÂN QUYỀN (Read-Only) */}
-              {activeTab === 'matrix' && (
-                <div className="animate-in fade-in">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">Chi tiết Quyền (Cố định)</h3>
-                    <p className="text-sm text-gray-500">Hệ thống sử dụng 3 vai trò cố định. Quản trị viên chỉ có thể gán người dùng vào các vai trò này, không được sửa đổi quyền cốt lõi để đảm bảo an toàn.</p>
+          {/* ================= TAB 2: RBAC ================= */}
+          {activeTab === 'RBAC' && rbacConfig && (
+            <div className="flex gap-8 items-start">
+              
+              {/* Cột chọn Role */}
+              <div className="w-64 shrink-0 space-y-2">
+                <h3 className="font-bold text-slate-900 mb-4 px-2 uppercase tracking-wider text-xs">Chọn Vai Trò (Role)</h3>
+                {Object.keys(ROLES_MAP).map(roleKey => (
+                  <button
+                    key={roleKey}
+                    onClick={() => setSelectedRole(roleKey)}
+                    className={`w-full text-left px-5 py-3.5 rounded-xl font-bold transition flex items-center justify-between ${selectedRole === roleKey ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    {ROLES_MAP[roleKey]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Ma trận Quyền của Role đã chọn */}
+              <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">Ma trận quyền: {ROLES_MAP[selectedRole]}</h2>
+                    <p className="text-sm text-slate-500 mt-1">Cấp quyền truy cập và thao tác cho các chức năng trong hệ thống.</p>
                   </div>
-                  
-                  <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="bg-gray-50 border-b border-gray-200 text-gray-700 font-bold">
+                  <button 
+                    onClick={handleSaveRBAC}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-2 text-sm"
+                  >
+                    <Save size={18}/> Lưu Ma Trận
+                  </button>
+                </div>
+
+                <div className="p-8">
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                          <th className="px-5 py-4 border-r border-gray-200 bg-gray-100 w-64 sticky left-0 z-10">Chức năng</th>
-                          <th className="px-5 py-4 text-center border-r border-gray-100"><span className="px-3 py-1 rounded bg-red-100 text-red-700 border border-red-200">👨‍💼 Admin</span></th>
-                          <th className="px-5 py-4 text-center border-r border-gray-100"><span className="px-3 py-1 rounded bg-blue-100 text-blue-700 border border-blue-200">👨‍⚕️ Bác sĩ</span></th>
-                          <th className="px-5 py-4 text-center"><span className="px-3 py-1 rounded bg-green-100 text-green-700 border border-green-200">👤 Bệnh nhân</span></th>
+                          <th className="px-6 py-4 font-bold text-slate-800">Module / Chức năng</th>
+                          {PERMISSIONS.map(p => (
+                            <th key={p.key} className="px-4 py-4 text-center font-bold text-slate-500 text-xs uppercase tracking-wider">{p.label}</th>
+                          ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {modules.map((mod, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-5 py-3.5 font-bold text-gray-900 border-r border-gray-100 bg-white sticky left-0 z-10 shadow-[1px_0_0_0_#f3f4f6]">
-                              {mod.name}
-                            </td>
-                            <td className="px-5 py-3.5 text-center border-r border-gray-100">{renderPermissionIcon(mod.admin)}</td>
-                            <td className="px-5 py-3.5 text-center border-r border-gray-100">{renderPermissionIcon(mod.doctor)}</td>
-                            <td className="px-5 py-3.5 text-center">{renderPermissionIcon(mod.patient)}</td>
-                          </tr>
-                        ))}
+                      <tbody className="divide-y divide-slate-100">
+                        {MODULES.map(mod => {
+                          const modKey = mod;
+                          const currentPerms = rbacConfig[selectedRole]?.[modKey] || [];
+                          
+                          return (
+                            <tr key={mod} className="hover:bg-slate-50/50">
+                              <td className="px-6 py-4 font-bold text-slate-700">{mod.replace(/_/g, ' ')}</td>
+                              {PERMISSIONS.map(p => {
+                                const hasPerm = currentPerms.includes(p.key);
+                                return (
+                                  <td key={p.key} className="px-4 py-4 text-center">
+                                    <input 
+                                      type="checkbox"
+                                      className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                      checked={hasPerm}
+                                      onChange={() => handleTogglePermission(modKey, p.key)}
+                                    />
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: NHẬT KÝ THAY ĐỔI */}
-              {activeTab === 'logs' && (
-                <div className="max-w-3xl animate-in fade-in">
-                  <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px before:h-full before:w-0.5 before:bg-gray-200">
-                    
-                    <div className="relative pl-10">
-                      <span className="absolute left-0 top-1 w-8 h-8 bg-blue-100 text-[#2563EB] rounded-full flex items-center justify-center -translate-x-1.5 border-2 border-white shadow-sm"><UserPlus size={14}/></span>
-                      <p className="text-xs text-gray-500 font-bold mb-1">09:10 - Hôm nay</p>
-                      <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <p className="text-sm"><span className="font-bold text-gray-900">Admin</span> đã cấp tài khoản mới.</p>
-                        <p className="text-xs text-gray-500 mt-1">Email: bs.nguyenvana@clinic.com - Vai trò: <span className="font-bold text-blue-600">Bác sĩ</span></p>
-                      </div>
-                    </div>
-
-                    <div className="relative pl-10">
-                      <span className="absolute left-0 top-1 w-8 h-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center -translate-x-1.5 border-2 border-white shadow-sm"><RefreshCw size={14}/></span>
-                      <p className="text-xs text-gray-500 font-bold mb-1">10:20 - Hôm nay</p>
-                      <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <p className="text-sm"><span className="font-bold text-gray-900">Admin</span> đã đặt lại mật khẩu.</p>
-                        <p className="text-xs text-gray-500 mt-1">Tài khoản: nguyenvana@gmail.com</p>
-                      </div>
-                    </div>
-
-                    <div className="relative pl-10">
-                      <span className="absolute left-0 top-1 w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center -translate-x-1.5 border-2 border-white shadow-sm"><Lock size={14}/></span>
-                      <p className="text-xs text-gray-500 font-bold mb-1">11:00 - Hôm nay</p>
-                      <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm">
-                        <p className="text-sm"><span className="font-bold text-gray-900">Admin</span> đã khóa tài khoản.</p>
-                        <p className="text-xs text-red-500 mt-1">Tài khoản: phamthid@gmail.com (Bệnh nhân)</p>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* ==========================================
-          MODAL: CẤP TÀI KHOẢN MỚI
-      ========================================== */}
-      {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><UserPlus size={20} className="text-[#2563EB]"/> Cấp Tài khoản mới</h2>
-              <button onClick={() => setIsAddUserModalOpen(false)} className="text-gray-400 hover:text-gray-700 transition"><X size={24}/></button>
-            </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-5">
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Họ và tên <span className="text-red-500">*</span></label>
-                  <input type="text" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] outline-none text-sm bg-gray-50 focus:bg-white transition-colors" placeholder="VD: Nguyễn Văn A"/>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email (Tên đăng nhập) <span className="text-red-500">*</span></label>
-                  <input type="email" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#2563EB] outline-none text-sm bg-gray-50 focus:bg-white transition-colors" placeholder="email@clinic.com"/>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mật khẩu khởi tạo <span className="text-red-500">*</span></label>
-                  <input type="password" value="Clinic@123" readOnly className="w-full p-2.5 border border-gray-200 rounded-xl outline-none text-sm bg-gray-100 text-gray-500 font-mono"/>
-                  <p className="text-[10px] text-gray-400 mt-1">Mật khẩu mặc định tự động tạo.</p>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Vai trò (Role) <span className="text-red-500">*</span></label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <label className="border border-gray-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-red-400 hover:bg-red-50 transition group">
-                      <input type="radio" name="role" value="admin" className="hidden"/>
-                      <span className="text-red-600 bg-red-100 p-2 rounded-full"><Shield size={20}/></span>
-                      <span className="text-sm font-bold text-gray-700 group-hover:text-red-700">Admin</span>
-                    </label>
-                    <label className="border-2 border-blue-400 bg-blue-50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer transition group">
-                      <input type="radio" name="role" value="doctor" defaultChecked className="hidden"/>
-                      <span className="text-blue-600 bg-blue-100 p-2 rounded-full"><User size={20}/></span>
-                      <span className="text-sm font-bold text-blue-700">Bác sĩ</span>
-                    </label>
-                    <label className="border border-gray-200 rounded-xl p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-green-400 hover:bg-green-50 transition group">
-                      <input type="radio" name="role" value="patient" className="hidden"/>
-                      <span className="text-green-600 bg-green-100 p-2 rounded-full"><Users size={20}/></span>
-                      <span className="text-sm font-bold text-gray-700 group-hover:text-green-700">Bệnh nhân</span>
-                    </label>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            <div className="p-5 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => setIsAddUserModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 transition">Hủy</button>
-              <button className="bg-[#2563EB] text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md transition flex items-center gap-2">
-                <CheckCircle2 size={18}/> Tạo Tài khoản
-              </button>
+        </div>
+
+        {/* MODAL THÊM TÀI KHOẢN */}
+        {isAddModalOpen && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Users className="text-blue-600" size={20}/> Tạo Tài Khoản Mới
+                </h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition">
+                  <X size={20}/>
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Vai trò (Role) <span className="text-red-500">*</span></label>
+                  <select 
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-blue-700 focus:bg-white focus:border-blue-500 outline-none"
+                    value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}
+                  >
+                    <option value="PATIENT">Bệnh nhân</option>
+                    <option value="RECEPTIONIST">Lễ tân</option>
+                    <option value="DOCTOR">Bác sĩ</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Họ Tên <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="VD: Nguyễn Văn A" 
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-blue-500 outline-none"
+                    value={newUser.fullName} onChange={e => setNewUser({...newUser, fullName: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Email / Username đăng nhập <span className="text-red-500">*</span></label>
+                  <input 
+                    type="email" 
+                    placeholder="VD: nguyenvana@gmail.com" 
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-blue-500 outline-none"
+                    value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Mật khẩu khởi tạo <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="Mật khẩu..." 
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-blue-500 outline-none"
+                    value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Hủy
+                </button>
+                <button 
+                  onClick={handleCreateUser}
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm rounded-xl transition"
+                >
+                  Khởi Tạo Tài Khoản
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
+      </main>
     </div>
   );
 }

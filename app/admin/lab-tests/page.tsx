@@ -3,18 +3,18 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  Search, Bell, Clock, Eye, Filter, CalendarDays, Receipt, ArrowRight
+  Search, Bell, Clock, Eye, Filter, CalendarDays, TestTube, ArrowRight
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
 
 import Sidebar from '@/app/admin/Sidebar';
-import { getInvoices } from '@/app/admin/billing/actions';
+import { getLabTests } from '@/app/admin/lab-tests/actions';
 
-export default function AdminBillingPage() {
+export default function AdminLabTestsPage() {
   const router = useRouter();
   
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [labTests, setLabTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters
@@ -27,10 +27,10 @@ export default function AdminBillingPage() {
 
   const fetchData = async () => {
     setIsLoading(true);
-    const res = await getInvoices(filters);
+    const res = await getLabTests(filters);
 
     if (res.success && res.data) {
-      setInvoices(res.data);
+      setLabTests(res.data);
     } else {
       if (res.message === 'Không có quyền truy cập') {
         router.push('/login');
@@ -52,14 +52,31 @@ export default function AdminBillingPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Nháp': return 'bg-slate-100 text-slate-700';
-      case 'Chờ phát hành': return 'bg-blue-100 text-blue-700';
-      case 'Chờ thanh toán': 
-      case 'Chưa thanh toán': return 'bg-amber-100 text-amber-700';
-      case 'Đã thanh toán': return 'bg-emerald-100 text-emerald-700';
-      case 'Điều chỉnh': return 'bg-orange-100 text-orange-700';
+      case 'ordered':
+      case 'Đã chỉ định': return 'bg-blue-100 text-blue-700';
+      case 'waiting':
+      case 'Đang thực hiện': return 'bg-amber-100 text-amber-700';
+      case 'processing':
+      case 'Đang xử lý': return 'bg-orange-100 text-orange-700';
+      case 'has_result':
+      case 'Đã có kết quả': return 'bg-emerald-100 text-emerald-700';
+      case 'evaluated':
+      case 'Bác sĩ đã xem': return 'bg-purple-100 text-purple-700';
+      case 'canceled':
       case 'Đã hủy': return 'bg-red-100 text-red-700';
       default: return 'bg-slate-100 text-slate-700';
+    }
+  };
+
+  const translateStatus = (status: string) => {
+    switch (status) {
+      case 'ordered': return 'Đã chỉ định';
+      case 'waiting': return 'Đang thực hiện';
+      case 'processing': return 'Đang xử lý';
+      case 'has_result': return 'Đã có kết quả';
+      case 'evaluated': return 'Bác sĩ đã xem';
+      case 'canceled': return 'Đã hủy';
+      default: return status;
     }
   };
 
@@ -76,7 +93,7 @@ export default function AdminBillingPage() {
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm">
           <div className="flex items-center gap-6">
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Receipt className="text-blue-600"/> Quản lý Hóa đơn
+              <TestTube className="text-blue-600"/> Quản lý Kết quả Xét nghiệm
             </h1>
           </div>
           <div className="flex items-center gap-6">
@@ -109,7 +126,7 @@ export default function AdminBillingPage() {
               <div className="relative group">
                 <input 
                   type="text" 
-                  placeholder="Mã HĐ, Mã BN, Tên BN..." 
+                  placeholder="Mã XN, Tên BN, SĐT..." 
                   className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 w-64 transition-all outline-none"
                   value={filters.search}
                   onChange={e => setFilters({...filters, search: e.target.value})}
@@ -148,12 +165,12 @@ export default function AdminBillingPage() {
                 onChange={e => setFilters({...filters, status: e.target.value})}
               >
                 <option value="">Tất cả trạng thái</option>
-                <option value="Nháp">Nháp</option>
-                <option value="Chờ phát hành">Chờ phát hành</option>
-                <option value="Chờ thanh toán">Chưa thanh toán</option>
-                <option value="Đã thanh toán">Đã thanh toán</option>
-                <option value="Điều chỉnh">Điều chỉnh</option>
-                <option value="Đã hủy">Đã hủy</option>
+                <option value="ordered">Đã chỉ định</option>
+                <option value="waiting">Đang thực hiện</option>
+                <option value="processing">Đang xử lý</option>
+                <option value="has_result">Đã có kết quả</option>
+                <option value="evaluated">Bác sĩ đã xem</option>
+                <option value="canceled">Đã hủy</option>
               </select>
               
               <button 
@@ -176,44 +193,48 @@ export default function AdminBillingPage() {
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs tracking-wider">
                     <tr>
-                      <th className="px-6 py-4">Mã HĐ</th>
+                      <th className="px-6 py-4">Mã XN</th>
                       <th className="px-6 py-4">Bệnh nhân</th>
-                      <th className="px-6 py-4">Ngày tạo</th>
-                      <th className="px-6 py-4 text-right">Tổng tiền</th>
+                      <th className="px-6 py-4">Loại xét nghiệm</th>
+                      <th className="px-6 py-4">Bác sĩ chỉ định</th>
+                      <th className="px-6 py-4">Thời gian</th>
                       <th className="px-6 py-4">Trạng thái</th>
                       <th className="px-6 py-4 text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {invoices.length > 0 ? invoices.map((invoice: any) => (
-                      <tr key={invoice.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-bold text-slate-900">{invoice.invoiceCode}</td>
+                    {labTests.length > 0 ? labTests.map((test: any) => (
+                      <tr key={test.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 font-bold text-slate-900">XN-{String(test.id).padStart(5, '0')}</td>
                         <td className="px-6 py-4 font-medium text-slate-900">
-                          {invoice.patient?.fullName} <br/>
-                          <span className="text-xs text-slate-500 font-normal">{invoice.patient?.phone} | {invoice.patient?.patientProfile?.patientCode}</span>
+                          {test.patient?.fullName} <br/>
+                          <span className="text-xs text-slate-500 font-normal">{test.patient?.phone} | {test.patient?.patientProfile?.patientCode}</span>
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-800">
+                          {test.testName}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-slate-700">
+                          BS. {test.doctorName}
                         </td>
                         <td className="px-6 py-4 text-slate-700 font-medium">
-                          {dayjs(invoice.createdAt).format('DD/MM/YYYY')} <br/>
-                          <span className="text-xs text-slate-500 font-normal">{dayjs(invoice.createdAt).format('HH:mm')}</span>
-                        </td>
-                        <td className="px-6 py-4 text-right font-black text-blue-700 text-base">
-                          {invoice.finalAmount.toLocaleString('vi-VN')} đ
+                          {dayjs(test.date).format('DD/MM/YYYY')} <br/>
+                          <span className="text-xs text-slate-500 font-normal">{dayjs(test.date).format('HH:mm')}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 w-max ${getStatusBadge(invoice.status)}`}>
-                            {invoice.status === 'Chờ thanh toán' ? 'Chưa thanh toán' : invoice.status}
+                          <span className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 w-max ${getStatusBadge(test.statusType)}`}>
+                            {translateStatus(test.statusType)}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Link href={`/admin/billing/${invoice.id}`} className="px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition font-bold text-xs flex items-center gap-1" title="Xem chi tiết">
-                              Kiểm tra <ArrowRight size={14}/>
+                            <Link href={`/admin/lab-tests/${test.id}`} className="px-3 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition font-bold text-xs flex items-center gap-1" title="Xem chi tiết">
+                              Xem KQ <ArrowRight size={14}/>
                             </Link>
                           </div>
                         </td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500">Không tìm thấy hóa đơn nào phù hợp.</td></tr>
+                      <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-500">Không tìm thấy xét nghiệm nào phù hợp.</td></tr>
                     )}
                   </tbody>
                 </table>

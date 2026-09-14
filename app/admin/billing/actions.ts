@@ -3,7 +3,7 @@
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
-export async function getPrescriptions(filters?: { search?: string, fromDate?: string, toDate?: string, status?: string }) {
+export async function getInvoices(filters?: { search?: string, fromDate?: string, toDate?: string, status?: string }) {
   try {
     const cookieStore = await cookies();
     if (cookieStore.get('user_role')?.value !== 'admin') {
@@ -14,10 +14,10 @@ export async function getPrescriptions(filters?: { search?: string, fromDate?: s
 
     if (filters?.search) {
       whereClause.OR = [
+        { invoiceCode: { contains: filters.search } },
         { patient: { fullName: { contains: filters.search } } },
         { patient: { phone: { contains: filters.search } } },
-        { patient: { patientProfile: { patientCode: { contains: filters.search } } } },
-        { code: { contains: filters.search } }
+        { patient: { patientProfile: { patientCode: { contains: filters.search } } } }
       ];
     }
 
@@ -43,62 +43,63 @@ export async function getPrescriptions(filters?: { search?: string, fromDate?: s
       whereClause.status = filters.status;
     }
 
-    const prescriptions = await prisma.prescription.findMany({
+    const invoices = await prisma.invoice.findMany({
       where: whereClause,
       include: {
         patient: { include: { patientProfile: true } },
-        doctor: { include: { doctorProfile: true } },
+        doctor: true,
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    return { success: true, data: prescriptions };
+    return { success: true, data: invoices };
   } catch (error) {
-    console.error("Lỗi lấy danh sách đơn thuốc:", error);
+    console.error("Lỗi lấy danh sách hóa đơn:", error);
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }
 
-export async function getPrescriptionDetail(id: number) {
+export async function getInvoiceDetail(id: number) {
   try {
     const cookieStore = await cookies();
     if (cookieStore.get('user_role')?.value !== 'admin') {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    const prescription = await prisma.prescription.findUnique({
+    const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: { 
         patient: { include: { patientProfile: true } },
         doctor: { include: { doctorProfile: true } },
+        appointment: true,
         items: true
       }
     });
 
-    if (!prescription) return { success: false, message: 'Không tìm thấy đơn thuốc' };
+    if (!invoice) return { success: false, message: 'Không tìm thấy hóa đơn' };
 
-    return { success: true, data: prescription };
+    return { success: true, data: invoice };
   } catch (error) {
-    console.error("Lỗi lấy chi tiết đơn thuốc:", error);
+    console.error("Lỗi lấy chi tiết hóa đơn:", error);
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }
 
-export async function updatePrescriptionStatus(id: number, status: string) {
+export async function updateInvoiceStatus(id: number, status: string) {
   try {
     const cookieStore = await cookies();
     if (cookieStore.get('user_role')?.value !== 'admin') {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    await prisma.prescription.update({
+    await prisma.invoice.update({
       where: { id },
       data: { status }
     });
 
-    return { success: true, message: `Chuyển trạng thái đơn thuốc thành ${status}` };
+    return { success: true, message: `Chuyển trạng thái hóa đơn thành ${status}` };
   } catch (error) {
-    console.error("Lỗi cập nhật trạng thái đơn thuốc:", error);
+    console.error("Lỗi cập nhật trạng thái hóa đơn:", error);
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }

@@ -1,134 +1,214 @@
 'use server';
 
 import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
-// 1. LẤY DANH SÁCH BỆNH NHÂN & KPI
-export async function getAdminPatientsData() {
+export async function getPatients(filters?: { search?: string, gender?: string, status?: string }) {
   try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    const whereClause: any = { role: 'PATIENT' };
+
+    if (filters?.search) {
+      whereClause.OR = [
+        { fullName: { contains: filters.search } },
+        { phone: { contains: filters.search } },
+        { patientProfile: { patientCode: { contains: filters.search } } }
+      ];
+    }
+
+    if (filters?.gender) {
+      whereClause.gender = filters.gender;
+    }
+    
+    if (filters?.status) {
+      whereClause.status = filters.status;
+    }
+
     const patients = await prisma.user.findMany({
-      where: { role: 'PATIENT' },
+      where: whereClause,
       include: {
-        patientProfile: true,
-        appointmentsAsPatient: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        },
-        examinationsAsPatient: true
+        patientProfile: true
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    return { success: true, data: patients };
+  } catch (error) {
+    console.error("Lỗi lấy danh sách bệnh nhân:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
+  }
+}
 
-    let activeCount = 0;
-    let registeredToday = 0;
-    let inTreatment = 0;
-    let hasRecords = 0;
+export async function createPatient(data: any) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
 
-    const formattedPatients = patients.map(p => {
-      // Tính tuổi
-      let age = 0;
-      if (p.dob) {
-        const year = p.dob.split('/')[2];
-        if (year) age = new Date().getFullYear() - parseInt(year);
+    // Tự sinh mã bệnh nhân nếu không nhập
+    let code = data.patientCode;
+    if (!code) {
+      const count = await prisma.user.count({ where: { role: 'PATIENT' } });
+      code = `BN${String(count + 1000).padStart(5, '0')}`;
+    } else {
+      const existingCode = await prisma.patientProfile.findFirst({
+        where: { patientCode: code }
+      });
+      if (existingCode) return { success: false, message: 'Mã bệnh nhân đã tồn tại!' };
+    }
+
+    // Kiểm tra trùng lặp SĐT/Email
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: data.phone },
+          ...(data.email ? [{ email: data.email }] : [])
+        ]
       }
-
-      // Thống kê KPI
-      if (p.status === 'Hoạt động') activeCount++;
-      if (new Date(p.createdAt) >= today) registeredToday++;
-      if (p.status === 'Đang điều trị') inTreatment++;
-      if (p.examinationsAsPatient.length > 0) hasRecords++;
-
-      const lastVisit = p.appointmentsAsPatient.length > 0 
-        ? p.appointmentsAsPatient[0].bookingDate 
-        : 'Chưa khám';
-
-      return {
-        id: p.id,
-        patientCode: p.patientProfile?.patientCode || `BN${p.id.toString().padStart(4, '0')}`,
-        name: p.fullName,
-        gender: p.gender || 'Nam',
-        age: age || 'N/A',
-        phone: p.phone || 'Chưa cập nhật',
-        email: p.email || 'Chưa cập nhật',
-        address: p.address || 'Chưa cập nhật',
-        cccd: p.patientProfile?.cccd || 'Chưa cập nhật',
-        bhyt: p.patientProfile?.bhyt || 'Chưa cập nhật',
-        lastVisit: lastVisit,
-        status: p.status || 'Hoạt động',
-        avatar: p.avatar || `https://ui-avatars.com/api/?name=${p.fullName.replace(/ /g, '+')}&background=random`
-      };
     });
 
-    return {
-      success: true,
-      data: {
-        patients: formattedPatients,
-        kpis: {
-          total: patients.length,
-          active: activeCount,
-          today: registeredToday,
-          inTreatment: inTreatment,
-          unpaid: 0, // Tính năng thanh toán sẽ cập nhật sau
-          hasRecords: hasRecords
+    if (existingUser) {
+      return { success: false, message: 'Số điện thoại hoặc Email đã được sử dụng!' };
+    }
+
+    // Mật khẩu mặc định là số điện thoại
+    const hashedPassword = await bcrypt.hash(data.phone, 10);
+
+    const newPatient = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email || `bn_${code.toLowerCase()}@system.local`,
+          passwordHash: hashedPassword,
+          role: 'PATIENT',
+          gender: data.gender || 'Nam',
+          dob: data.dob,
+          address: data.address,
+          status: 'Hoạt động'
+        }
+      });
+
+      await tx.patientProfile.create({
+        data: {
+          userId: user.id,
+          patientCode: code,
+          cccd: data.cccd,
+          bhyt: data.bhyt,
+          insurance: data.insurance,
+        }
+      });
+
+      return user;
+    });
+
+    return { success: true, data: newPatient, message: 'Thêm bệnh nhân thành công' };
+  } catch (error) {
+    console.error("Lỗi thêm bệnh nhân:", error);
+    return { success: false, message: 'Lỗi máy chủ khi tạo bệnh nhân' };
+  }
+}
+
+export async function getPatientById(id: number) {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    const patient = await prisma.user.findUnique({
+      where: { id, role: 'PATIENT' },
+      include: { 
+        patientProfile: true,
+        appointmentsAsPatient: {
+          include: { doctor: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        examinationsAsPatient: {
+          include: { doctor: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        invoicesAsPatient: {
+          orderBy: { createdAt: 'desc' }
         }
       }
-    };
+    });
+
+    if (!patient) return { success: false, message: 'Không tìm thấy bệnh nhân' };
+
+    return { success: true, data: patient };
   } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi server khi lấy dữ liệu' };
+    console.error("Lỗi lấy thông tin bệnh nhân:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }
 
-// 2. THÊM BỆNH NHÂN MỚI
-export async function addPatient(data: any) {
+export async function updatePatient(id: number, data: any) {
   try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('123456', salt); // Mật khẩu mặc định
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
 
-    const newPatient = await prisma.user.create({
-      data: {
-        fullName: data.name,
-        email: data.email || `${data.phone}@clinic.local`,
-        phone: data.phone,
-        dob: data.dob,
-        gender: data.gender,
-        address: data.address,
-        status: data.status,
-        passwordHash: hashedPassword,
-        role: 'PATIENT',
-      }
+    if (data.patientCode) {
+      const existingCode = await prisma.patientProfile.findFirst({
+        where: { patientCode: data.patientCode, userId: { not: id } }
+      });
+      if (existingCode) return { success: false, message: 'Mã bệnh nhân đã tồn tại ở hồ sơ khác!' };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          fullName: data.fullName,
+          phone: data.phone,
+          email: data.email,
+          gender: data.gender,
+          dob: data.dob,
+          address: data.address
+        }
+      });
+
+      await tx.patientProfile.update({
+        where: { userId: id },
+        data: {
+          patientCode: data.patientCode,
+          cccd: data.cccd,
+          bhyt: data.bhyt,
+          insurance: data.insurance,
+        }
+      });
     });
 
-    // Tạo PatientProfile với patientCode, cccd, bhyt
-    await prisma.patientProfile.create({
-      data: {
-        userId: newPatient.id,
-        patientCode: `BN${newPatient.id.toString().padStart(4, '0')}`,
-        cccd: data.cccd || null,
-        bhyt: data.bhyt || null,
-      }
-    });
-
-    return { success: true, message: 'Thêm bệnh nhân thành công! Mật khẩu mặc định: 123456' };
-  } catch (error: any) {
-    if (error.code === 'P2002') return { success: false, message: 'Email hoặc SĐT đã tồn tại!' };
-    return { success: false, message: 'Lỗi server khi thêm bệnh nhân.' };
+    return { success: true, message: 'Cập nhật thành công' };
+  } catch (error) {
+    console.error("Lỗi cập nhật bệnh nhân:", error);
+    return { success: false, message: 'Lỗi máy chủ khi cập nhật' };
   }
 }
 
-// 3. KHÓA / MỞ KHÓA TÀI KHOẢN BỆNH NHÂN
-export async function togglePatientStatus(patientId: number, currentStatus: string) {
+export async function updatePatientStatus(id: number, status: string) {
   try {
-    const newStatus = currentStatus === 'Khóa tài khoản' ? 'Hoạt động' : 'Khóa tài khoản';
+    const cookieStore = await cookies();
+    if (cookieStore.get('user_role')?.value !== 'admin') {
+      return { success: false, message: 'Không có quyền truy cập' };
+    }
+
     await prisma.user.update({
-      where: { id: patientId },
-      data: { status: newStatus }
+      where: { id },
+      data: { status }
     });
-    return { success: true, message: `Đã ${newStatus === 'Hoạt động' ? 'mở khóa' : 'khóa'} tài khoản bệnh nhân!` };
+
+    return { success: true, message: 'Cập nhật trạng thái thành công' };
   } catch (error) {
-    return { success: false, message: 'Lỗi khi cập nhật trạng thái.' };
+    console.error("Lỗi cập nhật trạng thái:", error);
+    return { success: false, message: 'Lỗi máy chủ' };
   }
 }

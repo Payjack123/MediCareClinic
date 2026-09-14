@@ -1,8 +1,9 @@
-// app/actions/admin.ts
+// app/admin/dashboard/actions.ts
 'use server';
 
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import dayjs from 'dayjs';
 
 export async function getAdminDashboardData() {
   try {
@@ -15,65 +16,129 @@ export async function getAdminDashboardData() {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    // 2. Lấy các chỉ số KPI tổng quan (Truy vấn song song)
+    // 2. Lấy các chỉ số KPI tổng quan
     const [
       totalPatients,
       totalAppointments,
-      totalDoctors,
-      totalPrescriptions,
-      totalLabTests,
-      specialties
+      totalInvoices
     ] = await Promise.all([
       prisma.user.count({ where: { role: 'PATIENT' } }),
       prisma.appointment.count(),
-      prisma.user.count({ where: { role: 'DOCTOR' } }),
-      prisma.prescription.count(),
-      prisma.labTest.count(),
-      prisma.doctorProfile.findMany({ select: { specialty: true }, distinct: ['specialty'] })
+      prisma.invoice.count()
     ]);
 
-    const totalDepartments = specialties.filter(s => s.specialty).length;
-    // Giả lập doanh thu = Tổng số lịch khám x 150.000đ (Bạn có thể đổi sang bảng Thanh toán sau này)
-    const totalRevenue = totalAppointments * 150000; 
-
-    // 3. Lấy Top Bác sĩ (Nhiều lịch khám nhất)
-    const topDoctorsAgg = await prisma.appointment.groupBy({
-      by: ['doctorId'],
-      _count: { doctorId: true },
-      orderBy: { _count: { doctorId: 'desc' } },
-      take: 4
-    });
-
-    const topDoctors = await Promise.all(topDoctorsAgg.map(async (doc) => {
-      const d = await prisma.user.findUnique({ where: { id: doc.doctorId } });
-      return { name: d?.fullName || 'Bác sĩ ẩn danh', count: doc._count.doctorId };
-    }));
-
-    // 4. Lấy Top Bệnh (Triệu chứng / Chẩn đoán phổ biến nhất)
-    const totalExams = await prisma.examination.count();
-    const topDiseasesAgg = await prisma.examination.groupBy({
-      by: ['diagnosis'],
-      _count: { diagnosis: true },
-      orderBy: { _count: { diagnosis: 'desc' } },
-      take: 4
+    const invoices = await prisma.invoice.findMany({
+      select: { finalAmount: true }
     });
     
-    const topDiseases = topDiseasesAgg.map(d => ({
-      name: d.diagnosis || 'Chưa cập nhật',
-      percentage: totalExams > 0 ? Math.round((d._count.diagnosis / totalExams) * 100) : 0
-    }));
+    // Tổng doanh thu từ tất cả hóa đơn (có thể điều chỉnh logic chỉ lấy hóa đơn đã thanh toán)
+    const totalRevenue = invoices.reduce((acc, curr) => acc + curr.finalAmount, 0);
 
-    // 5. Tỷ trọng chuyên khoa (Dựa trên số lượng lịch hẹn)
+    // 3. Cơ cấu bệnh nhân (hoặc lịch hẹn) theo khoa
     const apptsBySpec = await prisma.appointment.groupBy({
       by: ['specialty'],
       _count: { specialty: true },
       orderBy: { _count: { specialty: 'desc' } },
-      take: 4
+      take: 6
     });
-    const specDistribution = apptsBySpec.map(s => ({
+    
+    const patientsBySpecialty = apptsBySpec.map(s => ({
       name: s.specialty || 'Khác',
       percentage: totalAppointments > 0 ? Math.round((s._count.specialty / totalAppointments) * 100) : 0
     }));
+
+    // 4. Doanh thu theo khoa
+    // Vì bảng Invoice liên kết với Appointment, ta cần lấy thông qua Appointment
+    const invoicesWithAppt = await prisma.invoice.findMany({
+      include: { appointment: true },
+      where: { status: 'Đã thanh toán' }
+    });
+
+    const revenueMap: Record<string, number> = {};
+    invoicesWithAppt.forEach(inv => {
+      const spec = inv.appointment?.specialty || 'Khác';
+      revenueMap[spec] = (revenueMap[spec] || 0) + inv.finalAmount;
+    });
+
+    const revenueBySpecialty = Object.entries(revenueMap).map(([name, amount]) => ({
+      name,
+      amount
+    })).sort((a, b) => b.amount - a.amount).slice(0, 5);
+
+    // 5. Lịch khám 7 ngày qua (để vẽ biểu đồ)
+    const today = dayjs();
+    const last7Days = Array.from({ length: 7 }).map((_, i) => today.subtract(6 - i, 'day').format('YYYY-MM-DD'));
+    
+    const apptsLast7Days = await prisma.appointment.findMany({
+      where: {
+        bookingDate: {
+          in: last7Days
+        }
+      },
+      select: { bookingDate: true }
+    });
+
+    const apptCountByDayMap: Record<string, number> = {};
+    apptsLast7Days.forEach(a => {
+      apptCountByDayMap[a.bookingDate] = (apptCountByDayMap[a.bookingDate] || 0) + 1;
+    });
+
+    const appointmentsByDay = last7Days.map(date => ({
+      day: dayjs(date).format('DD/MM'),
+      count: apptCountByDayMap[date] || 0
+    }));
+
+    // 6. Lịch hẹn sắp tới
+    const upcomingAppointmentsRaw = await prisma.appointment.findMany({
+      take: 5,
+      orderBy: [
+        { bookingDate: 'asc' },
+        { bookingTime: 'asc' }
+      ],
+      where: {
+        status: { notIn: ['HOÀN THÀNH', 'ĐÃ HỦY'] }
+      },
+      include: {
+        patient: true,
+        doctor: true
+      }
+    });
+
+    const upcomingAppointments = upcomingAppointmentsRaw.map(app => ({
+      id: app.id,
+      time: app.bookingTime,
+      patientCode: `BN${app.patientId.toString().padStart(5, '0')}`,
+      patientName: app.patient.fullName,
+      doctorName: app.doctor.fullName,
+      status: app.status
+    }));
+
+    // 7. Hóa đơn gần đây
+    const recentInvoicesRaw = await prisma.invoice.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: { patient: true }
+    });
+
+    const recentInvoices = recentInvoicesRaw.map(inv => ({
+      id: inv.id,
+      invoiceCode: inv.invoiceCode,
+      patientName: inv.patient.fullName,
+      amount: inv.finalAmount,
+      status: inv.status
+    }));
+
+    // 8. Thông báo hệ thống
+    const recentNotifications = await prisma.notification.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        message: true,
+        type: true,
+        createdAt: true
+      }
+    });
 
     return {
       success: true,
@@ -81,15 +146,15 @@ export async function getAdminDashboardData() {
         kpis: {
           patients: totalPatients,
           appointments: totalAppointments,
-          doctors: totalDoctors,
-          prescriptions: totalPrescriptions,
-          labTests: totalLabTests,
-          departments: totalDepartments || 1,
-          revenue: totalRevenue
+          revenue: totalRevenue,
+          invoices: totalInvoices
         },
-        topDoctors,
-        topDiseases,
-        specDistribution
+        patientsBySpecialty,
+        revenueBySpecialty,
+        appointmentsByDay,
+        upcomingAppointments,
+        recentInvoices,
+        recentNotifications
       }
     };
   } catch (error) {
