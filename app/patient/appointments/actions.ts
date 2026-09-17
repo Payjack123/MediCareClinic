@@ -87,6 +87,26 @@ export async function createAppointment(data: { doctorId: number, specialty: str
     const paymentMethod = data.paymentMethod || 'TẠI QUẦY';
     const paymentStatus = 'CHƯA THANH TOÁN';
 
+    // KIỂM TRA GIỚI HẠN SỐ LƯỢNG BỆNH NHÂN TRONG NGÀY
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: data.doctorId },
+      select: { maxPatientsPerDay: true }
+    });
+    
+    const maxPatients = doctorProfile?.maxPatientsPerDay || 10;
+    
+    const currentAppointmentsCount = await prisma.appointment.count({
+      where: {
+        doctorId: data.doctorId,
+        bookingDate: data.date,
+        status: { not: 'ĐÃ HỦY' }
+      }
+    });
+
+    if (currentAppointmentsCount >= maxPatients) {
+      return { success: false, message: 'Bác sĩ đã kín lịch trong ngày này. Vui lòng chọn ngày khác.' };
+    }
+
     const newApt = await prisma.appointment.create({
       data: {
         patientId: parseInt(userIdStr),

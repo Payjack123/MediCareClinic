@@ -52,22 +52,23 @@ model PatientProfile {
 }
 
 model DoctorProfile {
-  id           Int     @id @default(autoincrement())
-  userId       Int     @unique
-  specialty    String
-  experience   String
-  status       String  @default("Đang làm việc")
-  rating       Float   @default(5)
-  price        Int     @default(150000)
-  imagePrefix  String  @default("D")
-  degree       String? @default("Thạc sĩ Y Khoa")
-  university   String? @default("Đại học Y Hà Nội")
+  id                Int     @id @default(autoincrement())
+  userId            Int     @unique
+  specialty         String
+  experience        String
+  status            String  @default("Đang làm việc")
+  rating            Float   @default(5)
+  price             Int     @default(150000)
+  imagePrefix       String  @default("D")
+  degree            String? @default("Thạc sĩ Y Khoa")
+  university        String? @default("Đại học Y Hà Nội")
   languages         String? @default("Việt, Anh")
   certificates      Json?
   bio               String? @db.Text
   certificateNumber String? @db.VarChar(100)
   doctorCode        String? @db.VarChar(20)
   schedule          Json?
+  maxPatientsPerDay Int     @default(10)
   user              User    @relation(fields: [userId], references: [id])
 }
 

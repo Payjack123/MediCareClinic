@@ -59,7 +59,7 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
       group: 'KHÁM CHỮA BỆNH',
       items: [
         { name: 'Danh sách bệnh nhân', href: '/doctor/patients', icon: Users, id: 'patients' },
-        { name: 'Bệnh án', href: '/doctor/records/detail', icon: FileText, id: 'records' },
+        { name: 'Bệnh án', href: '/doctor/records', icon: FileText, id: 'records' },
       ]
     },
     {

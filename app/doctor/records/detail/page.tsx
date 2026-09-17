@@ -1,27 +1,11 @@
-"use client";
+'use client';
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getDoctorMedicalRecordById } from "@/app/doctor/records/detail/actions";
 import {
-  ArrowLeft,
-  Search,
-  Bell,
-  Activity,
-  Stethoscope,
-  Clock,
-  Calendar,
-  Plus,
-  Printer,
-  Save,
-  ChevronRight,
-  FileText,
-  Pill,
-  TestTube,
-  Image as ImageIcon,
-  History,
-  ClipboardList,
-  X,
+  ArrowLeft, Search, Bell, Activity, Stethoscope, Clock, Calendar, Plus, Printer, 
+  ChevronRight, FileText, Pill, FlaskConical, History, Save, HeartPulse
 } from "lucide-react";
 import DoctorSidebar from "@/app/doctor/Sidebar";
 
@@ -33,7 +17,6 @@ function MedicalRecordDetailContent() {
   const [record, setRecord] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
-  const [selectedVisit, setSelectedVisit] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,58 +39,40 @@ function MedicalRecordDetailContent() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="w-8 h-8 border-4 border-[#2563EB] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
-  const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center h-[80vh] bg-transparent font-sans">
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md">
-        <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-            <polyline points="14 2 14 8 20 8" />
-            <path d="M8 13h2" />
-            <path d="M8 17h2" />
-            <path d="M14 13h2" />
-            <path d="M14 17h2" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
-          Chưa chọn hồ sơ bệnh án
-        </h2>
-        {errorMsg && (
-          <p className="text-red-500 mb-4 font-bold text-sm bg-red-50 p-2 rounded border border-red-100">
-            {errorMsg}
+    
+  if (!id || !record) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-[#F8FAFC] font-sans">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md">
+          <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText size={28} />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Không tìm thấy bệnh án</h2>
+          {errorMsg && <p className="text-red-500 mb-4 font-bold text-sm bg-red-50 p-2 rounded border border-red-100">{errorMsg}</p>}
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            Hồ sơ bệnh án không tồn tại hoặc bạn không có quyền truy cập.
           </p>
-        )}
-        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          Vui lòng chọn một bệnh nhân từ danh sách để xem chi tiết hoặc tạo mới
-          hồ sơ bệnh án.
-        </p>
-        <Link
-          href="/doctor/patients"
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-blue-700 transition-all"
-        >
-          Về danh sách bệnh nhân
-        </Link>
+          <Link href="/doctor/records" className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-bold shadow-sm hover:bg-blue-700 transition-all">
+            Quay lại danh sách
+          </Link>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const tabs = [
-    { name: "Thông tin khám", icon: Activity },
+    { name: "Thông tin khám", icon: FileText },
+    { name: "Sinh hiệu", icon: Activity },
+    { name: "Chẩn đoán", icon: Stethoscope },
+    { name: "Điều trị", icon: HeartPulse },
+    { name: "Đơn thuốc", icon: Pill },
+    { name: "Xét nghiệm", icon: FlaskConical },
     { name: "Lịch sử khám", icon: History },
+    { name: "Ghi chú", icon: FileText },
   ];
 
   return (
@@ -116,830 +81,236 @@ function MedicalRecordDetailContent() {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* TOP HEADER */}
-        <header className="bg-white border-b border-gray-100 shrink-0 z-10 flex justify-center">
-          <div className="w-full px-6 lg:px-12 xl:px-24 2xl:px-32 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/doctor/records")}
-              className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-500"
-            >
+        <header className="bg-white border-b border-gray-100 shrink-0 z-10 px-8 py-4 flex items-center justify-between sticky top-0">
+          <div className="flex items-center gap-4">
+            <button onClick={() => router.push("/doctor/records")} className="p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-500">
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-none mb-1.5">
-                Hồ sơ bệnh án
+              <h1 className="text-xl font-bold text-gray-900 leading-none mb-1.5 flex items-center gap-2">
+                Hồ sơ bệnh án <span className="text-gray-300">|</span> <span className="text-[#2563EB]">{record.baCode}</span>
               </h1>
               <div className="text-[13px] text-gray-500 flex items-center gap-1.5">
-                <Link
-                  href="/doctor/patients"
-                  className="hover:text-blue-600 transition-colors"
-                >
-                  Danh sách bệnh nhân
-                </Link>
+                <Link href="/doctor/patients" className="hover:text-blue-600 transition-colors">Danh sách</Link>
                 <ChevronRight size={12} className="text-gray-400" />
-                <span className="text-gray-700">Hồ sơ bệnh án</span>
+                <span className="text-gray-700">Chi tiết bệnh án</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-5">
-            <div className="relative hidden md:block">
-              <input
-                type="text"
-                placeholder="Tìm bệnh nhân (Ctrl + K)"
-                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] w-64 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-              />
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={16}
-              />
+            <button className="relative p-2 text-gray-400 hover:bg-gray-50 rounded-full transition-colors">
+              <Bell size={20} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+            </button>
+            <div className="flex items-center gap-3 border-l border-gray-100 pl-5">
+               <div className="text-right hidden sm:block">
+                  <p className="text-sm font-bold text-gray-900 leading-tight">BS. {record.doctor}</p>
+                  <p className="text-xs text-gray-500">{record.doctorSpecialty}</p>
+               </div>
+               <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(record.doctor)}&background=E0E7FF&color=2563EB`} alt="Doctor" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
             </div>
-            <div className="flex items-center gap-4 border-l border-gray-100 pl-5">
-              <button className="relative p-2 text-gray-500 hover:bg-gray-50 rounded-full transition-colors">
-                <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-              </button>
-              <div className="flex items-center gap-3 cursor-pointer">
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(record?.doctor || "Nguyễn Văn Bình")}&background=E0E7FF&color=2563EB`}
-                  alt="Doctor"
-                  className="w-10 h-10 rounded-full"
-                />
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-bold text-gray-900 leading-tight mb-0.5">
-                    {record?.doctor || "BS. Nguyễn Văn Bình"}
-                  </p>
-                  <p className="text-xs text-gray-500">Bác sĩ nội tổng quát</p>
-                </div>
-              </div>
-            </div>
-          </div>
           </div>
         </header>
 
         {/* SCROLLABLE BODY */}
-        <div className="flex-1 overflow-y-auto pb-28 custom-scrollbar flex flex-col items-center">
-          <div className="w-full px-6 lg:px-12 xl:px-24 2xl:px-32 py-6">
-            {!id || !record ? (
-              renderEmptyState()
-            ) : (
-              <div className="w-full space-y-6">
-              {/* PATIENT INFO CARD */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-6 flex items-start justify-between">
-                <div className="flex items-start gap-6">
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(record.patientName)}&background=E0E7FF&color=2563EB&bold=true`}
-                    alt="Avatar"
-                    className="w-[84px] h-[84px] rounded-full object-cover"
-                  />
+        <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar">
+          <div className="max-w-6xl mx-auto space-y-6">
+            
+            {/* PATIENT INFO CARD */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-6 flex items-start justify-between">
+              <div className="flex items-start gap-6">
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(record.patientName)}&background=E0E7FF&color=2563EB&bold=true`} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm" />
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{record.patientName}</h2>
+                    <span className="px-2 py-0.5 bg-blue-50 text-[#2563EB] border border-blue-100 rounded text-xs font-bold flex items-center gap-1">
+                      {record.gender === 'Nam' ? '♂' : '♀'} {record.patientCode}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[13px]">
+                    <div className="flex items-center"><span className="text-gray-500 w-20">Ngày sinh:</span> <span className="font-medium text-gray-900">{record.patientDob?.includes('-') ? record.patientDob.split('-').reverse().join('/') : record.patientDob}</span></div>
+                    <div className="flex items-center"><span className="text-gray-500 w-16">SĐT:</span> <span className="font-medium text-gray-900">{record.patientPhone}</span></div>
+                    <div className="flex items-center"><span className="text-gray-500 w-20">CCCD:</span> <span className="font-medium text-gray-900">{record.patientCccd || "Chưa cập nhật"}</span></div>
+                    <div className="flex items-center"><span className="text-gray-500 w-16">Nhóm máu:</span> <span className="font-medium text-red-600">{record.bloodType || 'Chưa rõ'}</span></div>
+                    <div className="flex items-center col-span-2"><span className="text-gray-500 w-20">Địa chỉ:</span> <span className="font-medium text-gray-900 truncate" title={record.patientAddress}>{record.patientAddress}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-3 border-l border-gray-100 pl-6 h-full justify-center">
+                 <div className="text-right">
+                    <p className="text-[11px] font-bold text-gray-500 mb-0.5 uppercase tracking-wider">Ngày khám</p>
+                    <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5"><Calendar size={14} className="text-gray-400" /> {record.date}</p>
+                 </div>
+                 <button className="px-5 py-2 text-[13px] font-bold text-[#2563EB] bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors w-40">
+                   Xem lịch sử
+                 </button>
+                 <Link href={`/doctor/records/create?patientId=${record.patientId}`} className="px-5 py-2 text-[13px] font-bold text-white bg-[#2563EB] rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 w-40 shadow-sm">
+                   <Plus size={16} /> Bệnh án mới
+                 </Link>
+              </div>
+            </div>
+
+            {/* TABS */}
+            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.name}
+                  onClick={() => setActiveTab(tab.name)}
+                  className={`flex items-center gap-2 px-5 py-2.5 text-[13px] font-bold rounded-xl transition-all whitespace-nowrap ${activeTab === tab.name ? "bg-[#2563EB] text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                >
+                  <tab.icon size={15} /> {tab.name}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB CONTENTS */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 min-h-[400px]">
+               
+               {/* 1. THÔNG TIN KHÁM */}
+               {activeTab === "Thông tin khám" && (
+                  <div className="space-y-6">
+                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4"><FileText size={20} className="text-[#2563EB]" /> Thông tin lâm sàng & Bệnh sử</h3>
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Lý do đến khám</p>
+                              <p className="font-bold text-gray-900 text-sm">{record.reason || "Không ghi nhận lý do"}</p>
+                           </div>
+                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Triệu chứng & Bệnh sử</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{record.symptoms || "Không có ghi nhận"}</p>
+                           </div>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Tiền sử bệnh</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{record.medicalHistory || "Không có tiền sử bệnh lý đáng chú ý"}</p>
+                           </div>
+                           <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                              <p className="text-[11px] text-orange-600 font-bold uppercase tracking-wider mb-2">Tiền sử dị ứng</p>
+                              <p className="text-sm text-orange-800 font-medium">{record.allergies && record.allergies !== 'Không có' ? record.allergies : "Không ghi nhận dị ứng"}</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
+               {/* 2. SINH HIỆU */}
+               {activeTab === "Sinh hiệu" && (
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-[22px] font-black text-gray-900 tracking-tight">
-                        {record.patientName}
-                      </h2>
-                      <span className="px-2 py-0.5 bg-blue-50 text-[#2563EB] border border-blue-100 rounded text-xs font-bold flex items-center gap-1">
-                        ♂ {record.patientCode}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
-                      <div className="flex items-center">
-                        <span className="text-gray-500 w-[70px]">Ngày sinh:</span>
-                        <span className="font-medium text-gray-900">{record.patientDob?.includes('-') ? record.patientDob.split('-').reverse().join('/') : record.patientDob}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-500 w-20">Giới tính:</span>
-                        <span className="font-medium text-gray-900">{record.gender}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-500 w-[70px]">SĐT:</span>
-                        <span className="font-medium text-gray-900">{record.patientPhone}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-500 w-20">Nhóm máu:</span>
-                        <span className="font-medium text-gray-900">{record.bloodType}</span>
-                      </div>
-                      <div className="flex items-center col-span-2">
-                        <span className="text-gray-500 w-[70px]">CCCD:</span>
-                        <span className="font-medium text-gray-900">{record.patientCccd || "Chưa cập nhật"}</span>
-                      </div>
-                      <div className="flex items-start col-span-2">
-                        <span className="text-gray-500 w-[70px]">Địa chỉ:</span>
-                        <span className="font-medium text-gray-900 flex-1">{record.patientAddress}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-12 border-l border-gray-100 pl-10">
-                  <div className="space-y-5">
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                        Bác sĩ phụ trách
-                      </p>
-                      <p className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5">
-                        <Stethoscope size={14} className="text-gray-400" />{" "}
-                        {record.doctor}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                        Chuyên khoa
-                      </p>
-                      <p className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5">
-                        <Activity size={14} className="text-gray-400" />{" "}
-                        {record.doctorSpecialty}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    <div>
-                      <p className="text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                        Lần khám gần nhất
-                      </p>
-                      <p className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5">
-                        <Clock size={14} className="text-gray-400" />{" "}
-                        {record.date} - {record.time}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2.5">
-                    <button className="px-5 py-2 text-[13px] font-bold text-[#2563EB] bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors w-44 whitespace-nowrap">
-                      Xem hồ sơ sức khỏe
-                    </button>
-                    <Link
-                      href={`/doctor/records/create?patientId=${record.patientId}`}
-                      className="px-5 py-2 text-[13px] font-bold text-white bg-[#2563EB] rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 w-44 whitespace-nowrap"
-                    >
-                      <Plus size={16} /> Tạo bệnh án mới
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* TABS */}
-              <div className="flex gap-3">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.name}
-                    onClick={() => setActiveTab(tab.name)}
-                    className={`flex items-center gap-2 px-6 py-2.5 text-[13px] font-bold rounded-xl transition-all ${activeTab === tab.name ? "bg-[#2563EB] text-white shadow-md shadow-blue-500/20" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-                  >
-                    <tab.icon size={15} /> {tab.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* MAIN GRID */}
-              {activeTab === "Lịch sử khám" ? (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[500px]">
-                  <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                    <h3 className="text-[15px] font-bold text-gray-900">
-                      Lịch sử khám bệnh ({record.pastVisits?.length || 0})
-                    </h3>
-                  </div>
-                  <div className="p-0">
-                    {!record.pastVisits || record.pastVisits.length === 0 ? (
-                      <div className="p-12 text-center text-gray-500 font-medium">
-                        Bệnh nhân chưa có lịch sử khám nào trước đây.
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-gray-100">
-                        {record.pastVisits.map((visit: any) => (
-                          <div
-                            key={visit.id}
-                            className="group p-5 hover:bg-blue-50/40 transition-all flex justify-between items-center bg-white border border-transparent hover:border-blue-100 rounded-xl m-2 hover:shadow-sm"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:scale-105 transition-transform">
-                                <Calendar size={22} className="stroke-[1.5]" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <p className="text-[15px] font-black text-gray-900">
-                                    {visit.date}
-                                  </p>
-                                  <span className="px-2 py-0.5 bg-green-50 text-green-600 text-[10px] font-bold rounded-full border border-green-100">
-                                    Đã hoàn thành
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[13px]">
-                                  <Stethoscope size={14} className="text-gray-400" />
-                                  <span className="font-semibold text-gray-700">
-                                    {visit.doctorName}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="shrink-0 flex items-center gap-3">
-                              <button
-                                onClick={() => setSelectedVisit(visit)}
-                                className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-[13px] font-bold rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors flex items-center gap-2"
-                              >
-                                Xem chi tiết
-                                <ChevronRight size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* COL 1: Thông tin y tế cơ bản */}
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-4 uppercase tracking-wider">
-                        Thông tin lần khám
-                      </h3>
-                      <div className="space-y-4 text-[13px]">
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                          <div>
-                            <p className="text-[11px] text-gray-500 mb-1">
-                              Mã bệnh án
-                            </p>
-                            <p className="font-bold text-gray-900">
-                              {record.baCode}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[11px] text-gray-500 mb-1">
-                              Ngày khám
-                            </p>
-                            <p className="font-bold text-gray-900">
-                              {record.date} - {record.time}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[11px] text-gray-500 mb-1">
-                              Phòng khám
-                            </p>
-                            <p className="font-bold text-gray-900">
-                              {record.appointment?.room || "Phòng khám"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[11px] text-gray-500 mb-1">
-                              Hình thức khám
-                            </p>
-                            <p className="font-bold text-gray-900">
-                              {record.appointment?.room
-                                ? "Khám trực tiếp"
-                                : "Khám từ xa"}
-                            </p>
-                          </div>
+                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6"><Activity size={20} className="text-red-500" /> Chỉ số sinh tồn</h3>
+                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-red-500 font-bold uppercase mb-1">Huyết áp</p>
+                           <p className="text-2xl font-black text-red-600">{record.vitals.bloodPressure || "--"}</p>
+                           <p className="text-[10px] text-red-400 font-medium">mmHg</p>
                         </div>
-                        <div className="pt-2">
-                          <p className="text-[11px] text-gray-500 mb-1">
-                            Lý do khám
-                          </p>
-                          <p className="font-medium text-gray-900 leading-relaxed">
-                            {record.reason}
-                          </p>
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-emerald-500 font-bold uppercase mb-1">Nhịp tim</p>
+                           <p className="text-2xl font-black text-emerald-600">{record.vitals.heartRate || "--"}</p>
+                           <p className="text-[10px] text-emerald-400 font-medium">lần/phút</p>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                        <h3 className="text-[11px] font-bold text-[#2563EB] mb-3 uppercase tracking-wider">
-                          Bệnh sử
-                        </h3>
-                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">
-                          {record.symptoms}
-                        </p>
-
-                      </div>
-                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                        <h3 className="text-[11px] font-bold text-[#2563EB] mb-3 uppercase tracking-wider">
-                          Tiền sử bệnh
-                        </h3>
-                        <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">
-                          {record.medicalHistory || "Không có ghi nhận"}
-                        </p>
-                        {record.allergies && record.allergies !== 'Không có' && record.allergies !== 'Không' && (
-                          <div className="mt-3 pt-3 border-t border-red-100">
-                            <span className="text-[11px] font-bold text-red-500 uppercase">Dị ứng:</span>
-                            <span className="ml-2 text-[13px] font-medium text-red-700">{record.allergies}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-4 uppercase tracking-wider">
-                        Dấu hiệu sinh tồn
-                      </h3>
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            Huyết áp
-                          </span>
-                          <span className="text-lg font-black text-red-600 leading-none">
-                            {record.vitals.bloodPressure}
-                          </span>
-                          <span className="text-[9px] text-red-400 mt-1 font-bold">
-                            mmHg
-                          </span>
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-blue-500 font-bold uppercase mb-1">SpO2</p>
+                           <p className="text-2xl font-black text-blue-600">{record.vitals.spO2 !== "--" ? String(record.vitals.spO2).replace("%", "") : "--"}</p>
+                           <p className="text-[10px] text-blue-400 font-medium">%</p>
                         </div>
-                        <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            Nhịp tim
-                          </span>
-                          <span className="text-lg font-black text-emerald-600 leading-none">
-                            {record.vitals.heartRate}
-                          </span>
-                          <span className="text-[9px] text-emerald-400 mt-1 font-bold">
-                            lần/phút
-                          </span>
+                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-orange-500 font-bold uppercase mb-1">Nhiệt độ</p>
+                           <p className="text-2xl font-black text-orange-600">{record.vitals.temperature || "--"}</p>
+                           <p className="text-[10px] text-orange-400 font-medium">°C</p>
                         </div>
-                        <div className="bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            Nhịp thở
-                          </span>
-                          <span className="text-lg font-black text-blue-600 leading-none">
-                            {record.vitals.respiratoryRate}
-                          </span>
-                          <span className="text-[9px] text-blue-400 mt-1 font-bold">
-                            lần/phút
-                          </span>
+                        <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-cyan-500 font-bold uppercase mb-1">Nhịp thở</p>
+                           <p className="text-2xl font-black text-cyan-600">{record.vitals.respiratoryRate || "--"}</p>
+                           <p className="text-[10px] text-cyan-400 font-medium">lần/phút</p>
                         </div>
-                        <div className="bg-gradient-to-br from-orange-50 to-white border border-orange-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            Nhiệt độ
-                          </span>
-                          <span className="text-lg font-black text-orange-500 leading-none">
-                            {record.vitals.temperature}
-                          </span>
-                          <span className="text-[9px] text-orange-400 mt-1 font-bold">
-                            °C
-                          </span>
+                        <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 text-center">
+                           <p className="text-[11px] text-purple-500 font-bold uppercase mb-1">Cân nặng</p>
+                           <p className="text-2xl font-black text-purple-600">{record.vitals.weight || "--"}</p>
+                           <p className="text-[10px] text-purple-400 font-medium">kg</p>
                         </div>
-                        <div className="bg-gradient-to-br from-purple-50 to-white border border-purple-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20 mt-2">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            SpO₂
-                          </span>
-                          <span className="text-lg font-black text-purple-600 leading-none">
-                            {record.vitals.spO2 !== "--"
-                              ? String(record.vitals.spO2).replace("%", "")
-                              : "--"}
-                          </span>
-                          <span className="text-[9px] text-purple-400 mt-1 font-bold">
-                            %
-                          </span>
-                        </div>
-                        <div className="bg-gradient-to-br from-cyan-50 to-white border border-cyan-100 rounded-2xl shadow-sm p-2 text-center flex flex-col items-center justify-center h-20 mt-2">
-                          <span className="text-[10px] text-gray-500 font-medium mb-0.5">
-                            Cân nặng
-                          </span>
-                          <span className="text-lg font-black text-cyan-600 leading-none">
-                            {record.vitals.weight}
-                          </span>
-                          <span className="text-[9px] text-cyan-400 mt-1 font-bold">
-                            kg
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-3 uppercase tracking-wider">
-                        Khám lâm sàng
-                      </h3>
-                      <div className="text-[13px] text-gray-700 space-y-1.5 leading-relaxed">
-                        {record.clinicalExam ? (
-                          record.clinicalExam
-                            .split("\n")
-                            .map((n: string, i: number) => <p key={i}>{n}</p>)
-                        ) : (
-                          <p>Không có ghi nhận</p>
-                        )}
-                      </div>
-
-                    </div>
+                     </div>
                   </div>
+               )}
 
-                  {/* COL 2: Chẩn đoán & Hướng điều trị */}
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-5 uppercase tracking-wider border-b border-gray-100 pb-3">
-                        Chẩn đoán
-                      </h3>
-                      <div className="space-y-5 text-[13px]">
+               {/* 3. CHẨN ĐOÁN */}
+               {activeTab === "Chẩn đoán" && (
+                  <div>
+                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6"><Stethoscope size={20} className="text-[#2563EB]" /> Kết quả khám & Chẩn đoán</h3>
+                     <div className="grid grid-cols-2 gap-6">
                         <div>
-                          <p className="text-[11px] text-gray-500 mb-1.5">
-                            Chẩn đoán chính
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900 text-sm">
-                              {record.diagnosis}
-                            </span>
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded">
-                              ICD
-                            </span>
-                          </div>
+                           <h4 className="text-sm font-bold text-gray-700 mb-3 border-b border-gray-100 pb-2">Khám lâm sàng</h4>
+                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed min-h-[120px]">
+                              {record.clinicalExam || "Không ghi nhận khám lâm sàng"}
+                           </div>
                         </div>
-                        <div>
-                          <p className="text-[11px] text-gray-500 mb-1.5">
-                            Chẩn đoán phụ
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900 text-sm">
-                              {record.secondaryDiagnosis}
-                            </span>
-                            <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded">
-                              N/A
-                            </span>
-                          </div>
+                        <div className="space-y-4">
+                           <h4 className="text-sm font-bold text-gray-700 mb-3 border-b border-gray-100 pb-2">Chẩn đoán xác định</h4>
+                           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                              <p className="text-[11px] text-blue-500 font-bold uppercase tracking-wider mb-1">Chẩn đoán chính</p>
+                              <p className="font-bold text-blue-900 text-sm">{record.diagnosis || "Chưa có chẩn đoán"}</p>
+                           </div>
+                           <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Chẩn đoán phụ</p>
+                              <p className="font-medium text-gray-900 text-sm">{record.secondaryDiagnosis || "Không có chẩn đoán phụ"}</p>
+                           </div>
                         </div>
-                        <div className="pt-3 border-t border-gray-100">
-                          <p className="text-[11px] text-gray-500 mb-1.5">
-                            Kết luận
-                          </p>
-                          <p className="text-gray-700 leading-relaxed font-medium whitespace-pre-wrap">
-                            {record.notes}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                     </div>
+                  </div>
+               )}
 
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-4 uppercase tracking-wider border-b border-gray-100 pb-3">
-                        Hướng điều trị
-                      </h3>
-                      <div className="text-[13px] text-gray-700 space-y-1.5 leading-relaxed">
-                        {record.treatment
-                          .split("\n")
-                          .map((t: string, i: number) => (
-                            <p key={i}>{t}</p>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-[#2563EB] mb-4 uppercase tracking-wider border-b border-gray-100 pb-3">
-                        Kế hoạch tái khám
-                      </h3>
-                      {record.followUpDate ? (
-                        <div className="space-y-4 text-[13px]">
-                          <div>
-                            <p className="text-[11px] text-gray-500 mb-1.5">
-                              Thời gian tái khám
-                            </p>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg font-bold text-gray-900">
-                              <Clock size={14} className="text-gray-400" />{" "}
-                              {record.followUpDate.split("-").reverse().join("/")} - {record.followUpTime || "00:00"}
-                            </div>
-                          </div>
-                          {record.followUpReason && (
-                            <div>
-                              <p className="text-[11px] text-gray-500 mb-1">
-                                Lý do tái khám
-                              </p>
-                              <p className="font-bold text-gray-900">
-                                {record.followUpReason}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-[13px] text-gray-500">Không có lịch hẹn tái khám</p>
-                      )}
-                    </div>
-
-                    {/* Ghi chú */}
-                    <div className="bg-[#FFFDF5] border border-[#FDE68A] rounded-2xl p-5 relative">
-                      <h3 className="text-[11px] font-bold text-gray-900 mb-2 uppercase tracking-wider">
-                        Ghi chú của bác sĩ
-                      </h3>
-                      <div className="text-[13px] text-gray-800 leading-relaxed font-medium whitespace-pre-wrap">
-                        {record.notes ? (
-                          record.notes
-                            .split("\n")
-                            .map((n: string, i: number) => <p key={i}>{n}</p>)
+               {/* 4. ĐIỀU TRỊ */}
+               {activeTab === "Điều trị" && (
+                  <div>
+                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6"><HeartPulse size={20} className="text-emerald-500" /> Hướng điều trị & Kế hoạch</h3>
+                     <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 mb-6">
+                        <h4 className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider mb-3">Phác đồ điều trị</h4>
+                        <p className="text-sm text-emerald-900 whitespace-pre-wrap leading-relaxed">{record.treatment || "Chưa có hướng điều trị cụ thể"}</p>
+                     </div>
+                     <div className="bg-orange-50 p-5 rounded-2xl border border-orange-100">
+                        <h4 className="text-[11px] text-orange-600 font-bold uppercase tracking-wider mb-3">Kế hoạch tái khám</h4>
+                        {record.followUpDate ? (
+                           <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-orange-200 text-orange-700 font-bold">
+                                 <Clock size={16} /> {record.followUpDate.split("-").reverse().join("/")} - {record.followUpTime || "00:00"}
+                              </div>
+                              <div className="text-sm font-medium text-orange-900">{record.followUpReason || "Kiểm tra lại sau điều trị"}</div>
+                           </div>
                         ) : (
-                          <p className="text-gray-400 font-normal">
-                            Không có ghi chú
-                          </p>
+                           <p className="text-sm text-orange-800 italic">Không có chỉ định tái khám</p>
                         )}
-                      </div>
-                      <div className="flex justify-between items-end mt-4 pt-4 border-t border-[#FDE68A]/50">
-                        <span className="text-[10px] text-gray-400">
-                          Cập nhật: {record.date} - {record.time}
-                        </span>
-                        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded shadow-sm border border-[#FDE68A]">
-                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-bold text-blue-600">
-                            {record.doctor.split(" ").pop()?.charAt(0) || "B"}
-                          </div>
-                          <span className="text-[10px] font-bold text-gray-700">
-                            {record.doctor}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                     </div>
                   </div>
+               )}
 
-                  {/* COL 3: Đơn thuốc, Xét nghiệm, CĐHA, Ghi chú */}
-                  <div className="space-y-6">
-                    {/* Đơn thuốc */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">
-                          Đơn thuốc ({record.prescriptions?.[0]?.items?.length || 0})
-                        </h3>
-                        <button className="text-[11px] font-bold text-[#2563EB] hover:underline">
-                          Xem tất cả
-                        </button>
-                      </div>
-                      <table className="w-full text-[12px] mb-4">
-                        <thead className="text-[11px] text-gray-400 text-left border-b border-gray-100">
-                          <tr>
-                            <th className="pb-2 font-medium">Tên thuốc</th>
-                            <th className="pb-2 font-medium">Liều dùng</th>
-                            <th className="pb-2 font-medium text-right">Số lượng</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-700">
-                          {record.prescriptions?.[0]?.items?.length > 0 ? (
-                            record.prescriptions[0].items.map((item: any, idx: number) => (
-                              <tr key={idx} className="border-b border-gray-50 last:border-0">
-                                <td className="py-2.5 font-bold text-gray-900">
-                                  {idx + 1}. {item.medicationName}
-                                </td>
-                                <td className="py-2.5 text-[11px]">{item.instructions || item.dosage}</td>
-                                <td className="py-2.5 text-right font-medium">
-                                  {item.remaining} {item.iconType === 'liquid' ? 'ml' : 'viên'}
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={3} className="py-6 text-center text-[12px] text-gray-400 italic bg-gray-50 rounded-lg">
-                                Chưa kê đơn thuốc nào
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                      <button className="w-full py-2 bg-white border border-gray-200 text-[#2563EB] hover:bg-blue-50 rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors">
-                        <Plus size={14} /> Kê đơn thuốc
-                      </button>
-                    </div>
-
-                    {/* Xét nghiệm */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-[11px] font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                          Xét nghiệm (1){" "}
-                          <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[9px] rounded">
-                            Đã có kết quả
-                          </span>
-                        </h3>
-                        <button className="text-[11px] font-bold text-[#2563EB] hover:underline">
-                          Xem tất cả
-                        </button>
-                      </div>
-                      <table className="w-full text-[12px] mb-4">
-                        <thead className="text-[11px] text-gray-400 text-left border-b border-gray-100">
-                          <tr>
-                            <th className="pb-2 font-medium">Tên xét nghiệm</th>
-                            <th className="pb-2 font-medium">Ngày chỉ định</th>
-                            <th className="pb-2 font-medium text-right">
-                              Trạng thái
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-gray-700">
-                          <tr>
-                            <td className="py-2.5 font-bold text-gray-900">
-                              Tổng phân tích máu
-                            </td>
-                            <td className="py-2.5 text-[11px]">20/08/2026</td>
-                            <td className="py-2.5 text-right">
-                              <span className="px-2 py-0.5 bg-green-50 text-green-600 border border-green-100 rounded text-[10px] font-bold">
-                                Đã có kết quả
-                              </span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <button className="w-full py-2 bg-white border border-gray-200 text-[#2563EB] hover:bg-blue-50 rounded-lg font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors">
-                        <Plus size={14} /> Chỉ định xét nghiệm
-                      </button>
-                    </div>
-
-                    {/* Lịch sử khám */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow p-5">
-                      <h3 className="text-[11px] font-bold text-gray-900 mb-4 uppercase tracking-wider">
-                        Lịch sử khám ({record.pastVisits?.length || 0})
-                      </h3>
-                      {!record.pastVisits || record.pastVisits.length === 0 ? (
-                        <div className="py-4 text-center text-gray-400 text-[12px] bg-gray-50 rounded-lg">
-                          Chưa có lịch sử khám nào khác
-                        </div>
-                      ) : (
-                        <div className="space-y-4 pr-1">
-                          {record.pastVisits.slice(0, 3).map((visit: any) => (
-                            <div
-                              key={visit.id}
-                              className="border border-gray-100 rounded-lg p-3 hover:border-blue-200 transition-colors bg-gray-50"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="text-[12px] font-bold text-[#2563EB]">
-                                  {visit.date}
-                                </span>
-                                <span className="text-[10px] bg-white border border-gray-200 px-1.5 py-0.5 rounded text-gray-600 font-bold">
-                                  {visit.doctorName}
-                                </span>
-                              </div>
-                              <div className="text-[12px] text-gray-700 space-y-1 mt-3">
-                                {visit.followUpDate ? (
-                                  <p>
-                                    <span className="text-gray-500 font-medium">
-                                      Hẹn tái khám:
-                                    </span>{" "}
-                                    <span className="font-bold text-orange-600">
-                                      {visit.followUpDate.split('-').reverse().join('/')}
-                                    </span>
-                                  </p>
-                                ) : (
-                                  <p className="text-gray-400 italic">Không hẹn tái khám</p>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => setSelectedVisit(visit)}
-                                className="mt-2 text-[11px] text-blue-500 font-bold hover:underline inline-block"
-                              >
-                                Xem chi tiết &rarr;
-                              </button>
-                            </div>
-                          ))}
-                          {record.pastVisits.length > 3 && (
-                            <button
-                              onClick={() => setActiveTab("Lịch sử khám")}
-                              className="w-full py-2 mt-2 text-center text-[12px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                            >
-                              Xem tất cả ({record.pastVisits.length})
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+               {/* OTHER TABS */}
+               {["Đơn thuốc", "Xét nghiệm", "Lịch sử khám", "Ghi chú"].includes(activeTab) && (
+                  <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                     <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4">
+                        {activeTab === "Đơn thuốc" && <Pill size={28} />}
+                        {activeTab === "Xét nghiệm" && <FlaskConical size={28} />}
+                        {activeTab === "Lịch sử khám" && <History size={28} />}
+                        {activeTab === "Ghi chú" && <FileText size={28} />}
+                     </div>
+                     <h3 className="text-lg font-bold text-gray-900 mb-2">Module {activeTab}</h3>
+                     <p className="text-gray-500 text-sm max-w-md">Chức năng này đang được phát triển theo luồng mới hoặc không có dữ liệu cho bệnh án này.</p>
                   </div>
-                </div>
-              )}
-              </div>
-            )}
+               )}
+
+            </div>
           </div>
         </div>
-
-        {/* BOTTOM FIXED ACTION BAR */}
-        {!id || !record ? null : (
-          <div className="bg-white border-t border-gray-100 shrink-0 z-20 flex justify-center">
-            <div className="w-full px-8 lg:px-12 xl:px-24 2xl:px-32 py-3.5 flex items-center justify-between">
-              <button className="flex items-center gap-1.5 text-red-500 border border-red-200 hover:bg-red-50 px-5 py-2 rounded-lg font-bold transition-colors text-[13px]">
-              Kết thúc điều trị
-            </button>
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-1.5 px-5 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                <Printer size={16} /> In bệnh án
-              </button>
-              <button className="flex items-center gap-1.5 px-5 py-2 bg-white border border-gray-200 rounded-lg text-[13px] font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                <Save size={16} /> Lưu nháp
-              </button>
-              <button className="flex items-center gap-1.5 px-6 py-2 bg-gradient-to-r from-blue-600 to-[#2563EB] text-white rounded-xl shadow-md hover:shadow-lg hover:shadow-blue-500/20 text-[13px] font-bold hover:bg-blue-700 transition-colors">
-                <Save size={16} /> Lưu bệnh án
-              </button>
-            </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL CHI TIẾT LỊCH SỬ KHÁM */}
-        {selectedVisit && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Chi tiết lần khám
-                  </h3>
-                  <p className="text-[13px] text-gray-500 mt-1">
-                    Ngày {selectedVisit.date} - BS. {selectedVisit.doctorName}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedVisit(null)}
-                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Khám lâm sàng */}
-                  <div className="space-y-2">
-                    <h4 className="text-[11px] font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                      <Activity size={14} /> Khám lâm sàng
-                    </h4>
-                    <div className="bg-gray-50/50 rounded-2xl p-4 text-[13px] text-gray-800 leading-relaxed border border-gray-100 whitespace-pre-wrap">
-                      {(selectedVisit.clinicalExam || selectedVisit.symptoms)?.replace(/ - /g, '\n- ')}
-                    </div>
-                  </div>
-
-                  {/* Chẩn đoán */}
-                  <div className="space-y-2">
-                    <h4 className="text-[11px] font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                      <Stethoscope size={14} /> Chẩn đoán
-                    </h4>
-                    <div className="bg-blue-50/50 rounded-2xl p-4 text-[13px] font-bold text-gray-900 leading-relaxed border border-blue-100">
-                      {selectedVisit.diagnosis}
-                      {selectedVisit.secondaryDiagnosis && selectedVisit.secondaryDiagnosis !== 'Không có' && (
-                        <div className="mt-2 pt-2 border-t border-blue-100 font-normal text-gray-700">
-                          <span className="font-bold text-gray-900">Phụ:</span> {selectedVisit.secondaryDiagnosis}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  {/* Kế hoạch điều trị */}
-                  <div className="space-y-2">
-                    <h4 className="text-[11px] font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                      <Pill size={14} /> Kế hoạch điều trị
-                    </h4>
-                    <div className="bg-emerald-50/50 rounded-2xl p-4 text-[13px] text-gray-800 leading-relaxed border border-emerald-100 whitespace-pre-wrap">
-                      {selectedVisit.treatment?.replace(/ - /g, '\n- ')}
-                    </div>
-                  </div>
-
-                  {/* Hẹn tái khám */}
-                  <div className="space-y-2">
-                    <h4 className="text-[11px] font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                      <Clock size={14} /> Hẹn tái khám
-                    </h4>
-                    <div className="bg-orange-50/50 rounded-2xl p-4 text-[13px] text-gray-800 leading-relaxed border border-orange-100">
-                      {selectedVisit.followUpDate ? (
-                        <>
-                          <p>
-                            <span className="font-bold">Thời gian:</span>{" "}
-                            {selectedVisit.followUpDate.split("-").reverse().join("/")} - {selectedVisit.followUpTime || "00:00"}
-                          </p>
-                          {selectedVisit.followUpReason && (
-                            <p className="mt-1.5">
-                              <span className="font-bold">Lý do:</span>{" "}
-                              {selectedVisit.followUpReason}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        "Không có lịch hẹn tái khám"
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ghi chú bác sĩ */}
-                <div className="space-y-2">
-                  <h4 className="text-[11px] font-bold text-[#2563EB] uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText size={14} /> Ghi chú của bác sĩ
-                  </h4>
-                  <div className="bg-[#FFFDF5] rounded-2xl p-4 text-[13px] text-gray-800 leading-relaxed border border-[#FDE68A] whitespace-pre-wrap">
-                    {selectedVisit.notes || "Không có ghi chú"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end">
-                <button
-                  onClick={() => setSelectedVisit(null)}
-                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 text-[13px] font-bold rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
 }
 
-export default function DoctorMedicalRecordDetail() {
+export default function MedicalRecordDetail() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]"><div className="w-8 h-8 border-4 border-[#2563EB] border-t-transparent rounded-full animate-spin"></div></div>}>
       <MedicalRecordDetailContent />
     </Suspense>
   );

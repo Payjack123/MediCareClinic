@@ -27,9 +27,9 @@ export async function getAppointments(filters?: { search?: string, date?: string
       // Let's assume DB stores as 'DD/MM/YYYY' since that's what we used in creating previously or we can check the format
       // Let's just pass whatever the input is directly if it matches the format, 
       // but usually the DB has string bookingDate
-      whereClause.bookingDate = filters.date; 
+      whereClause.bookingDate = filters.date;
     }
-    
+
     if (filters?.status) {
       whereClause.status = filters.status;
     }
@@ -87,11 +87,36 @@ export async function createAppointment(data: {
   bookingTime: string; // 08:00 - 10:00
   room?: string;
   reason?: string;
+  overrideLimit?: boolean;
 }) {
   try {
     const cookieStore = await cookies();
     if (cookieStore.get('user_role')?.value !== 'admin') {
       return { success: false, message: 'Không có quyền truy cập' };
+    }
+
+    // KIỂM TRA GIỚI HẠN SỐ LƯỢNG BỆNH NHÂN TRONG NGÀY
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: data.doctorId },
+      select: { maxPatientsPerDay: true }
+    });
+
+    const maxPatients = doctorProfile?.maxPatientsPerDay || 10;
+
+    const currentAppointmentsCount = await prisma.appointment.count({
+      where: {
+        doctorId: data.doctorId,
+        bookingDate: data.bookingDate,
+        status: { not: 'ĐÃ HỦY' }
+      }
+    });
+
+    if (currentAppointmentsCount >= maxPatients && !data.overrideLimit) {
+      return {
+        success: false,
+        message: 'Bác sĩ đã kín lịch trong ngày này. Bạn có muốn sử dụng quyền ghi đè (override) không?',
+        requiresOverride: true
+      };
     }
 
     // Tự sinh mã lịch hẹn: LH[YYMMDD]-[PatientID]
@@ -100,13 +125,13 @@ export async function createAppointment(data: {
     if (dateParts.length === 3) {
       shortDate = `${dateParts[2].slice(-2)}${dateParts[1]}${dateParts[0]}`;
     }
-    
+
     // To ensure uniqueness, add random suffix if needed, but patientId + date should be unique enough for one day.
     // We can just append a small random number or the count for that day.
     const countToday = await prisma.appointment.count({
       where: { bookingDate: data.bookingDate }
     });
-    
+
     const code = `LH${shortDate}-${String(data.patientId).padStart(4, '0')}-${countToday + 1}`;
 
     const newAppointment = await prisma.appointment.create({
@@ -139,7 +164,7 @@ export async function getAppointmentById(id: number) {
 
     const appointment = await prisma.appointment.findUnique({
       where: { id },
-      include: { 
+      include: {
         patient: { include: { patientProfile: true } },
         doctor: { include: { doctorProfile: true } },
       }
