@@ -143,3 +143,84 @@ export async function getMedicalHistoryData() {
     return { success: false, message: error.message };
   }
 }
+
+export async function getMedicalHistoryById(id: number) {
+  try {
+    const cookieStore = await cookies();
+    const userIdStr = cookieStore.get('user_id')?.value;
+    if (!userIdStr) return { success: false, message: 'Chưa đăng nhập' };
+    
+    const apt = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        doctor: { include: { doctorProfile: true } },
+        examination: true,
+        patient: { include: { patientProfile: true } }
+      }
+    });
+
+    if (!apt) return { success: false, message: 'Không tìm thấy lịch khám' };
+    if (apt.patientId !== parseInt(userIdStr)) return { success: false, message: 'Không có quyền truy cập' };
+
+    const parts = apt.bookingDate.split('/');
+    let day = '', month = '', year = '';
+    if (parts.length === 3) {
+      day = parts[0];
+      month = parts[1];
+      year = parts[2];
+    }
+
+    let uiStatus = apt.status === 'HOÀN THÀNH' ? 'Đã hoàn thành' : 'Đã hủy';
+    let statusColor = apt.status === 'HOÀN THÀNH' ? 'text-blue-700 bg-blue-100' : 'text-red-700 bg-red-100';
+
+    let parsedNote = apt.reason || '';
+    let patientDetails = null;
+
+    if (parsedNote.startsWith('Người khám: ')) {
+      const partsArr = parsedNote.split('. Lý do: ');
+      const patientPart = partsArr[0]; 
+      parsedNote = partsArr[1] || '';
+
+      const subParts = patientPart.split(' - ');
+      patientDetails = {
+        name: subParts.find((p: string) => p.startsWith('Người khám: '))?.replace('Người khám: ', '') || '',
+        cccd: subParts.find((p: string) => p.startsWith('CCCD: '))?.replace('CCCD: ', '') || '',
+        phone: subParts.find((p: string) => p.startsWith('SĐT: '))?.replace('SĐT: ', '') || '',
+        address: subParts.find((p: string) => p.startsWith('ĐC: '))?.replace('ĐC: ', '') || ''
+      };
+    }
+
+    if (!patientDetails && apt.patient) {
+      patientDetails = {
+        name: (apt as any).patient.fullName || '',
+        cccd: (apt as any).patient.patientProfile?.cccd || '',
+        phone: (apt as any).patient.phone || '',
+        address: (apt as any).patient.address || ''
+      };
+    }
+
+    const data = {
+      id: apt.id,
+      day, month, year,
+      time: apt.bookingTime,
+      rawDate: apt.bookingDate,
+      specialty: apt.specialty,
+      doctor: apt.doctor.fullName,
+      clinic: 'Phòng khám 201 - Tầng 2',
+      status: uiStatus,
+      statusColor,
+      reason: parsedNote || 'Khám sức khỏe định kỳ',
+      patientDetails,
+      diagnosis: apt.examination?.diagnosis || (uiStatus === 'Đã hủy' ? '' : 'Chưa có chẩn đoán'),
+      notes: apt.examination?.notes || '',
+      price: apt.doctor.doctorProfile?.price || 200000,
+      avatar: apt.doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(apt.doctor.fullName)}&background=2563EB&color=fff`,
+    };
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error("Lỗi lấy chi tiết lịch sử khám:", error);
+    return { success: false, message: error.message };
+  }
+}
+

@@ -18,8 +18,6 @@ export default function MedicalHistoryPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,9 +37,6 @@ export default function MedicalHistoryPage() {
         setUserData(res.data.user);
         setAppointments(res.data.appointments);
         setStats(res.data.stats);
-        if (res.data.appointments.length > 0) {
-          setSelectedAppointment(res.data.appointments[0]);
-        }
       } else {
         router.push('/login');
       }
@@ -272,49 +267,46 @@ export default function MedicalHistoryPage() {
             </button>
           </div>
 
-          {/* MAIN LAYOUT: 2 COLUMNS */}
-          <div className="flex flex-col lg:flex-row gap-6">
+          {/* MAIN LAYOUT: LIST ONLY */}
+          <div className="w-full">
             
-            {/* LEFT COLUMN: LIST */}
-            <div className="flex-[3] lg:max-w-3xl flex flex-col">
+            <div className="flex flex-col">
               <h2 className="text-sm font-bold text-gray-700 mb-3 px-1">Danh sách lịch sử khám</h2>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 {currentAppointments.length > 0 ? currentAppointments.map((app, idx) => (
                   <div
                     key={app.id}
-                    onClick={() => setSelectedAppointment(app)}
-                    className={`flex items-center p-4 border-b border-gray-50 cursor-pointer transition-all hover:bg-gray-50 ${selectedAppointment?.id === app.id ? 'bg-blue-50/40 relative' : ''}`}
+                    onClick={() => router.push(`/patient/medical-history/${app.id}`)}
+                    className="flex items-center p-4 border-b border-gray-50 cursor-pointer transition-all hover:bg-gray-50 hover:border-blue-100 group"
                   >
-                    {/* Active Indicator line */}
-                    {selectedAppointment?.id === app.id && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#2563EB]"></div>
-                    )}
                     
                     {/* Date Block */}
-                    <div className="w-28 flex flex-col items-center justify-center shrink-0 pr-4">
+                    <div className="w-32 flex flex-col items-center justify-center shrink-0 pr-4">
                       <span className="text-3xl font-black text-gray-900">{app.day}</span>
                       <span className="text-[11px] text-gray-500 uppercase font-medium mt-0.5">Tháng {app.month}, {app.year}</span>
                       <span className="text-xs font-bold text-gray-700 mt-1">{app.time}</span>
                     </div>
 
                     {/* Icon based on specialty or default avatar */}
-                    <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center shrink-0 mr-4 bg-gray-50 overflow-hidden">
+                    <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center shrink-0 mr-4 bg-gray-50 overflow-hidden">
                       <img src={app.avatar} alt="Doctor" className="w-full h-full object-cover" />
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-bold text-gray-900">{app.specialty}</p>
-                      <p className="text-[13px] text-gray-600 mt-0.5">{app.doctor}</p>
-                      <p className="text-[12px] text-gray-400 mt-0.5">{app.clinic}</p>
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-base font-bold text-gray-900">{app.specialty}</p>
+                      <p className="text-sm text-gray-600 mt-1">{app.doctor}</p>
+                      <p className="text-xs text-gray-400 mt-1">{app.clinic}</p>
                     </div>
 
                     {/* Status & Arrow */}
-                    <div className="flex items-center gap-4 shrink-0 pl-4">
-                      <span className={`px-3 py-1 rounded-md text-[11px] font-bold ${app.statusColor}`}>
+                    <div className="flex flex-col items-end gap-2 shrink-0 pl-4 border-l border-gray-100 min-w-[120px]">
+                      <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${app.statusColor}`}>
                         {app.status}
                       </span>
-                      <ChevronRight size={20} className={selectedAppointment?.id === app.id ? "text-[#2563EB]" : "text-gray-300"} />
+                      <span className="text-sm text-[#2563EB] font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Xem chi tiết <ChevronRight size={16} />
+                      </span>
                     </div>
                   </div>
                 )) : (
@@ -325,7 +317,7 @@ export default function MedicalHistoryPage() {
                 )}
                 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {totalPages > 0 && (
                   <div className="p-4 border-t border-gray-100 flex justify-center gap-2">
                     <button 
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -355,141 +347,6 @@ export default function MedicalHistoryPage() {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* RIGHT COLUMN: DETAILS */}
-            <div className="flex-[2] flex flex-col">
-              <h2 className="text-sm font-bold text-gray-700 mb-3 px-1">Thông tin chi tiết</h2>
-              
-              {selectedAppointment ? (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
-                  {/* Top Header of Detail */}
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#2563EB]">{selectedAppointment.specialty}</h3>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-md text-[11px] font-bold ${selectedAppointment.statusColor}`}>
-                        {selectedAppointment.status}
-                      </span>
-                      <button className="text-gray-400 hover:text-gray-700 transition" title="In">
-                        <Printer size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Info List */}
-                  <div className="space-y-4 mb-8">
-                    <div className="flex items-start gap-3">
-                      <CalendarDays className="text-gray-400 shrink-0 mt-0.5" size={16} />
-                      <div className="grid grid-cols-3 w-full gap-2">
-                        <p className="text-sm text-gray-500">Thời gian khám</p>
-                        <p className="text-sm font-semibold text-gray-900 col-span-2">{selectedAppointment.time} - {selectedAppointment.rawDate}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <UserCircle2 className="text-gray-400 shrink-0 mt-0.5" size={16} />
-                      <div className="grid grid-cols-3 w-full gap-2">
-                        <p className="text-sm text-gray-500">Bác sĩ khám</p>
-                        <p className="text-sm font-semibold text-gray-900 col-span-2">{selectedAppointment.doctor}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <MapPin className="text-gray-400 shrink-0 mt-0.5" size={16} />
-                      <div className="grid grid-cols-3 w-full gap-2">
-                        <p className="text-sm text-gray-500">Phòng khám</p>
-                        <p className="text-sm font-semibold text-gray-900 col-span-2">{selectedAppointment.clinic}</p>
-                      </div>
-                    </div>
-                    {/* Thông tin người khám */}
-                    <div className="h-px bg-gray-100 w-full"></div>
-                    <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-                      <h4 className="text-sm font-bold text-[#2563EB] mb-3">Thông tin người khám</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Họ và tên</p>
-                          <p className="text-sm font-semibold text-gray-900">{selectedAppointment.patientDetails?.name || userData?.fullName || 'Không có'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Số điện thoại</p>
-                          <p className="text-sm font-semibold text-gray-900">{selectedAppointment.patientDetails?.phone || userData?.phone || 'Không có'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">CMND/CCCD</p>
-                          <p className="text-sm font-semibold text-gray-900">{selectedAppointment.patientDetails?.cccd || 'Không có'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
-                          <p className="text-sm font-semibold text-gray-900 truncate" title={selectedAppointment.patientDetails?.address || userData?.address || 'Không có'}>{selectedAppointment.patientDetails?.address || userData?.address || 'Không có'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <InfoIcon className="text-gray-400 shrink-0 mt-0.5" size={16} />
-                      <div className="grid grid-cols-3 w-full gap-2">
-                        <p className="text-sm text-gray-500">Lý do khám</p>
-                        <p className="text-sm font-semibold text-gray-900 col-span-2 leading-relaxed bg-yellow-50 p-3 rounded-xl border border-yellow-100">{selectedAppointment.reason}</p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Dịch vụ đã thực hiện */}
-                  {selectedAppointment.status === 'Đã hoàn thành' && (
-                    <div className="mb-8">
-                      <h4 className="text-sm font-bold text-gray-900 mb-3">Dịch vụ đã thực hiện</h4>
-                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                        <div className="flex justify-between items-center mb-3 text-sm">
-                          <span className="text-gray-700">{selectedAppointment.specialty}</span>
-                          <span className="font-medium text-gray-900">{formatCurrency(selectedAppointment.price)}</span>
-                        </div>
-                        <div className="h-px w-full bg-gray-200 mb-3"></div>
-                        <div className="flex justify-between items-center text-sm font-bold">
-                          <span className="text-gray-900">Tổng tiền</span>
-                          <span className="text-gray-900">{formatCurrency(selectedAppointment.price)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="mt-auto space-y-2">
-                    <Link href="/patient/medical-record" className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-[#2563EB] hover:bg-blue-50 transition group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#2563EB] flex items-center justify-center group-hover:bg-white">
-                          <FileText size={16} />
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-[#2563EB]">Xem hồ sơ bệnh án</span>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-[#2563EB]" />
-                    </Link>
-                    <Link href="/patient/prescriptions" className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-[#2563EB] hover:bg-blue-50 transition group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#2563EB] flex items-center justify-center group-hover:bg-white">
-                          <Pill size={16} />
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-[#2563EB]">Xem đơn thuốc</span>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-[#2563EB]" />
-                    </Link>
-                    <button className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-[#2563EB] hover:bg-blue-50 transition group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#2563EB] flex items-center justify-center group-hover:bg-white">
-                          <Activity size={16} />
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-[#2563EB]">Xem kết quả xét nghiệm</span>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-[#2563EB]" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 flex flex-col items-center justify-center h-full text-gray-400">
-                  <FileText size={48} className="mb-4 opacity-50" />
-                  <p>Chọn một lịch sử khám để xem chi tiết</p>
-                </div>
-              )}
             </div>
 
           </div>

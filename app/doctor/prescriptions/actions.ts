@@ -3,56 +3,6 @@
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
-
-export async function addPrescriptionDrug(prescriptionId: number, drug: { name: string; dosage: string; quantity: string }) {
-  try {
-    await prisma.prescriptionItem.create({
-      data: {
-        prescriptionId,
-        medicationName: drug.name,
-        dosage: drug.dosage,
-        instructions: drug.dosage,
-        remaining: drug.quantity,
-        statusText: 'Chờ phát',
-        iconType: 'pill',
-      },
-    });
-    return { success: true, message: 'Thêm thuốc thành công' };
-  } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi khi thêm thuốc' };
-  }
-}
-
-export async function removePrescriptionDrug(itemId: number) {
-  try {
-    await prisma.prescriptionItem.delete({
-      where: { id: itemId },
-    });
-    return { success: true, message: 'Xóa thuốc thành công' };
-  } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi khi xóa thuốc' };
-  }
-}
-
-export async function deletePrescription(prescriptionId: number) {
-  try {
-    // Xóa tất cả các thuốc trong đơn trước
-    await prisma.prescriptionItem.deleteMany({
-      where: { prescriptionId },
-    });
-    // Sau đó xóa đơn thuốc
-    await prisma.prescription.delete({
-      where: { id: prescriptionId },
-    });
-    return { success: true, message: 'Xóa đơn thuốc thành công' };
-  } catch (error) {
-    console.error(error);
-    return { success: false, message: 'Lỗi khi xóa đơn thuốc' };
-  }
-}
-
 // 1. LẤY DANH SÁCH BỆNH NHÂN VÀ ĐƠN THUỐC CỦA BÁC SĨ (Dành cho trang Danh sách và form Chọn BN)
 export async function getDoctorPrescriptionsData() {
   try {
@@ -85,23 +35,22 @@ export async function getDoctorPrescriptionsData() {
         healthMetric: { select: { allergies: true } },
         examinationsAsPatient: {
           orderBy: { createdAt: 'desc' },
-          take: 1,
           select: {
+            id: true,
             createdAt: true,
             symptoms: true,
             diagnosis: true,
             treatment: true,
             notes: true,
-            followUpDate: true,
-            followUpReason: true
+            followUpDate: true
           }
         }
       }
     });
 
-    // Lấy toàn bộ đơn thuốc của các bệnh nhân đó
+    // Lấy toàn bộ đơn thuốc của các bệnh nhân đó do bác sĩ này kê
     const prescriptions = await prisma.prescription.findMany({
-      where: { patientId: { in: patientIds } },
+      where: { doctorId: doctorId },
       include: {
         patient: { include: { patientProfile: true } },
         items: true
@@ -109,28 +58,20 @@ export async function getDoctorPrescriptionsData() {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Tính toán KPI
     let total = prescriptions.length;
-    let dispensed = 0;
-    let waiting = 0;
-    let todayCount = 0;
-    const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    let draftCount = 0;
+    let publishedCount = 0;
+    let cancelledCount = 0;
 
     const formattedPrescriptions = prescriptions.map(p => {
-      let status = 'Chờ kê thuốc';
-      if (p.items.length > 0) {
-        const allDispensed = p.items.every(i => i.statusText === 'Đã phát');
-        if (allDispensed) {
-          status = 'Đã phát';
-          dispensed++;
-        } else {
-          status = 'Chờ phát';
-          waiting++;
-        }
-      }
+      let status = p.status || 'Nháp';
+      // Normalize statuses
+      if (status === 'Chờ phát' || status === 'Đã phát') status = 'Đã kê';
+      if (status === 'Đã hủy') cancelledCount++;
+      else if (status === 'Đã kê') publishedCount++;
+      else draftCount++;
       
       const createdDateStr = p.createdAt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      if (createdDateStr === todayStr) todayCount++;
 
       let age = 'N/A';
       if (p.patient.dob) {
@@ -140,7 +81,7 @@ export async function getDoctorPrescriptionsData() {
 
       return {
         id: p.id,
-        code: p.code,
+        code: p.code || `DT${p.id}`,
         patientId: p.patient.id,
         patientName: p.patient.fullName,
         patientCode: p.patient.patientProfile?.patientCode || `BN${p.patient.id}`,
@@ -150,21 +91,13 @@ export async function getDoctorPrescriptionsData() {
         time: p.createdAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         drugCount: p.items.length,
         status: status,
-        statusColor: status === 'Đã phát' ? 'text-green-700 bg-green-100 border-green-200' :
-                     status === 'Chờ phát' ? 'text-yellow-700 bg-yellow-100 border-yellow-200' :
-                     'text-gray-700 bg-gray-100 border-gray-200',
+        statusColor: status === 'Đã kê' ? 'text-green-700 bg-green-100 border-green-200' :
+                     status === 'Nháp' ? 'text-gray-700 bg-gray-100 border-gray-200' :
+                     'text-red-700 bg-red-100 border-red-200',
         diagnosis: p.diagnosis || 'Chưa có chẩn đoán', 
         type: p.type || 'Ngoại trú',
         notes: p.notes || '',
-        followUpDate: p.followUpDate || '',
-        items: p.items.map(item => ({
-          id: item.id,
-          name: item.medicationName,
-          dosage: item.dosage,
-          quantity: item.remaining,
-          instructions: item.instructions,
-          form: item.iconType === 'liquid' ? 'Dung dịch' : 'Viên'
-        }))
+        followUpDate: p.followUpDate || ''
       };
     });
 
@@ -179,7 +112,7 @@ export async function getDoctorPrescriptionsData() {
         },
         patients: patients,
         prescriptions: formattedPrescriptions,
-        kpis: { total, dispensed, waiting, today: todayCount }
+        kpis: { total, draft: draftCount, published: publishedCount, cancelled: cancelledCount }
       }
     };
   } catch (error) {
@@ -187,11 +120,8 @@ export async function getDoctorPrescriptionsData() {
   }
 }
 
-export async function createPrescription(data: { patientId: number, diagnosis: string, items: any[] }) {
-  return createFullPrescription(data);
-}
-// 2. TẠO ĐƠN THUỐC CÙNG TẤT CẢ CÁC LOẠI THUỐC (Dành cho trang Tạo đơn)
-export async function createFullPrescription(data: { patientId: number, symptoms?: string, diagnosis?: string, treatment?: string, type?: string, notes?: string, followUpDate?: string, items: any[] }) {
+// 2. TẠO ĐƠN THUỐC MỚI
+export async function createFullPrescription(data: { patientId: number, diagnosis?: string, notes?: string, status?: string, followUpDate?: string, items: any[] }) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
@@ -199,59 +129,134 @@ export async function createFullPrescription(data: { patientId: number, symptoms
 
     const code = `DT-${new Date().getFullYear().toString().slice(2)}${String(new Date().getMonth()+1).padStart(2,'0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
     
-    // Tạo đơn thuốc mới
     const newPre = await prisma.prescription.create({ 
       data: { 
         patientId: data.patientId, 
         code: code,
         doctorId: doctorId,
-        symptoms: data.symptoms,
         diagnosis: data.diagnosis,
-        treatment: data.treatment,
-        type: data.type || 'Ngoại trú',
         notes: data.notes,
         followUpDate: data.followUpDate,
-        status: 'Chờ phát'
+        status: data.status || 'Nháp'
       } 
     });
 
-    // Thêm hàng loạt các loại thuốc vào đơn vừa tạo
     if (data.items && data.items.length > 0) {
       await prisma.prescriptionItem.createMany({
         data: data.items.map((item: any) => ({
           prescriptionId: newPre.id,
           medicationName: item.name,
           dosage: item.dosage,
-          instructions: item.instructions || item.dosage, // Hoặc truyền thêm note riêng
+          instructions: item.instructions || item.usage || item.dosage,
           remaining: item.quantity.toString(),
-          statusText: 'Chờ phát',
-          iconType: 'pill'
+          statusText: data.status || 'Nháp',
+          iconType: item.form === 'Dung dịch' ? 'liquid' : 'pill'
         }))
       });
     }
 
-    return { success: true, message: 'Đã kê đơn thuốc thành công!' };
+    return { success: true, message: 'Lưu đơn thuốc thành công!', id: newPre.id };
   } catch (error) {
     console.error(error);
-    return { success: false, message: 'Lỗi khi lưu đơn thuốc vào cơ sở dữ liệu' };
+    return { success: false, message: 'Lỗi khi lưu đơn thuốc' };
   }
 }
 
-export async function dispensePrescription(id: number) {
+// 3. CHI TIẾT ĐƠN THUỐC
+export async function getPrescriptionById(id: number) {
+  try {
+    const cookieStore = await cookies();
+    const userIdStr = cookieStore.get('user_id')?.value;
+    if (!userIdStr) return { success: false, message: 'Chưa đăng nhập' };
+    const doctorId = parseInt(userIdStr);
+
+    const prescription = await prisma.prescription.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        patient: { include: { patientProfile: true } },
+        doctor: { include: { doctorProfile: true } }
+      }
+    });
+
+    if (!prescription) return { success: false, message: 'Không tìm thấy đơn thuốc' };
+    if (prescription.doctorId !== doctorId) return { success: false, message: 'Không có quyền truy cập' };
+
+    let status = prescription.status || 'Nháp';
+    if (status === 'Chờ phát' || status === 'Đã phát') status = 'Đã kê';
+
+    return { 
+      success: true, 
+      data: {
+        ...prescription,
+        status,
+        code: prescription.code || `DT${prescription.id}`
+      }
+    };
+  } catch (error: any) {
+    console.error("Lỗi getPrescriptionById:", error);
+    return { success: false, message: 'Lỗi server' };
+  }
+}
+
+// 4. SỬA ĐƠN THUỐC (Chỉ áp dụng khi Nháp)
+export async function updatePrescription(id: number, data: { diagnosis?: string, notes?: string, status?: string, items: any[] }) {
   try {
     await prisma.prescription.update({
       where: { id },
-      data: { status: 'Đã phát' }
-    });
-    
-    await prisma.prescriptionItem.updateMany({
-      where: { prescriptionId: id },
-      data: { statusText: 'Đã phát' }
+      data: {
+        diagnosis: data.diagnosis,
+        notes: data.notes,
+        status: data.status || 'Nháp'
+      }
     });
 
-    return { success: true, message: 'Đã phát thuốc thành công' };
+    // Xóa item cũ và tạo item mới để dễ quản lý
+    await prisma.prescriptionItem.deleteMany({ where: { prescriptionId: id } });
+    
+    if (data.items && data.items.length > 0) {
+      await prisma.prescriptionItem.createMany({
+        data: data.items.map((item: any) => ({
+          prescriptionId: id,
+          medicationName: item.name,
+          dosage: item.dosage,
+          instructions: item.instructions || item.usage || item.dosage,
+          remaining: item.quantity.toString(),
+          statusText: data.status || 'Nháp',
+          iconType: item.form === 'Dung dịch' ? 'liquid' : 'pill'
+        }))
+      });
+    }
+
+    return { success: true, message: 'Cập nhật đơn thuốc thành công' };
   } catch (error) {
     console.error(error);
-    return { success: false, message: 'Lỗi khi phát thuốc' };
+    return { success: false, message: 'Lỗi cập nhật đơn thuốc' };
+  }
+}
+
+// 5. PHÁT HÀNH ĐƠN
+export async function publishPrescription(id: number) {
+  try {
+    await prisma.prescription.update({
+      where: { id },
+      data: { status: 'Đã kê' }
+    });
+    return { success: true, message: 'Đã phát hành đơn thuốc' };
+  } catch (error) {
+    return { success: false, message: 'Lỗi khi phát hành' };
+  }
+}
+
+// 6. HỦY ĐƠN
+export async function cancelPrescription(id: number) {
+  try {
+    await prisma.prescription.update({
+      where: { id },
+      data: { status: 'Đã hủy' }
+    });
+    return { success: true, message: 'Đã hủy đơn thuốc' };
+  } catch (error) {
+    return { success: false, message: 'Lỗi khi hủy đơn' };
   }
 }

@@ -15,7 +15,6 @@ export default function PatientPrescriptionsPage() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | string>('');
   const [activeTab, setActiveTab] = useState('Tất cả đơn thuốc');
 
   useEffect(() => {
@@ -24,9 +23,6 @@ export default function PatientPrescriptionsPage() {
       const res = await getPatientPrescriptionsData();
       if (res.success && res.data) {
         setData(res.data);
-        if (res.data.prescriptions.length > 0) {
-          setSelectedPrescriptionId(res.data.prescriptions[0].id);
-        }
       } else {
         router.push('/login');
       }
@@ -52,8 +48,6 @@ export default function PatientPrescriptionsPage() {
     if (activeTab === 'Đã hoàn thành') return p.status === 'Đã hoàn thành';
     return true;
   });
-
-  const activePrescription = prescriptions.find((p: any) => p.id === selectedPrescriptionId) || prescriptions[0];
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC] font-sans text-gray-800 overflow-hidden">
@@ -173,160 +167,57 @@ export default function PatientPrescriptionsPage() {
               </div>
             </div>
 
-            {/* MASTER-DETAIL LAYOUT */}
-            <div className="flex flex-col xl:flex-row gap-6">
-              
-              {/* CỘT TRÁI: Danh sách */}
-              <div className="xl:w-[420px] shrink-0 space-y-4">
-                {filteredPrescriptions.length > 0 ? (
-                  <>
-                    <div className="space-y-4">
-                      {filteredPrescriptions.map((p: any) => {
-                        const isSelected = selectedPrescriptionId === p.id;
-                        return (
-                          <div 
-                            key={p.id}
-                            onClick={() => setSelectedPrescriptionId(p.id)}
-                            className={`bg-white rounded-2xl border p-5 cursor-pointer transition-all shadow-sm flex items-center justify-between ${isSelected ? 'border-[#2563EB] ring-1 ring-[#2563EB] bg-blue-50/20' : 'border-gray-100 hover:border-blue-200'}`}
-                          >
-                            <div className="flex items-center gap-5">
-                              <div className="text-center w-14 shrink-0">
-                                <p className="text-3xl font-black text-gray-900 leading-none mb-1">{p.day}</p>
-                                <p className="text-[11px] text-gray-500 font-bold uppercase">{p.monthYear}</p>
-                              </div>
-                              <div className="border-l border-gray-100 pl-5">
-                                <h3 className="font-bold text-gray-900 text-base mb-1.5 line-clamp-1">{p.diagnosis}</h3>
-                                <p className="text-sm text-gray-500 flex items-center gap-1.5 mb-2.5"><User size={14}/> {p.doctor}</p>
-                                <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${p.statusColor}`}>{p.status}</span>
-                              </div>
-                            </div>
-                            <ChevronRight size={20} className="text-gray-300" />
+            {/* LIST LAYOUT */}
+            <div className="w-full space-y-4">
+              {filteredPrescriptions.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredPrescriptions.map((p: any) => (
+                      <div 
+                        key={p.id}
+                        onClick={() => router.push(`/patient/prescriptions/${p.id}`)}
+                        className="bg-white rounded-2xl border border-gray-100 hover:border-[#2563EB] hover:ring-1 hover:ring-[#2563EB] p-5 cursor-pointer transition-all shadow-sm flex flex-col justify-between group"
+                      >
+                        <div>
+                          <div className="flex justify-between items-start mb-4">
+                            <span className={`px-2.5 py-1 rounded text-[11px] font-bold border inline-block ${p.statusColor}`}>{p.status}</span>
+                            <span className="text-gray-500 text-xs font-bold">{p.code || `DT${p.id}`}</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                    
-                    <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-[#2563EB] text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-blue-50 transition-colors">
+                          
+                          <div className="flex items-center gap-5 mb-4">
+                            <div className="text-center w-14 shrink-0">
+                              <p className="text-3xl font-black text-gray-900 leading-none mb-1">{p.day}</p>
+                              <p className="text-[11px] text-gray-500 font-bold uppercase">{p.monthYear}</p>
+                            </div>
+                            <div className="border-l border-gray-100 pl-5">
+                              <h3 className="font-bold text-gray-900 text-base mb-1.5 line-clamp-1">{p.diagnosis}</h3>
+                              <p className="text-sm text-gray-500 flex items-center gap-1.5"><User size={14}/> {p.doctor}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-50 mt-4">
+                          <span className="text-sm text-gray-500 font-medium">{p.drugCount} loại thuốc</span>
+                          <span className="text-sm text-[#2563EB] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Xem chi tiết <ChevronRight size={16} />
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="pt-4 flex justify-center">
+                    <button className="px-6 py-3 bg-white border border-gray-200 rounded-xl text-[#2563EB] text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-blue-50 transition-colors">
                       Xem thêm <ChevronDown size={16} />
                     </button>
-                  </>
-                ) : (
-                  <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center">
-                    <p className="text-gray-500 text-sm">Không tìm thấy đơn thuốc nào.</p>
                   </div>
-                )}
-              </div>
-
-              {/* CỘT PHẢI: Chi tiết */}
-              <div className="flex-1 bg-white rounded-3xl border border-gray-100 shadow-sm p-6 xl:p-8 relative">
-                {activePrescription ? (
-                  <>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                      <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        Đơn thuốc: <span className="text-[#2563EB]">{activePrescription.code || `DT${activePrescription.id}`}</span>
-                      </h2>
-                      <div className="flex gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-[#2563EB] hover:border-[#2563EB] bg-white rounded-lg text-sm font-bold transition hover:bg-blue-50 shadow-sm">
-                          <Download size={16} /> Tải đơn thuốc
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 border border-[#2563EB] text-[#2563EB] bg-blue-50/50 hover:bg-blue-100 rounded-lg text-sm font-bold transition shadow-sm">
-                          <Printer size={16} /> In đơn thuốc
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 border border-gray-100 rounded-2xl mb-8 divide-x divide-gray-100 text-sm bg-gray-50/50">
-                      <div className="px-2">
-                        <p className="text-gray-500 text-xs flex items-center gap-1.5 mb-1"><CalendarDays size={14}/> Ngày khám</p>
-                        <p className="font-bold text-gray-900">{activePrescription.date}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{activePrescription.time}</p>
-                      </div>
-                      <div className="px-4">
-                        <p className="text-gray-500 text-xs flex items-center gap-1.5 mb-1"><User size={14}/> Bác sĩ khám</p>
-                        <p className="font-bold text-gray-900">{activePrescription.doctor}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{activePrescription.doctorSpecialty}</p>
-                      </div>
-                      <div className="px-4">
-                        <p className="text-gray-500 text-xs flex items-center gap-1.5 mb-1"><Stethoscope size={14}/> Chẩn đoán</p>
-                        <p className="font-bold text-gray-900 leading-relaxed pr-2">{activePrescription.diagnosis}</p>
-                      </div>
-                      <div className="px-4 flex flex-col justify-center">
-                        <p className="text-gray-500 text-xs flex items-center gap-1.5 mb-1.5"><ClipboardList size={14}/> Tình trạng đơn thuốc</p>
-                        <div><span className={`px-2.5 py-1 rounded-md text-[11px] font-bold border inline-block ${activePrescription.statusColor}`}>{activePrescription.status}</span></div>
-                      </div>
-                    </div>
-
-                    <h3 className="font-bold text-gray-900 mb-4 text-base">Danh sách thuốc</h3>
-                    <div className="overflow-x-auto border border-gray-100 rounded-xl mb-8">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 bg-gray-50 border-b border-gray-100">
-                          <tr>
-                            <th className="px-5 py-4 font-bold">STT</th>
-                            <th className="px-5 py-4 font-bold">Tên thuốc</th>
-                            <th className="px-5 py-4 font-bold">Hàm lượng</th>
-                            <th className="px-5 py-4 font-bold">Dạng bào chế</th>
-                            <th className="px-5 py-4 font-bold text-center">Số lượng</th>
-                            <th className="px-5 py-4 font-bold">Cách dùng</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                          {activePrescription.medicines.map((med: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-gray-50/50">
-                              <td className="px-5 py-4 text-gray-500">{idx + 1}</td>
-                              <td className="px-5 py-4 font-bold text-gray-900">{med.name}</td>
-                              <td className="px-5 py-4 text-gray-600">{med.dosage || '-'}</td>
-                              <td className="px-5 py-4 text-gray-600">{med.form || '-'}</td>
-                              <td className="px-5 py-4 font-medium text-gray-900 text-center">{med.quantity}</td>
-                              <td className="px-5 py-4 text-gray-600 leading-relaxed whitespace-pre-line">
-                                {med.note}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                      
-                      <div className="border border-blue-100 bg-blue-50/30 rounded-2xl p-6">
-                        <h3 className="font-bold text-[#2563EB] mb-4 flex items-center gap-2 text-sm">
-                          <FileText size={18} /> Lưu ý của bác sĩ
-                        </h3>
-                        <ul className="space-y-2.5 text-sm text-gray-700 list-disc pl-5">
-                          {activePrescription.instructions.map((inst: string, idx: number) => (
-                            <li key={idx} className="leading-relaxed font-medium">{inst}</li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="border border-gray-100 rounded-2xl p-6 flex flex-col justify-between">
-                        <div>
-                          <h3 className="font-bold text-[#2563EB] mb-4 flex items-center gap-2 text-sm">
-                            <CalendarClock size={18} /> Tái khám
-                          </h3>
-                          <p className="text-gray-500 text-sm mb-1.5">Ngày tái khám dự kiến</p>
-                          <p className="font-black text-gray-900 text-lg">{activePrescription.followUpDate || 'Không có hẹn'}</p>
-                        </div>
-                        {activePrescription.followUpDate && (
-                          <div className="mt-6 flex justify-end">
-                            <button className="px-5 py-2.5 border border-[#2563EB] text-[#2563EB] hover:bg-[#2563EB] hover:text-white transition rounded-xl text-sm font-bold shadow-sm flex items-center gap-2">
-                              <Calendar size={16}/> Đặt lịch tái khám
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-full flex items-center justify-center flex-col text-gray-400 min-h-[400px]">
-                    <Pill size={48} className="opacity-20 mb-4" />
-                    <p className="font-bold text-gray-600">Chọn một đơn thuốc</p>
-                    <p className="text-sm mt-1">Chi tiết đơn thuốc sẽ được hiển thị tại đây.</p>
-                  </div>
-                )}
-              </div>
-
+                </>
+              ) : (
+                <div className="bg-white p-16 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-gray-400">
+                  <Pill size={48} className="opacity-20 mb-4" />
+                  <p className="text-gray-500 text-base font-medium">Không tìm thấy đơn thuốc nào.</p>
+                </div>
+              )}
             </div>
 
           </div>
