@@ -224,3 +224,22 @@ export async function findPatientByQuery(query: string) {
     return { success: false, message: 'Lỗi server' };
   }
 }
+
+// 6. GIẢ LẬP THANH TOÁN THÀNH CÔNG (Dành cho mock payment)
+export async function mockConfirmPayment(paymentCode: string) {
+  try {
+    await prisma.appointment.updateMany({
+      where: {
+        reason: { contains: paymentCode }
+      },
+      data: {
+        status: 'CHỜ XÁC NHẬN',
+        paymentStatus: 'ĐÃ THANH TOÁN'
+      }
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Lỗi giả lập thanh toán:', error);
+    return { success: false, message: 'Lỗi server' };
+  }
+}
