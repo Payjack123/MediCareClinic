@@ -8,7 +8,7 @@ import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 
-import { getPatientAppointmentData, getBookedTimes, createAppointment, findPatientByQuery, mockConfirmPayment } from '@/app/patient/appointments/actions';
+import { getPatientAppointmentData, getBookedTimes, createAppointment, findPatientByQuery, mockConfirmPayment, checkPayment } from '@/app/patient/appointments/actions';
 import { updatePatientProfile } from '@/app/patient/settings/actions';
 
 export default function PatientAppointmentsPage() {
@@ -57,8 +57,6 @@ export default function PatientAppointmentsPage() {
   const [missingInfoForm, setMissingInfoForm] = useState({
     fullName: '', email: '', phone: '', dob: '', gender: 'Nam', address: '', cccd: ''
   });
-
-  const [showMockBankModal, setShowMockBankModal] = useState(false);
 
   const handleAddNewPatient = (foundPatientData: any = null) => {
     const newId = Date.now();
@@ -168,7 +166,22 @@ export default function PatientAppointmentsPage() {
     fetchTimes();
   }, [bookingData.doctorId, bookingData.date]);
 
-  // Bỏ polling check trạng thái thanh toán SePay do đã chuyển sang giả lập
+  // Polling check trạng thái thanh toán
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 6 && paymentCode) {
+      interval = setInterval(async () => {
+        try {
+          const data = await checkPayment(paymentCode);
+          if (data.paid) {
+            clearInterval(interval);
+            setStep(7); // Thành công
+          }
+        } catch (e) { }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [step, paymentCode]);
 
   const handleConfirmBooking = async (overrideCode?: string | null, overrideStatus?: string) => {
     setIsSubmitting(true);
@@ -801,14 +814,14 @@ export default function PatientAppointmentsPage() {
 
                   <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center max-w-lg mx-auto w-full">
                     <div className="bg-[#2563EB] text-white w-full py-4 rounded-t-xl text-center font-bold text-lg mb-6 shadow-md">
-                      MB Bank
+                      MB Bank (Mock)
                     </div>
 
                     <div className="p-4 bg-white border-2 border-dashed border-[#2563EB] rounded-2xl shadow-sm mb-8 flex justify-center">
-                      <img
-                        src={`https://img.vietqr.io/image/MB-0968973608-compact.png?amount=${patients.reduce((sum, p) => sum + p.doctorPrice, 0)}&addInfo=${paymentCode}`}
-                        alt="QR Code Chuyển Khoản"
-                        className="w-[200px] h-[200px] object-contain"
+                      <QRCode 
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mock-payment?code=${paymentCode}&amount=${patients.reduce((sum, p) => sum + p.doctorPrice, 0)}`} 
+                        size={200} 
+                        level="M" 
                       />
                     </div>
 
@@ -838,18 +851,7 @@ export default function PatientAppointmentsPage() {
                       <Loader2 size={24} className="animate-spin" />
                       Hệ thống đang tự động xác nhận...
                     </button>
-                    <p className="text-xs text-gray-400 mt-4 text-center">Giao diện sẽ tự động chuyển sau khi ngân hàng báo thành công (thường từ 5 - 15 giây).</p>
-
-                    <div className="mt-6 border-t border-gray-100 pt-6 w-full flex flex-col items-center">
-                      <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wider">Công cụ dành cho nhà phát triển</p>
-                      <button
-                        onClick={() => setShowMockBankModal(true)}
-                        className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-xl font-bold text-sm shadow-md transition-all flex justify-center items-center gap-2"
-                      >
-                        <Phone size={18} />
-                        Mô phỏng quét mã bằng điện thoại
-                      </button>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-4 text-center">Hãy quét mã QR bằng điện thoại (Camera, Zalo) để mở giao diện thanh toán giả lập. Màn hình này sẽ tự động chuyển tiếp.</p>
                   </div>
                 </div>
               )}
@@ -1450,77 +1452,6 @@ export default function PatientAppointmentsPage() {
               </button>
               <button disabled={isSavingMissingInfo} form="missingInfoForm" type="submit" className="px-6 py-2.5 rounded-xl font-bold text-white bg-[#2563EB] hover:bg-blue-700 shadow-md transition-colors flex items-center gap-2 disabled:opacity-70">
                 {isSavingMissingInfo ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Cập nhật & Tiếp tục
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MOCK BANK MODAL */}
-      {showMockBankModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !isSubmitting && setShowMockBankModal(false)}
-          ></div>
-          <div className="relative bg-[#F4F6F8] rounded-[2.5rem] shadow-2xl w-full max-w-[360px] h-[720px] overflow-hidden animate-in slide-in-from-bottom-8 flex flex-col border-[8px] border-gray-900">
-            {/* Phone Notch/Status bar area */}
-            <div className="bg-[#2563EB] text-white pt-6 pb-4 px-6 rounded-t-[2rem] shrink-0 relative">
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-3xl"></div>
-              <div className="flex justify-between items-center mt-4">
-                <button disabled={isSubmitting} onClick={() => setShowMockBankModal(false)}><X size={24} /></button>
-                <h3 className="font-bold text-lg">Chuyển khoản</h3>
-                <div className="w-6"></div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 pb-24 relative">
-              <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Landmark size={24} className="text-[#2563EB]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tới tài khoản</p>
-                    <p className="font-bold text-gray-900 uppercase">PHONG KHAM N1</p>
-                  </div>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Ngân hàng:</span>
-                    <span className="font-medium text-gray-900">MB Bank</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Số tài khoản:</span>
-                    <span className="font-medium text-gray-900">0968973608</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-                <p className="text-xs text-gray-500 mb-1">Số tiền chuyển</p>
-                <p className="text-3xl font-black text-[#2563EB] mb-4">
-                  {patients.reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} VND
-                </p>
-                <div className="h-px bg-gray-100 w-full mb-4"></div>
-                <p className="text-xs text-gray-500 mb-1">Nội dung chuyển tiền</p>
-                <p className="font-medium text-gray-900 bg-gray-50 p-2 rounded-lg">{paymentCode}</p>
-              </div>
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 p-5 bg-white border-t border-gray-100 rounded-b-[2rem]">
-              <button
-                disabled={isSubmitting}
-                onClick={async () => {
-                  setIsSubmitting(true);
-                  await mockConfirmPayment(paymentCode);
-                  setIsSubmitting(false);
-                  setShowMockBankModal(false);
-                  setStep(7);
-                }}
-                className="w-full bg-[#2563EB] text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isSubmitting ? <Loader2 size={24} className="animate-spin" /> : 'Xác nhận thanh toán'}
               </button>
             </div>
           </div>

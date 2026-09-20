@@ -243,3 +243,24 @@ export async function mockConfirmPayment(paymentCode: string) {
     return { success: false, message: 'Lỗi server' };
   }
 }
+
+export async function checkPayment(code: string) {
+  try {
+    if (!code) return { paid: false };
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        reason: { contains: code }
+      },
+      select: { paymentStatus: true }
+    });
+
+    if (appointments.length > 0 && appointments.every(a => a.paymentStatus === 'ĐÃ THANH TOÁN')) {
+      return { paid: true };
+    }
+    return { paid: false };
+  } catch (error) {
+    console.error('Lỗi check payment:', error);
+    return { paid: false };
+  }
+}
