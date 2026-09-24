@@ -1,119 +1,18 @@
-'use client';
+const fs = require('fs');
+const path = require('path');
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  LayoutDashboard, CalendarDays, FileText, Pill, TestTube, ChevronRight,
-  Bell, Settings, LogOut, Search, Activity, User, Wallet,
-  HeartPulse, ArrowRight, Clock, Stethoscope, Loader2
-} from 'lucide-react';
+const filePath = path.join(__dirname, '../app/patient/dashboard/page.tsx');
+let content = fs.readFileSync(filePath, 'utf8');
 
-import { getPatientDashboardData } from '@/app/patient/dashboard/actions';
-import PatientSidebar from '@/app/patient/Sidebar';
+const lines = content.split('\n');
+const startIdx = lines.findIndex(l => l.includes('{/* SCROLLABLE CONTENT */}'));
+const endIdx = lines.findIndex(l => l.includes('</main>')); // Just before main ends, line 298
 
-export default function PatientDashboard() {
-  const router = useRouter();
-
-  // States quản lý dữ liệu
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const res = await getPatientDashboardData();
-      if (res.success) {
-        setData(res.data);
-      } else {
-        // Nếu lỗi (chưa đăng nhập), đẩy về trang login
-        router.push('/login');
-      }
-      setIsLoading(false);
-    };
-    fetchData();
-  }, [router]);
-
-  const handleLogout = () => {
-    router.push('/login');
-  };
-
-  const parseDate = (dateString: string) => {
-    if (!dateString) return { dayOfWeek: 'Ngày', day: '--', month: '--' };
+if (startIdx !== -1 && endIdx !== -1) {
+    const before = lines.slice(0, startIdx).join('\n');
+    const after = lines.slice(endIdx).join('\n');
     
-    let dateObj: Date;
-    if (dateString.includes('-')) {
-       dateObj = new Date(dateString); // YYYY-MM-DD
-    } else if (dateString.includes('/')) {
-       const parts = dateString.split('/'); // DD/MM/YYYY
-       dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-    } else {
-       return { dayOfWeek: 'Ngày', day: '--', month: '--' };
-    }
-
-    const days = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-    const dayOfWeek = days[dateObj.getDay()] || 'Ngày';
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    
-    return { dayOfWeek, day, month };
-  };
-
-  const getStatusStyle = (status: string) => {
-    if (status === 'ĐÃ XÁC NHẬN') return 'bg-green-50 text-green-600 border-green-100';
-    if (status === 'CHỜ XÁC NHẬN') return 'bg-yellow-50 text-yellow-600 border-yellow-100';
-    if (status === 'HOÀN THÀNH') return 'bg-blue-50 text-blue-600 border-blue-100';
-    return 'bg-gray-50 text-gray-600 border-gray-100';
-  };
-
-  // Màn hình chờ trong lúc fetch dữ liệu từ TiDB
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-          <p className="font-medium text-gray-500">Đang tải dữ liệu y tế của bạn...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Fallback nếu không có dữ liệu
-  if (!data) return null;
-
-  return (
-    <div className="min-h-screen flex bg-[#F8FAFC] font-sans text-gray-800 overflow-hidden">
-
-      {/* ==========================================
-          1. SIDEBAR
-      ========================================== */}
-      <PatientSidebar activePage="dashboard" />
-
-      {/* ==========================================
-          2. MAIN CONTENT AREA
-      ========================================== */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-
-        {/* TOP HEADER */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-8 shrink-0 z-10">
-          <div className="relative w-96 hidden md:block">
-            <input type="text" placeholder="Tìm kiếm bác sĩ, dịch vụ, thuốc..." className="w-full pl-11 pr-4 py-2.5 bg-gray-100 border-none rounded-full text-sm focus:ring-2 focus:ring-[#2563EB] outline-none transition-all font-medium text-gray-700" />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          </div>
-          <div className="flex items-center gap-5 ml-auto">
-            <button className="relative p-2.5 text-gray-500 hover:bg-blue-50 hover:text-[#2563EB] rounded-full transition bg-white border border-gray-200 shadow-sm">
-              <Bell size={20} />
-            </button>
-            <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{data.user.fullName}</p>
-                <p className="text-xs text-gray-500 font-medium">Bệnh nhân ({data.user.patientCode})</p>
-              </div>
-              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.fullName)}&background=2563EB&color=fff`} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-white shadow-sm" />
-            </div>
-          </div>
-        </header>
-
-        {/* SCROLLABLE CONTENT */}
+    const replacement = `        {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 animate-in fade-in duration-500">
           
           {/* USER INFO HEADER */}
@@ -122,7 +21,7 @@ export default function PatientDashboard() {
                <HeartPulse size={150} />
              </div>
              <div className="relative z-10 flex flex-col items-center">
-                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.fullName)}&background=fff&color=2563EB`} alt="Avatar" className="w-20 h-20 rounded-full border-4 border-white/20 shadow-md mb-4" />
+                <img src={\`https://ui-avatars.com/api/?name=\${encodeURIComponent(data.user.fullName)}&background=fff&color=2563EB\`} alt="Avatar" className="w-20 h-20 rounded-full border-4 border-white/20 shadow-md mb-4" />
                 <h1 className="text-3xl font-bold mb-1">Dashboard Bệnh Nhân</h1>
                 <p className="text-blue-100 text-lg">{data.user.fullName}</p>
              </div>
@@ -147,7 +46,7 @@ export default function PatientDashboard() {
                            <CalendarDays size={16} className="text-blue-500" />
                            <span className="font-bold text-gray-800">{apt.bookingDate}</span>
                         </div>
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusStyle(apt.status)}`}>{apt.status}</span>
+                        <span className={\`px-2 py-1 rounded text-xs font-bold \${getStatusStyle(apt.status)}\`}>{apt.status}</span>
                       </div>
                       <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
                         <Clock size={16} className="text-gray-400 group-hover:text-blue-500 transition-colors" /> <span>{apt.bookingTime}</span>
@@ -176,9 +75,9 @@ export default function PatientDashboard() {
               <div className="p-5 flex-1 flex flex-col gap-3">
                 {data.notifications && data.notifications.length > 0 ? data.notifications.map((notif: any) => (
                   <div key={notif.id} className="flex gap-3 items-start border-b border-gray-50 pb-3 last:border-0 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
-                     <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${notif.isRead ? 'bg-gray-300' : 'bg-amber-500'}`}></div>
+                     <div className={\`w-2 h-2 rounded-full mt-1.5 shrink-0 \${notif.isRead ? 'bg-gray-300' : 'bg-amber-500'}\`}></div>
                      <div>
-                       <p className={`text-sm ${notif.isRead ? 'text-gray-600' : 'text-gray-900 font-bold'}`}>{notif.title}</p>
+                       <p className={\`text-sm \${notif.isRead ? 'text-gray-600' : 'text-gray-900 font-bold'}\`}>{notif.title}</p>
                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">{notif.message}</p>
                      </div>
                   </div>
@@ -305,14 +204,14 @@ export default function PatientDashboard() {
                   <div className="space-y-3">
                     {data.labTests.map((test: any) => (
                       <div key={test.id} className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-0 hover:bg-gray-50 p-2 rounded-lg transition-colors cursor-pointer">
-                        <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                            <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-500 flex items-center justify-center shrink-0"><TestTube size={14}/></div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm text-gray-900 truncate" title={test.testName}>{test.testName}</p>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-500 flex items-center justify-center"><TestTube size={14}/></div>
+                            <div>
+                                <p className="font-bold text-sm text-gray-900">{test.testName}</p>
                                 <p className="text-xs text-gray-500 mt-0.5">{new Date(test.date).toLocaleDateString('vi-VN')}</p>
                             </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${test.statusType === 'pending' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' : 'bg-teal-50 text-teal-600 border border-teal-100'}`}>
+                        <span className={\`text-[10px] font-bold px-2 py-1 rounded-full \${test.statusType === 'pending' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' : 'bg-teal-50 text-teal-600 border border-teal-100'}\`}>
                           {test.statusType === 'pending' ? 'Chưa xem' : 'Đã có KQ'}
                         </span>
                       </div>
@@ -348,7 +247,7 @@ export default function PatientDashboard() {
                           </div>
                           <div className="text-right">
                             <p className="font-black text-gray-900">{inv.finalAmount.toLocaleString('vi-VN')} ₫</p>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 inline-block ${inv.status === 'Chờ thanh toán' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'}`}>{inv.status}</span>
+                            <span className={\`text-[10px] font-bold px-2 py-0.5 rounded mt-1 inline-block \${inv.status === 'Chờ thanh toán' ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'}\`}>{inv.status}</span>
                           </div>
                         </div>
                       ))}
@@ -382,8 +281,11 @@ export default function PatientDashboard() {
             </div>
           </div>
         </div>
+`;
 
-      </main>
-    </div>
-  );
+    const newContent = before + '\n' + replacement + '\n' + after;
+    fs.writeFileSync(filePath, newContent);
+    console.log("Successfully replaced content.");
+} else {
+    console.log("Could not find start or end index.");
 }

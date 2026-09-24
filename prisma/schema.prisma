@@ -38,6 +38,7 @@ model User {
   notifications         Notification[]
   managedFamilyMembers  FamilyMember[]   @relation("UserFamilyMembers")
   memberOfFamilies      FamilyMember[]   @relation("PatientFamilyMembers")
+  schedulesAsDoctor     DoctorSchedule[] @relation("DoctorSchedules")
 
   @@map("users")
 }
@@ -61,7 +62,7 @@ model FamilyMember {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user         User     @relation("UserFamilyMembers", fie111lds: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation("UserFamilyMembers", fields: [userId], references: [id], onDelete: Cascade)
   patient      User     @relation("PatientFamilyMembers", fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([userId, patientId])
@@ -321,12 +322,31 @@ model Specialty {
 model Clinic {
   id          Int             @id @default(autoincrement())
   name        String          @db.VarChar(100)
+  roomNumber  String?         @db.VarChar(50)
   type        String          @db.VarChar(100)
   facilityId  Int
   specialtyId Int?
   facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   specialty   Specialty?      @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
-  doctors     DoctorProfile[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  doctors         DoctorProfile[]
+  doctorSchedules DoctorSchedule[] @relation("ClinicSchedules")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model DoctorSchedule {
+  id        Int      @id @default(autoincrement())
+  doctorId  Int
+  clinicId  Int?
+  date      String   @db.VarChar(20) // Format: YYYY-MM-DD
+  timeSlots Json     // Array of available time slots like ["07:00", "07:15", "08:00"]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor    User     @relation("DoctorSchedules", fields: [doctorId], references: [id], onDelete: Cascade)
+  clinic    Clinic?  @relation("ClinicSchedules", fields: [clinicId], references: [id], onDelete: SetNull)
+
+  @@index([doctorId])
+  @@index([clinicId])
+  @@index([date])
 }

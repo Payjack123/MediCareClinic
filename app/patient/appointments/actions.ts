@@ -92,6 +92,22 @@ export async function getBookedTimes(doctorId: number, date: string) {
   }
 }
 
+export async function getDoctorSchedules(doctorId: number) {
+  try {
+    console.log('--- FETCHING SCHEDULE FOR DOCTOR ---', doctorId);
+    
+    const schedules = await prisma.doctorSchedule.findMany({
+      where: { doctorId: doctorId },
+      orderBy: { date: 'asc' }
+    });
+    console.log('--- SCHEDULES RETURNED ---', schedules.length);
+    return { success: true, schedules };
+  } catch (error) {
+    console.error('Lỗi lấy lịch trực chi tiết:', error);
+    return { success: false, schedules: [] };
+  }
+}
+
 // 3. XÁC NHẬN ĐẶT LỊCH
 export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string, paymentMethod?: string }) {
   try {

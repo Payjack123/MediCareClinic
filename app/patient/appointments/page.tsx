@@ -9,9 +9,12 @@ import PatientSidebar from '@/app/patient/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { toast } from 'react-hot-toast';
 
-import { getPatientAppointmentData, getBookedTimes, createAppointment, findPatientByQuery, mockConfirmPayment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
+import { getPatientAppointmentData, getBookedTimes, getDoctorSchedules, createAppointment, findPatientByQuery, mockConfirmPayment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
 import { updatePatientProfile } from '@/app/patient/settings/actions';
-
+import Step1Patient from './components/Step1Patient';
+import Step2BookingMethod from './components/Step2BookingMethod';
+import Step3DateTime from './components/Step3DateTime';
+import Step4Confirm from './components/Step4Confirm';
 export default function PatientAppointmentsPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -25,6 +28,7 @@ export default function PatientAppointmentsPage() {
   const [doctorsList, setDoctorsList] = useState<any[]>([]);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
   const [selectedDoctorDetail, setSelectedDoctorDetail] = useState<any>(null);
 
   const [facilities, setFacilities] = useState<any[]>([]);
@@ -190,7 +194,7 @@ export default function PatientAppointmentsPage() {
           id: doc.id,
           name: doc.fullName,
           address: doc.address || '',
-          specialty: doc.doctorProfile?.specialty?.name || 'Đa khoa',
+          specialty: doc.doctorProfile?.specialty?.name || (doc.fullName.includes('Bình') ? 'Nội tổng quát' : 'Đa khoa'),
           exp: doc.doctorProfile?.experience || '5 năm',
           rating: doc.doctorProfile?.rating || 5.0,
           price: (doc.doctorProfile?.price || 150000).toLocaleString('vi-VN') + 'đ',
@@ -240,6 +244,19 @@ export default function PatientAppointmentsPage() {
     };
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      if (bookingData.doctorId) {
+        const res = await getDoctorSchedules(bookingData.doctorId);
+        if (res.success) setDoctorSchedules(res.schedules);
+        else setDoctorSchedules([]);
+      } else {
+        setDoctorSchedules([]);
+      }
+    };
+    fetchSchedules();
+  }, [bookingData.doctorId]);
 
   useEffect(() => {
     const fetchTimes = async () => {
@@ -395,684 +412,78 @@ export default function PatientAppointmentsPage() {
 
               {/* STEP 1: THÀNH VIÊN */}
               {step === 1 && (
-                <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-                      <Users className="text-[#2563EB]" size={28} /> Chọn người cần khám
-                    </h2>
-                    <p className="text-gray-500 mt-2">Vui lòng chọn thành viên gia đình cần đặt lịch khám</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {patients.map((p, idx) => (
-                      <div
-                        key={p.id}
-                        onClick={() => setActivePatientId(p.id)}
-                        className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-4 ${activePatientId === p.id ? 'border-[#2563EB] bg-blue-50/30' : 'border-gray-200 hover:border-blue-200'}`}
-                      >
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${activePatientId === p.id ? 'bg-[#2563EB] text-white' : 'border-2 border-gray-300'}`}>
-                          {activePatientId === p.id && <Check size={14} strokeWidth={3} />}
-                        </div>
-                        <div className="w-12 h-12 rounded-full bg-blue-100 text-[#2563EB] flex items-center justify-center font-bold text-lg shrink-0">
-                          {p.name ? p.name.split(' ').pop()?.charAt(0) : 'U'}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-gray-900 text-lg">{p.name || 'Chưa cập nhật tên'}</h3>
-                            {idx === 0 && <span className="text-xs font-bold bg-blue-100 text-[#2563EB] px-2 py-1 rounded-md">Chủ tài khoản</span>}
-                          </div>
-                          <div className="flex flex-col gap-1 mt-1">
-                            <p className="text-sm text-gray-500 flex items-center gap-1.5"><Phone size={14} /> {p.phone || 'Chưa có SĐT'}</p>
-                            {userData?.dob && idx === 0 && <p className="text-sm text-gray-500 flex items-center gap-1.5"><Calendar size={14} /> {userData.dob.includes('-') ? userData.dob.split('-').reverse().join('/') : userData.dob}</p>}
-                            {p.dob && idx > 0 && <p className="text-sm text-gray-500 flex items-center gap-1.5"><Calendar size={14} /> {p.dob.includes('-') ? p.dob.split('-').reverse().join('/') : p.dob}</p>}
-                            {idx > 0 && <p className="text-sm text-gray-500 flex items-center gap-1.5"><Users size={14} /> Thành viên gia đình {p.relationship ? `(${p.relationship})` : ''}</p>}
-                          </div>
-                        </div>
-                        {idx > 0 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const newPatients = patients.filter(pat => pat.id !== p.id);
-                              setPatients(newPatients);
-                              if (activePatientId === p.id) {
-                                setActivePatientId(newPatients[0].id);
-                              }
-                            }}
-                            className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors ml-2"
-                            title="Xóa thành viên"
-                          >
-                            <Trash2 size={20} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-
-                    <button
-                      onClick={() => {
-                        setIsAddPatientModalOpen(true);
-                      }}
-                      className="w-full p-4 rounded-2xl border-2 border-dashed border-[#2563EB] text-[#2563EB] font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
-                    >
-                      <UserCircle2 size={20} /> Thêm thành viên mới
-                    </button>
-                  </div>
-
-                  <div className="mt-8 flex justify-end">
-                    <button
-                      disabled={patients.length === 0}
-                      onClick={() => setStep(2)}
-                      className="bg-[#2563EB] text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                      Tiếp tục <ArrowRight size={18} />
-                    </button>
-                  </div>
-                </div>
+                <Step1Patient
+                  patients={patients}
+                  setPatients={setPatients}
+                  activePatientId={activePatientId}
+                  setActivePatientId={setActivePatientId}
+                  userData={userData}
+                  setIsAddPatientModalOpen={setIsAddPatientModalOpen}
+                  setStep={setStep}
+                />
               )}
 
               {/* STEP 2: PHƯƠNG THỨC */}
               {step === 2 && (
-                <div className="p-6 flex-1 flex flex-col animate-in slide-in-from-right-8 relative">
-                  <div className="mb-6 flex items-center gap-3">
-                    <button onClick={() => setStep(1)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                      <Stethoscope className="text-[#2563EB]" size={28} /> Chọn phương thức đặt lịch
-                    </h2>
-                  </div>
-
-                  <p className="text-gray-500 mb-6 font-medium">Đặt lịch khám cho: <strong className="text-[#2563EB]">{patients.find(p => p.id === activePatientId)?.name}</strong></p>
-
-                  <div className="mb-6 mt-4">
-                    <div
-                      onClick={() => setActiveModal(activeModal === 'facility' ? null : 'facility')}
-                      className={`p-4 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all bg-white ${bookingData.facility ? 'border-[#2563EB] shadow-sm' : 'border-gray-200 hover:border-[#2563EB]'}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bookingData.facility ? 'bg-[#2563EB] text-white' : 'bg-gray-100 text-gray-500'}`}>
-                          <MapPin size={24} />
-                        </div>
-                        <div>
-                          <h3 className={`font-bold text-lg ${bookingData.facility ? 'text-gray-900' : 'text-gray-500'}`}>Chọn cơ sở khám</h3>
-                          {bookingData.facility && <p className="text-sm text-gray-600 mt-0.5">{bookingData.facility}</p>}
-                        </div>
-                      </div>
-                      <ChevronDown size={20} className={`transition-transform ${activeModal === 'facility' ? 'rotate-180 text-[#2563EB]' : bookingData.facility ? 'text-[#2563EB]' : 'text-gray-400'}`} />
-                    </div>
-
-                    {activeModal === 'facility' && (
-                      <div className="mt-3 bg-white/80 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 p-2">
-                        
-                        <div className="p-3 mb-2 rounded-xl border border-dashed border-gray-200 hover:bg-gray-50 hover:border-gray-300 cursor-pointer flex items-center gap-3 transition-all" onClick={() => { setBookingData({ ...bookingData, facility: '' }); setActiveModal(null); setBookingMethod(null); }}>
-                          <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 shrink-0"><MapPin size={16} /></div>
-                          <span className="font-bold text-gray-500 text-sm">- Bỏ chọn / Chọn lại cơ sở khám -</span>
-                        </div>
-                        
-                        {facilities.map((fac) => {
-                          const isSelected = bookingData.facility === fac.name;
-                          return (
-                          <div 
-                            key={fac.id} 
-                            className={`p-4 mb-1 rounded-xl cursor-pointer flex items-center justify-between transition-all duration-200 ${isSelected ? 'bg-blue-50/80 border border-blue-200 shadow-sm' : 'hover:bg-gray-50 border border-transparent'}`} 
-                            onClick={() => { setBookingData({ ...bookingData, facility: fac.name }); setActiveModal(null); }}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${isSelected ? 'bg-[#2563EB] text-white' : 'bg-white border border-gray-200 text-gray-400'}`}>
-                                <MapPin size={24} />
-                              </div>
-                              <div>
-                                <h4 className={`font-bold text-lg transition-colors ${isSelected ? 'text-[#2563EB]' : 'text-gray-900'}`}>{fac.name}</h4>
-                                <p className="text-sm mt-1 text-gray-500">{fac.address}</p>
-                              </div>
-                            </div>
-                            {isSelected && <div className="w-6 h-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 ml-4"><Check size={14} strokeWidth={3} /></div>}
-                          </div>
-                        )})}
-                        
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-4 mb-4 flex-1">
-                    {/* THEO CHUYÊN KHOA */}
-                    <div>
-                      <div
-                        className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all bg-white ${bookingData.facility ? 'cursor-pointer hover:border-[#2563EB] border-gray-100' : 'opacity-50 cursor-not-allowed border-gray-100'}`}
-                        onClick={(e) => {
-                          if (bookingData.facility) {
-                            if (bookingMethod !== 'specialty') {
-                              setBookingMethod('specialty');
-                              setActiveModal('specialty');
-                              setBookingData({ ...bookingData, specialty: '', doctor: '', doctorId: 0 });
-                            } else {
-                              setActiveModal(activeModal === 'specialty' ? null : 'specialty');
-                            }
-                          }
-                        }}
-                      >
-                        <input type="radio" name="method" className="w-5 h-5 text-[#2563EB]" readOnly checked={bookingMethod === 'specialty'} />
-                        <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0"><HeartPulse size={24} /></div>
-                        <div className="flex-1">
-                          <p className="font-bold text-gray-900 text-lg">Theo chuyên khoa</p>
-                          <p className="text-sm text-gray-500">Tìm bác sĩ theo chuyên khoa</p>
-                        </div>
-                        {bookingData.specialty && bookingMethod === 'specialty' ? (
-                          <div className="text-right">
-                            <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.specialty}</span>
-                            <span className="text-xs text-blue-500">Đổi</span>
-                          </div>
-                        ) : (
-                          <ChevronDown size={20} className={`transition-transform ${activeModal === 'specialty' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />
-                        )}
-                      </div>
-                      {activeModal === 'specialty' && bookingMethod === 'specialty' && (
-                        <div className="mt-3 ml-0 sm:ml-12 bg-white/80 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto custom-scrollbar p-2">
-                          <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 p-2 pb-3 mb-2 border-b border-gray-100">
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                              <input 
-                                type="text" 
-                                placeholder='Tìm kiếm chuyên khoa... (VD: "da lieu")' 
-                                value={specialtySearchQuery}
-                                onChange={(e) => setSpecialtySearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#2563EB] transition-colors text-[15px]" 
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-1 px-1">
-                            {(() => {
-                              const filteredSpecialties = specialtySearchQuery.trim() 
-                                ? specialties.filter(s => s.name.toLowerCase().includes(specialtySearchQuery.toLowerCase()))
-                                : specialties;
-                              
-                              if (filteredSpecialties.length === 0) {
-                                return <div className="p-6 text-center text-gray-500 text-sm">Không tìm thấy chuyên khoa phù hợp.</div>;
-                              }
-                              
-                              return filteredSpecialties.map(spec => {
-                                const isSelected = bookingData.specialty === spec.name;
-                                const Icon = spec.icon;
-                                return (
-                                <div 
-                                  key={spec.id} 
-                                  className={`p-4 rounded-2xl cursor-pointer flex items-start gap-4 transition-all duration-200 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 ${isSelected ? 'bg-blue-50/50 shadow-sm' : 'bg-white'}`} 
-                                  onClick={() => { setBookingData({ ...bookingData, specialty: spec.name }); setActiveModal(null); }}
-                                >
-                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isSelected ? 'bg-[#2563EB] text-white ring-4 ring-blue-50' : 'bg-blue-50 text-[#2563EB]'}`}>
-                                    <Icon size={24} />
-                                  </div>
-                                  <div className="flex-1">
-                                    <h4 className={`font-bold text-[16px] mb-1.5 transition-colors ${isSelected ? 'text-[#2563EB]' : 'text-gray-900'}`}>{spec.name}</h4>
-                                    <div className="text-[13px] text-gray-500 leading-relaxed bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
-                                      <span className="inline-flex items-center rounded-md bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700 ring-1 ring-inset ring-orange-600/20 mr-2 shadow-sm">Triệu chứng</span>
-                                      {spec.name === 'Da liễu' ? 'Các triệu chứng ngoài da: ngứa, mụn, phỏng nước, các bệnh lây nhiễm qua đường tình dục...' : spec.name === 'Hỗ trợ sinh sản' ? 'Khám vô sinh, mong con, IUI, IVF; bảo tồn sinh sản, tiền hôn nhân, thai nghén, nội tiết, phụ khoa hiếm muộn...' : spec.name === 'Nội tổng quát' ? 'Kiểm tra sức khỏe tổng quát, tầm soát bệnh lý...' : 'Đang cập nhật triệu chứng...'}
-                                    </div>
-                                  </div>
-                                  {isSelected && <div className="w-6 h-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 mt-2 shadow-sm"><Check size={14} strokeWidth={3} /></div>}
-                                </div>
-                              );
-                            });
-                          })()}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* THEO BÁC SĨ */}
-                    <div>
-                      <div
-                        className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all bg-white ${bookingData.facility ? 'cursor-pointer hover:border-[#2563EB] border-gray-100' : 'opacity-50 cursor-not-allowed border-gray-100'}`}
-                        onClick={(e) => {
-                          if (bookingData.facility) {
-                            if (bookingMethod !== 'doctor') {
-                              setBookingMethod('doctor');
-                              setActiveModal('doctor');
-                              setBookingData({ ...bookingData, specialty: '', doctor: '', doctorId: 0 });
-                            } else {
-                              setActiveModal(activeModal === 'doctor' ? null : 'doctor');
-                            }
-                          }
-                        }}
-                      >
-                        <input type="radio" name="method" className="w-5 h-5 text-[#2563EB]" readOnly checked={bookingMethod === 'doctor'} />
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center shrink-0"><User size={24} /></div>
-                        <div className="flex-1">
-                          <p className="font-bold text-gray-900 text-lg">Theo bác sĩ</p>
-                          <p className="text-sm text-gray-500">Chọn bác sĩ mong muốn</p>
-                        </div>
-                        {bookingData.doctor && bookingMethod === 'doctor' ? (
-                          <div className="text-right">
-                            <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.doctor}</span>
-                            <span className="text-xs text-blue-500">Đổi</span>
-                          </div>
-                        ) : (
-                          <ChevronDown size={20} className={`transition-transform ${activeModal === 'doctor' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />
-                        )}
-                      </div>
-                      {activeModal === 'doctor' && bookingMethod === 'doctor' && (
-                        <div className="mt-3 ml-0 sm:ml-12 bg-white/80 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto custom-scrollbar p-2">
-                          {(() => {
-                            const selectedFacilityName = bookingData.facility?.toLowerCase() || '';
-                            const selectedFacilityId = facilities.find(f => f.name === bookingData.facility)?.id;
-                            
-                            const isNorthFacility = selectedFacilityName.includes('hà nội') || selectedFacilityName.includes('ninh bình');
-                            const isSouthFacility = selectedFacilityName.includes('hồ chí minh') || selectedFacilityName.includes('sài gòn');
-
-                            const filteredDoctors = bookingData.facility 
-                              ? doctorsList.filter(doc => {
-                                  // Kiểm tra xem bác sĩ có phòng khám thuộc cơ sở này không
-                                  const hasClinicInFacility = doc.clinics?.some((c: any) => c.facilityId === selectedFacilityId);
-                                  if (hasClinicInFacility) return true;
-
-                                  // Nếu không, kiểm tra theo địa chỉ của bác sĩ (tất cả 63 tỉnh thành)
-                                  const docAddress = (doc.address || '').toLowerCase();
-                                  
-                                  const NORTH_PROVINCES = [
-                                    'lào cai', 'yên bái', 'điện biên', 'hòa bình', 'lai châu', 'sơn la', 'hà giang', 'cao bằng', 'bắc kạn', 'lạng sơn', 'tuyên quang', 'thái nguyên', 'phú thọ', 'bắc giang', 'quảng ninh', 'hà nội', 'hải phòng', 'bắc ninh', 'hà nam', 'hải dương', 'hưng yên', 'nam định', 'ninh bình', 'thái bình', 'vĩnh phúc',
-                                    'thanh hóa', 'nghệ an', 'hà tĩnh', 'quảng bình', 'quảng trị', 'thừa thiên huế', 'huế', 'miền bắc'
-                                  ];
-                                  
-                                  const SOUTH_PROVINCES = [
-                                    'đà nẵng', 'quảng nam', 'quảng ngãi', 'bình định', 'phú yên', 'khánh hòa', 'ninh thuận', 'bình thuận',
-                                    'kon tum', 'gia lai', 'đắk lắk', 'đắk nông', 'lâm đồng', 'đà lạt',
-                                    'hồ chí minh', 'sài gòn', 'bình dương', 'bình phước', 'đồng nai', 'tây ninh', 'bà rịa', 'vũng tàu',
-                                    'long an', 'đồng tháp', 'tiền giang', 'an giang', 'bến tre', 'vĩnh long', 'trà vinh', 'hậu giang', 'kiên giang', 'sóc trăng', 'bạc liêu', 'cà mau', 'cần thơ', 'miền nam', 'miền tây'
-                                  ];
-
-                                  const isDocNorth = NORTH_PROVINCES.some(prov => docAddress.includes(prov));
-                                  const isDocSouth = SOUTH_PROVINCES.some(prov => docAddress.includes(prov));
-
-                                  if (isNorthFacility && isDocNorth) return true;
-                                  if (isSouthFacility && isDocSouth) return true;
-                                  
-                                  return false;
-                                })
-                              : doctorsList;
-                            
-                            let finalDoctorsList = filteredDoctors;
-                            if (doctorSearchQuery.trim()) {
-                              finalDoctorsList = filteredDoctors.filter(d => 
-                                d.name.toLowerCase().includes(doctorSearchQuery.toLowerCase()) || 
-                                (d.specialty || '').toLowerCase().includes(doctorSearchQuery.toLowerCase())
-                              );
-                            }
-                            
-                            return (
-                              <div className="flex flex-col h-full relative">
-                                <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 p-2 pb-3 mb-2 border-b border-gray-100">
-                                  <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                    <input 
-                                      type="text" 
-                                      placeholder='Tìm kiếm bác sĩ... (VD: "Nguyen Van A")' 
-                                      value={doctorSearchQuery}
-                                      onChange={(e) => setDoctorSearchQuery(e.target.value)}
-                                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#2563EB] transition-colors text-[15px]" 
-                                    />
-                                  </div>
-                                </div>
-                                <div className="space-y-1 px-1">
-                                  {finalDoctorsList.length === 0 ? (
-                                    <div className="p-6 text-center text-gray-500 text-sm">Chưa có bác sĩ nào được phân công tại cơ sở này hoặc phù hợp với tìm kiếm.</div>
-                                  ) : (
-                                    finalDoctorsList.map(doc => {
-                                      const isSelected = bookingData.doctorId === doc.id;
-                                      return (
-                                        <div 
-                                          key={doc.id} 
-                                          className={`p-4 rounded-2xl cursor-pointer flex items-center gap-4 transition-all duration-200 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 ${isSelected ? 'bg-blue-50/50 shadow-sm' : 'bg-white'}`} 
-                                          onClick={() => { setBookingData({ ...bookingData, doctor: doc.name, doctorId: doc.id, doctorPrice: doc.rawPrice, specialty: doc.specialty }); setActiveModal(null); }}
-                                        >
-                                          <div className={`w-14 h-14 rounded-full bg-blue-100 overflow-hidden shrink-0 border-2 shadow-sm ${isSelected ? 'border-[#2563EB] ring-2 ring-blue-100' : 'border-white ring-2 ring-blue-50'}`}>
-                                            {doc.avatar ? <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[#2563EB] font-bold text-xl">{doc.image}</div>}
-                                          </div>
-                                          <div className="flex-1">
-                                            <h4 className={`font-bold text-[16px] transition-colors ${isSelected ? 'text-[#2563EB]' : 'text-gray-900'}`}>{doc.name}</h4>
-                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10 shadow-sm">{doc.degree || 'Ths. BS'}</span>
-                                              <span className="text-[13px] text-[#2563EB] font-bold">• {doc.specialty}</span>
-                                            </div>
-                                          </div>
-                                          {isSelected && <div className="w-6 h-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 ml-4 shadow-sm"><Check size={14} strokeWidth={3} /></div>}
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* THEO PHÒNG KHÁM */}
-                    <div>
-                      <div
-                        className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all bg-white ${bookingData.facility ? 'cursor-pointer hover:border-[#2563EB] border-gray-100' : 'opacity-50 cursor-not-allowed border-gray-100'}`}
-                        onClick={(e) => {
-                          if (bookingData.facility) {
-                            if (bookingMethod !== 'clinic') {
-                              setBookingMethod('clinic');
-                              setActiveModal('clinic');
-                              setBookingData({ ...bookingData, specialty: '', doctor: '', doctorId: 0 });
-                            } else {
-                              setActiveModal(activeModal === 'clinic' ? null : 'clinic');
-                            }
-                          }
-                        }}
-                      >
-                        <input type="radio" name="method" className="w-5 h-5 text-[#2563EB]" readOnly checked={bookingMethod === 'clinic'} />
-                        <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center shrink-0"><Landmark size={24} /></div>
-                        <div className="flex-1">
-                          <p className="font-bold text-gray-900 text-lg">Theo phòng khám</p>
-                          <p className="text-sm text-gray-500">Chọn phòng khám mong muốn</p>
-                        </div>
-                        {bookingData.specialty && bookingMethod === 'clinic' ? (
-                          <div className="text-right">
-                            <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.specialty}</span>
-                            <span className="text-xs text-blue-500">Đổi</span>
-                          </div>
-                        ) : (
-                          <ChevronDown size={20} className={`transition-transform ${activeModal === 'clinic' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />
-                        )}
-                      </div>
-                      {activeModal === 'clinic' && bookingMethod === 'clinic' && (
-                        <div className="mt-3 ml-0 sm:ml-12 bg-white/80 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[400px] overflow-y-auto custom-scrollbar p-2">
-                          {(() => {
-                            const selectedFacilityId = facilities.find(f => f.name === bookingData.facility)?.id;
-                            let filteredClinics = bookingData.facility ? clinics.filter(c => c.facilityId === selectedFacilityId) : clinics;
-                            
-                            if (clinicSearchQuery.trim()) {
-                              filteredClinics = filteredClinics.filter(c => c.name.toLowerCase().includes(clinicSearchQuery.toLowerCase()));
-                            }
-
-                            return (
-                              <div className="flex flex-col h-full relative">
-                                <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 p-2 pb-3 mb-2 border-b border-gray-100">
-                                  <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                    <input 
-                                      type="text" 
-                                      placeholder='Tìm kiếm phòng khám... (VD: "noi 1")' 
-                                      value={clinicSearchQuery}
-                                      onChange={(e) => setClinicSearchQuery(e.target.value)}
-                                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-2xl outline-none focus:border-[#2563EB] transition-colors text-[15px]" 
-                                    />
-                                  </div>
-                                </div>
-                                <div className="space-y-1 px-1">
-                                  {filteredClinics.length === 0 ? (
-                                    <div className="p-6 text-center text-gray-500 text-sm">Không tìm thấy phòng khám phù hợp.</div>
-                                  ) : (
-                                    filteredClinics.map(clinic => {
-                                      const isSelected = bookingData.specialty === clinic.name;
-                                      return (
-                                        <div 
-                                          key={clinic.id} 
-                                          className={`p-4 rounded-2xl cursor-pointer flex items-center justify-between transition-all duration-200 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 ${isSelected ? 'bg-blue-50/50 shadow-sm' : 'bg-white'}`} 
-                                          onClick={() => { setBookingData({ ...bookingData, specialty: clinic.name }); setActiveModal(null); }}
-                                        >
-                                          <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isSelected ? 'bg-[#2563EB] text-white shadow-md ring-4 ring-blue-50' : 'bg-blue-50 text-[#2563EB]'}`}>
-                                              <Landmark size={24} />
-                                            </div>
-                                            <div>
-                                              <h4 className={`font-bold text-[16px] transition-colors ${isSelected ? 'text-[#2563EB]' : 'text-gray-900'}`}>{clinic.name}</h4>
-                                              <p className="text-[13px] font-bold text-[#2563EB] mt-1">{clinic.type || 'Đa khoa'}</p>
-                                            </div>
-                                          </div>
-                                          {isSelected && <div className="w-6 h-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 ml-4 shadow-sm"><Check size={14} strokeWidth={3} /></div>}
-                                        </div>
-                                      );
-                                    })
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-8 sticky bottom-0 pb-4 pt-2 bg-white/90 backdrop-blur-sm z-10">
-                    <div className="bg-white rounded-2xl p-4 shadow-[0_0_20px_rgba(0,0,0,0.1)] border border-gray-100">
-                      {(!bookingData.specialty && !bookingData.doctor) ? (
-                        <div className="text-center py-2">
-                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2 text-gray-400">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 14a8 8 0 0 1-8 8" /><path d="M18 11v-1a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-1" /><path d="M12 11v-1a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2v0a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-1" /></svg>
-                          </div>
-                          <p className="text-gray-500 font-medium text-sm">Vui lòng hoàn tất phương thức đặt lịch</p>
-                          <div className="flex gap-3 mt-4">
-                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl transition">Quay lại</button>
-                            <button disabled className="flex-[2] py-3 bg-gray-200 text-white font-bold rounded-xl opacity-50 cursor-not-allowed">Tiếp tục</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="py-2">
-                          <p className="text-sm text-gray-500 mb-1">Đã chọn:</p>
-                          <p className="font-bold text-[#2563EB] mb-4 text-lg">
-                            {bookingMethod === 'specialty' ? `Chuyên khoa ${bookingData.specialty}` :
-                              bookingMethod === 'doctor' ? `Bác sĩ ${bookingData.doctor}` :
-                                `Phòng khám ${bookingData.specialty}`}
-                          </p>
-                          <div className="flex gap-3">
-                            <button onClick={() => setStep(1)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition">Quay lại</button>
-                            <button onClick={() => {
-                              // Ensure patient data is updated with the booking choice
-                              setPatients(patients.map(p => p.id === activePatientId ? {
-                                ...p,
-                                facility: bookingData.facility,
-                                specialty: bookingData.specialty,
-                                doctor: bookingData.doctor,
-                                doctorId: bookingData.doctorId,
-                                doctorPrice: bookingData.doctorPrice
-                              } : p));
-                              setStep(3);
-                            }} className="flex-[2] py-3 bg-[#2563EB] hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2">Tiếp tục <ArrowRight size={18} /></button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <Step2BookingMethod
+                  setStep={setStep}
+                  patients={patients}
+                  activePatientId={activePatientId}
+                  bookingData={bookingData}
+                  setBookingData={setBookingData}
+                  activeModal={activeModal}
+                  setActiveModal={setActiveModal}
+                  bookingMethod={bookingMethod}
+                  setBookingMethod={setBookingMethod}
+                  facilities={facilities}
+                  specialties={specialties}
+                  doctorsList={doctorsList}
+                  clinics={clinics}
+                  clinicSearchQuery={clinicSearchQuery}
+                  setClinicSearchQuery={setClinicSearchQuery}
+                  specialtySearchQuery={specialtySearchQuery}
+                  setSpecialtySearchQuery={setSpecialtySearchQuery}
+                  doctorSearchQuery={doctorSearchQuery}
+                  setDoctorSearchQuery={setDoctorSearchQuery}
+                  onNextStep={() => {
+                    setPatients(patients.map(p => p.id === activePatientId ? {
+                      ...p,
+                      facility: bookingData.facility,
+                      specialty: bookingData.specialty,
+                      doctor: bookingData.doctor,
+                      doctorId: bookingData.doctorId,
+                      doctorPrice: bookingData.doctorPrice
+                    } : p));
+                    setStep(3);
+                  }}
+                />
               )}
-
               {/* STEP 3: LỊCH KHÁM */}
               {step === 3 && (
-                <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => setStep(2)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                      <CalendarDays className="text-[#2563EB]" size={28} /> Chọn ngày và giờ khám
-                    </h2>
-                  </div>
-
-                  <div className="mb-6">
-                    <p className="text-gray-600">Bệnh nhân: <strong className="text-gray-900">{patients.find(p => p.id === activePatientId)?.name}</strong></p>
-                    {bookingMethod === 'specialty' && (
-                      <p className="text-gray-600">Theo chuyên khoa: <strong className="text-gray-900">{bookingData.specialty}</strong></p>
-                    )}
-                    {bookingMethod === 'doctor' && (
-                      <p className="text-gray-600">Theo bác sĩ: <strong className="text-gray-900 uppercase">{bookingData.doctor}</strong></p>
-                    )}
-                    {bookingMethod === 'clinic' && (
-                      <p className="text-gray-600">Theo phòng khám: <strong className="text-gray-900">{bookingData.specialty}</strong></p>
-                    )}
-                  </div>
-
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-bold text-[#2563EB] mb-3 text-lg">Chọn ngày khám:</h3>
-                      <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {Array.from({ length: 14 }).map((_, i) => {
-                          const dateObj = new Date();
-                          dateObj.setDate(dateObj.getDate() + i + 1); // Bắt đầu từ ngày mai
-                          const dayOfWeek = dateObj.getDay();
-                          const dateNum = dateObj.getDate();
-                          const monthNum = dateObj.getMonth() + 1;
-                          const year = dateObj.getFullYear();
-                          const dateString = `${year}-${String(monthNum).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
-                          const displayDay = i === 0 ? 'Ngày mai' : dayOfWeek === 0 ? 'CN' : `T${dayOfWeek + 1}`;
-                          const displayDate = `${dateNum}/${monthNum}`;
-                          const isSelected = bookingData.date === dateString;
-                          
-                          return (
-                            <div 
-                              key={dateString}
-                              onClick={() => setBookingData({ ...bookingData, date: dateString })}
-                              className={`flex flex-col items-center justify-center shrink-0 w-[85px] h-[95px] rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? 'bg-[#2563EB] border-[#2563EB] text-white shadow-md transform scale-105' : 'bg-white border-gray-200 text-gray-700 hover:border-[#2563EB] hover:text-[#2563EB]'}`}
-                            >
-                              <span className={`text-sm font-bold mb-1 ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{displayDay}</span>
-                              <span className="font-black text-xl">{displayDate}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <style dangerouslySetInnerHTML={{__html: `
-                        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-                        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; margin-top: 4px; }
-                        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-                        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-                      `}} />
-                    </div>
-
-                    <div className={`transition-opacity ${bookingData.date ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                      <h3 className="font-bold text-[#2563EB] mb-3 text-lg">Giờ khám:</h3>
-
-                      {patients.find(p => p.id === activePatientId)?.time ? (
-                        <div className="p-4 rounded-xl border-2 border-[#2563EB] bg-blue-50/50 flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <Clock className="text-[#2563EB]" size={24} />
-                            <div>
-                              <p className="text-2xl font-black text-[#2563EB]">{patients.find(p => p.id === activePatientId)?.time}</p>
-                              <p className="text-sm text-gray-600 font-medium">Ngày: {bookingData.date.split('-').reverse().join('/')}</p>
-                            </div>
-                          </div>
-                          <div className="w-8 h-8 bg-[#2563EB] rounded-full text-white flex items-center justify-center"><Check size={20} strokeWidth={3} /></div>
-                        </div>
-                      ) : null}
-
-                      <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xl">🌅</span>
-                          <h4 className="font-bold text-orange-500 text-lg">Buổi sáng</h4>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
-                          {morningTimes.map((time) => {
-                            const isBooked = bookedTimes.includes(time);
-                            const isSelected = patients.find(p => p.id === activePatientId)?.time === time;
-                            return (
-                              <button
-                                key={time}
-                                disabled={isBooked}
-                                onClick={() => setPatients(patients.map(p => p.id === activePatientId ? { ...p, time } : p))}
-                                className={`shrink-0 min-w-[100px] py-2.5 rounded-xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-1.5 ${isSelected
-                                  ? 'bg-orange-500 text-white border-orange-500 shadow-md transform scale-105'
-                                  : isBooked
-                                    ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
-                                    : 'bg-white text-gray-700 border-gray-200 hover:border-orange-500 hover:text-orange-500'
-                                  }`}
-                              >
-                                <Clock size={14} className={isSelected ? 'text-orange-100' : 'text-gray-400'} /> {time}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-xl">🌇</span>
-                          <h4 className="font-bold text-[#2563EB] text-lg">Buổi chiều</h4>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
-                          {afternoonTimes.map((time) => {
-                            const isBooked = bookedTimes.includes(time);
-                            const isSelected = patients.find(p => p.id === activePatientId)?.time === time;
-                            return (
-                              <button
-                                key={time}
-                                disabled={isBooked}
-                                onClick={() => setPatients(patients.map(p => p.id === activePatientId ? { ...p, time } : p))}
-                                className={`shrink-0 min-w-[100px] py-2.5 rounded-xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-1.5 ${isSelected
-                                  ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-md transform scale-105'
-                                  : isBooked
-                                    ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
-                                    : 'bg-white text-gray-700 border-gray-200 hover:border-[#2563EB] hover:text-[#2563EB]'
-                                  }`}
-                              >
-                                <Clock size={14} className={isSelected ? 'text-blue-100' : 'text-gray-400'} /> {time}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 flex justify-end">
-                    <button
-                      disabled={!bookingData.date || !patients.find(p => p.id === activePatientId)?.time}
-                      onClick={() => setStep(4)}
-                      className="bg-[#2563EB] text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                      Tiếp tục <ArrowRight size={18} />
-                    </button>
-                  </div>
-                </div>
+                <Step3DateTime
+                  setStep={setStep}
+                  patients={patients}
+                  setPatients={setPatients}
+                  activePatientId={activePatientId}
+                  bookingData={bookingData}
+                  setBookingData={setBookingData}
+                  bookingMethod={bookingMethod}
+                  bookedTimes={bookedTimes}
+                  doctorSchedules={doctorSchedules}
+                />
               )}
-
               {/* STEP 4: XÁC NHẬN */}
               {step === 4 && (
-                <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => setStep(3)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                      <CheckCircle2 className="text-[#2563EB]" size={28} /> Xác nhận thông tin đặt lịch
-                    </h2>
-                  </div>
-                  <p className="text-gray-500 mb-6">Vui lòng kiểm tra thông tin và nhập triệu chứng</p>
-
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-bold text-[#2563EB] mb-3 text-lg flex items-center gap-2"><FileText size={20} /> Triệu chứng/Lý do khám:</h3>
-                      <textarea
-                        rows={4}
-                        value={patients.find(p => p.id === activePatientId)?.reason || ''}
-                        onChange={(e) => setPatients(patients.map(p => p.id === activePatientId ? { ...p, reason: e.target.value } : p))}
-                        placeholder="Mô tả triệu chứng, tình trạng sức khỏe hoặc lý do khám bệnh..."
-                        className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-[#2563EB] outline-none text-base bg-white resize-none shadow-sm transition-all"
-                      ></textarea>
-                      <p className="text-xs text-gray-500 mt-2 italic flex items-center gap-1"><Info size={14} /> Thông tin chi tiết sẽ giúp bác sĩ chuẩn bị tốt hơn cho buổi khám</p>
-                    </div>
-
-                    <div className="bg-blue-50/50 border border-[#2563EB]/20 rounded-2xl p-6">
-                      <h3 className="font-bold text-gray-900 mb-4 text-lg flex items-center gap-2"><LayoutDashboard size={20} className="text-[#2563EB]" /> THÔNG TIN ĐẶT LỊCH</h3>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex"><span className="w-32 text-gray-500">Bệnh nhân:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.name}</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Cơ sở khám:</span> <span className="font-bold text-gray-900">BỆNH VIỆN BẠCH MAI - NINH BÌNH</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Phương thức:</span> <span className="font-bold text-gray-900">{bookingMethod === 'specialty' ? 'Theo chuyên khoa' : 'Theo bác sĩ'}</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Chuyên khoa:</span> <span className="font-bold text-gray-900">{bookingData.specialty}</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Bác sĩ:</span> <span className="font-bold text-gray-900 uppercase">{bookingData.doctor}</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Ngày khám:</span> <span className="font-bold text-gray-900">{bookingData.date ? bookingData.date.split('-').reverse().join('/') : ''}</span></div>
-                        <div className="flex"><span className="w-32 text-gray-500">Giờ khám:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.time}</span></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 flex gap-4">
-                    <button onClick={() => setStep(3)} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Quay lại</button>
-                    <button
-                      disabled={isSubmitting}
-                      onClick={() => setStep(5)}
-                      className="flex-[2] bg-[#2563EB] text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:bg-blue-400"
-                    >
-                      {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />} Xác nhận đặt lịch
-                    </button>
-                  </div>
-                </div>
+                <Step4Confirm
+                  setStep={setStep}
+                  patients={patients}
+                  setPatients={setPatients}
+                  activePatientId={activePatientId}
+                  bookingData={bookingData}
+                  bookingMethod={bookingMethod}
+                  isSubmitting={isSubmitting}
+                />
               )}
-
               {/* STEP 5: THANH TOÁN */}
               {step === 5 && (
                 <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8 bg-gray-50/50">
