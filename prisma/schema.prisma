@@ -36,6 +36,8 @@ model User {
   invoicesAsPatient     Invoice[]        @relation("PatientInvoices")
   invoicesAsDoctor      Invoice[]        @relation("DoctorInvoices")
   notifications         Notification[]
+  managedFamilyMembers  FamilyMember[]   @relation("UserFamilyMembers")
+  memberOfFamilies      FamilyMember[]   @relation("PatientFamilyMembers")
 
   @@map("users")
 }
@@ -51,10 +53,26 @@ model PatientProfile {
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model FamilyMember {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  patientId    Int
+  relationship String   @db.VarChar(50)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation("UserFamilyMembers", fie111lds: [userId], references: [id], onDelete: Cascade)
+  patient      User     @relation("PatientFamilyMembers", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, patientId])
+  @@index([userId])
+  @@index([patientId])
+}
+
 model DoctorProfile {
-  id                Int     @id @default(autoincrement())
-  userId            Int     @unique
-  specialty         String
+  id                Int       @id @default(autoincrement())
+  userId            Int       @unique
+  specialtyId       Int?
   experience        String
   status            String  @default("Đang làm việc")
   rating            Float   @default(5)
@@ -68,8 +86,10 @@ model DoctorProfile {
   certificateNumber String? @db.VarChar(100)
   doctorCode        String? @db.VarChar(20)
   schedule          Json?
-  maxPatientsPerDay Int     @default(10)
-  user              User    @relation(fields: [userId], references: [id])
+  maxPatientsPerDay Int       @default(10)
+  user              User      @relation(fields: [userId], references: [id])
+  specialty         Specialty? @relation(fields: [specialtyId], references: [id])
+  clinics           Clinic[]
 }
 
 model HealthMetric {
@@ -274,4 +294,39 @@ model OtpCode {
   createdAt  DateTime @default(now())
 
   @@index([email])
+}
+
+model Facility {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  address   String   @db.VarChar(255)
+  status    String   @default("Hoạt động")
+  clinics   Clinic[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Specialty {
+  id          Int             @id @default(autoincrement())
+  name        String          @db.VarChar(100)
+  description String?         @db.Text
+  iconType    String?         @db.VarChar(50)
+  color       String?         @db.VarChar(50)
+  doctors     DoctorProfile[]
+  clinics     Clinic[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Clinic {
+  id          Int             @id @default(autoincrement())
+  name        String          @db.VarChar(100)
+  type        String          @db.VarChar(100)
+  facilityId  Int
+  specialtyId Int?
+  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  specialty   Specialty?      @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+  doctors     DoctorProfile[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 }

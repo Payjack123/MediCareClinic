@@ -45,7 +45,7 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
     const doctor = await prisma.user.findUnique({
       where: { id: doctorIdToFetch },
       include: {
-        doctorProfile: true,
+        doctorProfile: { include: { specialty: true } },
         appointmentsAsDoctor: { select: { id: true, status: true } },
       }
     });
@@ -58,7 +58,7 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
     }));
 
     const dProfile = doctor.doctorProfile || {
-      specialty: 'Chưa cập nhật',
+      specialty: null,
       degree: 'Chưa cập nhật',
       university: 'Chưa cập nhật',
       experience: '0',
@@ -84,7 +84,7 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
       address: doctor.address || 'Chưa cập nhật',
       avatar: doctor.avatar || `https://ui-avatars.com/api/?name=${doctor.fullName.replace(/ /g, '+')}&background=random`,
 
-      specialty: dProfile.specialty || 'Chưa cập nhật',
+      specialty: dProfile.specialty?.name || 'Chưa cập nhật',
       status: dProfile.status || 'Đang làm việc',
       degree: dProfile.degree || 'Chưa cập nhật',
       university: dProfile.university || 'Chưa cập nhật',
@@ -135,10 +135,18 @@ export async function updateDoctorProfileData(formData: any) {
       }
     });
 
+    let specialtyId = null;
+    if (formData.specialty) {
+      const spec = await prisma.specialty.findFirst({
+        where: { name: { contains: formData.specialty } }
+      });
+      if (spec) specialtyId = spec.id;
+    }
+
     await prisma.doctorProfile.upsert({
       where: { userId: doctorId },
       update: {
-        specialty: formData.specialty,
+        specialtyId: specialtyId,
         status: formData.status,
         experience: formData.experience.toString(),
         degree: formData.degree,
@@ -153,7 +161,7 @@ export async function updateDoctorProfileData(formData: any) {
       },
       create: {
         userId: doctorId,
-        specialty: formData.specialty,
+        specialtyId: specialtyId,
         status: formData.status || 'Đang làm việc',
         experience: formData.experience.toString(),
         degree: formData.degree,
