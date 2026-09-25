@@ -2,49 +2,59 @@ const { PrismaClient } = require('../lib/generated/prisma');
 const prisma = new PrismaClient();
 
 async function main() {
-  const doctors = await prisma.user.findMany({
-    where: { role: 'DOCTOR' },
-    include: { doctorProfile: { include: { specialty: true, clinics: true } } }
+  const docs = await prisma.doctorProfile.findMany({
+    include: {
+      user: true,
+      clinics: true,
+      specialty: true
+    }
   });
 
-  const clinics = await prisma.clinic.findMany();
+  const facilities = await prisma.facility.findMany();
+  const defaultFacilityId = facilities.length > 0 ? facilities[0].id : null;
 
-  for (const doc of doctors) {
-    if (!doc.doctorProfile) continue;
+  if (!defaultFacilityId) {
+    console.log("No facilities found!");
+    return;
+  }
 
-    // Tìm phòng khám phù hợp với tên chuyên khoa
-    const specialtyName = doc.doctorProfile.specialty?.name?.toLowerCase() || '';
-    
-    // Nếu chuyên khoa là Nội tổng quát, gán cho một phòng khám ngẫu nhiên có chữ Nội, hoặc Đa khoa
-    let matchingClinics = clinics.filter(c => c.name.toLowerCase().includes(specialtyName));
-    
-    if (matchingClinics.length === 0) {
-      if (specialtyName.includes('nội')) {
-        matchingClinics = clinics.filter(c => c.name.toLowerCase().includes('nội'));
-      } else {
-        matchingClinics = clinics.filter(c => c.name.toLowerCase().includes('cơ xương khớp') || c.name.toLowerCase().includes('đa khoa'));
-      }
-    }
-
-    if (matchingClinics.length > 0) {
-      // Gán 1-2 phòng khám đầu tiên cho bác sĩ
-      const clinicsToAssign = matchingClinics.slice(0, 1).map(c => ({ id: c.id }));
+  for (const doc of docs) {
+    if (doc.clinics.length === 0 && doc.specialtyId) {
+      console.log(`Đang xử lý: ${doc.user.fullName} (${doc.specialty?.name})`);
       
+      // Find clinics that match this specialty
+      let clinics = await prisma.clinic.findMany({
+        where: { specialtyId: doc.specialtyId }
+      });
+
+      // If no clinic exists for this specialty, create one
+      if (clinics.length === 0) {
+        const newClinic = await prisma.clinic.create({
+          data: {
+            name: `Phòng khám ${doc.specialty?.name || 'Đa khoa'}`,
+            roomNumber: `P.10${Math.floor(Math.random() * 9)}`,
+            type: doc.specialty?.name || 'Đa khoa',
+            facilityId: defaultFacilityId,
+            specialtyId: doc.specialtyId
+          }
+        });
+        clinics = [newClinic];
+        console.log(`-> Tạo mới: ${newClinic.name}`);
+      }
+
+      // Assign the doctor to the first matched clinic
       await prisma.doctorProfile.update({
-        where: { id: doc.doctorProfile.id },
+        where: { id: doc.id },
         data: {
           clinics: {
-            connect: clinicsToAssign
+            connect: { id: clinics[0].id }
           }
         }
       });
-      console.log(`Đã gán BS ${doc.fullName} (${specialtyName}) vào: ${matchingClinics.slice(0, 1).map(c => c.name).join(', ')}`);
-    } else {
-      console.log(`Không tìm thấy phòng khám phù hợp cho BS ${doc.fullName} (${specialtyName})`);
+      
+      console.log(`-> Đã gắn vào: ${clinics[0].name}`);
     }
   }
-
-  console.log('Hoàn tất phân bổ phòng khám cho bác sĩ!');
 }
 
-main().finally(() => prisma.$disconnect());
+main().catch(console.error).finally(() => prisma.$disconnect());

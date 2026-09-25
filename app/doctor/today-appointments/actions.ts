@@ -41,10 +41,14 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
     let completed = 0;
     let waiting = 0;
     let canceled = 0;
+    let examining = 0;
+    let checkedIn = 0;
 
     const formattedAppointments = appointments.map(apt => {
-      if (apt.status === 'HOÀN THÀNH') completed++;
-      else if (apt.status === 'ĐÃ HỦY') canceled++;
+      if (apt.status === 'Đã khám') completed++;
+      else if (apt.status === 'Đã hủy' || apt.status === 'Không đến') canceled++;
+      else if (apt.status === 'Đang khám') examining++;
+      else if (apt.status === 'Đã check-in') checkedIn++;
       else waiting++; 
 
       let dob = apt.patient.dob || 'N/A';
@@ -66,9 +70,7 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
         };
       }
 
-      let uiStatus = 'Sắp tới';
-      if (apt.status === 'HOÀN THÀNH') uiStatus = 'Đã hoàn thành';
-      else if (apt.status === 'ĐÃ HỦY') uiStatus = 'Đã hủy';
+      let uiStatus = apt.status || 'Đã đặt';
 
       return {
         id: apt.id,
@@ -82,7 +84,7 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
         reason: parsedNote || 'Khám bệnh',
         patientDetails,
         patientPhone: patientDetails?.phone || apt.patient.phone,
-        room: doctor.doctorProfile?.specialty || 'Phòng khám',
+        room: apt.room || apt.specialty || 'Phòng khám',
         avatar: apt.patient.avatar || `https://ui-avatars.com/api/?name=${apt.patient.fullName.replace(/ /g, '+')}&background=random`
       };
     });
@@ -99,7 +101,9 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
           total: appointments.length,
           completed,
           waiting,
-          canceled
+          canceled,
+          examining,
+          checkedIn
         },
         appointments: formattedAppointments,
         currentDate: dateStr

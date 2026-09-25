@@ -9,7 +9,7 @@ import PatientSidebar from '@/app/patient/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { toast } from 'react-hot-toast';
 
-import { getPatientAppointmentData, getBookedTimes, getDoctorSchedules, createAppointment, findPatientByQuery, mockConfirmPayment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
+import { getPatientAppointmentData, getBookedTimes, getDoctorSchedules, getAvailableSchedules, createAppointment, findPatientByQuery, mockConfirmPayment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
 import { updatePatientProfile } from '@/app/patient/settings/actions';
 import Step1Patient from './components/Step1Patient';
 import Step2BookingMethod from './components/Step2BookingMethod';
@@ -247,8 +247,8 @@ export default function PatientAppointmentsPage() {
 
   useEffect(() => {
     const fetchSchedules = async () => {
-      if (bookingData.doctorId) {
-        const res = await getDoctorSchedules(bookingData.doctorId);
+      if (bookingData.doctorId || bookingData.specialty || bookingData.facility) {
+        const res = await getAvailableSchedules(bookingData);
         if (res.success) setDoctorSchedules(res.schedules);
         else setDoctorSchedules([]);
       } else {
@@ -256,7 +256,7 @@ export default function PatientAppointmentsPage() {
       }
     };
     fetchSchedules();
-  }, [bookingData.doctorId]);
+  }, [bookingData.doctorId, bookingData.specialty, bookingData.facility]);
 
   useEffect(() => {
     const fetchTimes = async () => {
@@ -428,6 +428,7 @@ export default function PatientAppointmentsPage() {
                 <Step2BookingMethod
                   setStep={setStep}
                   patients={patients}
+                  setPatients={setPatients}
                   activePatientId={activePatientId}
                   bookingData={bookingData}
                   setBookingData={setBookingData}
@@ -651,7 +652,7 @@ export default function PatientAppointmentsPage() {
                           <div className="text-center p-5 pt-6 border-b-2 border-dashed border-gray-300">
                             <p className="text-xs font-bold uppercase text-gray-500">Hệ thống Y tế</p>
                             <p className="text-sm font-bold uppercase text-gray-800">Phòng Khám Đa Khoa N1</p>
-                            <p className="text-xs font-medium text-gray-500 mt-1">Mã lịch: {code}</p>
+                            <p className="text-[15px] font-bold text-[#2563EB] mt-2 bg-blue-50/80 px-3 py-1 rounded-full inline-block border border-blue-100">Mã lịch: {code}</p>
                             <div className="flex justify-center my-4">
                               <div className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm">
                                 <QRCode value={code} size={100} level="M" />

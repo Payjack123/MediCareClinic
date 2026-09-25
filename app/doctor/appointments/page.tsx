@@ -112,10 +112,13 @@ export default function DoctorAppointmentsPage() {
 
   const getStatusColor = (rawStatus: string) => {
     switch (rawStatus) {
-      case 'HOÀN THÀNH': return 'bg-blue-100 border-blue-500 text-blue-800'; // Match patient history
-      case 'ĐÃ HỦY': return 'bg-red-100 border-red-500 text-red-800';
-      case 'ĐÃ XÁC NHẬN': return 'bg-green-100 border-green-500 text-green-800';
-      default: return 'bg-yellow-100 border-yellow-500 text-yellow-800'; // For CHỜ XÁC NHẬN
+      case 'Đã khám': return 'bg-green-100 border-green-500 text-green-800';
+      case 'Đã hủy': return 'bg-red-100 border-red-500 text-red-800';
+      case 'Đã xác nhận': return 'bg-emerald-100 border-emerald-500 text-emerald-800';
+      case 'Đã check-in': return 'bg-yellow-100 border-yellow-500 text-yellow-800';
+      case 'Đang khám': return 'bg-purple-100 border-purple-500 text-purple-800';
+      case 'Không đến': return 'bg-gray-100 border-gray-500 text-gray-800';
+      default: return 'bg-blue-100 border-blue-500 text-blue-800'; // Đã đặt
     }
   };
 
@@ -314,21 +317,31 @@ export default function DoctorAppointmentsPage() {
                             let badgeClass = 'bg-blue-100 text-blue-700';
                             let Icon = Clock;
 
-                            if (apt.rawStatus === 'HOÀN THÀNH') {
+                            if (apt.rawStatus === 'Đã khám') {
                               borderColor = 'border-l-green-500';
                               bgColor = 'bg-green-50/50';
                               badgeClass = 'bg-green-100 text-green-700';
                               Icon = CheckCircle2;
-                            } else if (apt.rawStatus === 'ĐÃ HỦY') {
+                            } else if (apt.rawStatus === 'Đã hủy') {
                               borderColor = 'border-l-red-500';
                               bgColor = 'bg-red-50/50';
                               badgeClass = 'bg-red-100 text-red-700';
                               Icon = XCircle;
-                            } else if (apt.rawStatus === 'CHỜ XÁC NHẬN') {
+                            } else if (apt.rawStatus === 'Đang chờ') {
                               borderColor = 'border-l-orange-400';
                               bgColor = 'bg-orange-50/30';
                               badgeClass = 'bg-orange-100 text-orange-700';
                               Icon = Clock;
+                            } else if (apt.rawStatus === 'Đang khám') {
+                              borderColor = 'border-l-purple-500';
+                              bgColor = 'bg-purple-50/50';
+                              badgeClass = 'bg-purple-100 text-purple-700';
+                              Icon = User;
+                            } else if (apt.rawStatus === 'Đã check-in') {
+                              borderColor = 'border-l-yellow-500';
+                              bgColor = 'bg-yellow-50/50';
+                              badgeClass = 'bg-yellow-100 text-yellow-700';
+                              Icon = CheckCircle2;
                             }
 
                             return (
@@ -406,7 +419,13 @@ export default function DoctorAppointmentsPage() {
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex-1 flex flex-col min-h-0">
               <h3 className="font-bold text-sm text-gray-900 mb-4 pb-3 border-b border-gray-100 shrink-0">Bệnh nhân sắp tới</h3>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {data.appointments.filter((a: any) => a.rawStatus !== 'HOÀN THÀNH' && a.rawStatus !== 'ĐÃ HỦY').slice(0, 4).map((apt: any) => (
+                {data.appointments.filter((a: any) => a.rawStatus !== 'Đã khám' && a.rawStatus !== 'Đã hủy').slice(0, 4).map((apt: any) => {
+                  let badgeClass = 'bg-blue-100 text-blue-700';
+                  if (apt.rawStatus === 'Đã check-in' || apt.rawStatus === 'Đang chờ') badgeClass = 'bg-orange-100 text-orange-700';
+                  else if (apt.rawStatus === 'Đang khám') badgeClass = 'bg-purple-100 text-purple-700';
+                  else if (apt.rawStatus === 'Đã xác nhận') badgeClass = 'bg-green-100 text-green-700';
+
+                  return (
                   <div key={apt.id} className="flex gap-3 items-center">
                     <span className="text-xs font-bold text-[#2563EB] w-9">{apt.time.split('-')[0].trim()}</span>
                     <img src={apt.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" />
@@ -414,9 +433,10 @@ export default function DoctorAppointmentsPage() {
                       <p className="text-sm font-bold text-gray-900 truncate">{apt.patientName}</p>
                       <p className="text-xs text-gray-500">{apt.gender}</p>
                     </div>
-                    <span className="px-2 py-1 text-[10px] font-bold rounded bg-orange-100 text-orange-700 shrink-0 whitespace-nowrap">Đang chờ</span>
+                    <span className={`px-2 py-1 text-[10px] font-bold rounded ${badgeClass} shrink-0 whitespace-nowrap`}>{apt.status}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <button className="text-[#2563EB] text-xs font-bold mt-4 pt-3 border-t border-gray-100 flex items-center justify-center gap-1 w-full hover:underline shrink-0">
                 Xem tất cả ({data.stats.waiting}) <ArrowRight size={12} />

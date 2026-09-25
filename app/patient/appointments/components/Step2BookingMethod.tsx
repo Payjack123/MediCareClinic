@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Stethoscope, MapPin, ChevronDown, Check, HeartPu
 interface Step2BookingMethodProps {
   setStep: (step: number) => void;
   patients: any[];
+  setPatients: (patients: any[]) => void;
   activePatientId: number;
   bookingData: any;
   setBookingData: (data: any) => void;
@@ -25,12 +26,13 @@ interface Step2BookingMethodProps {
 }
 
 export default function Step2BookingMethod({
-  setStep, patients, activePatientId, bookingData, setBookingData, activeModal, setActiveModal, bookingMethod, setBookingMethod,
+  setStep, patients, setPatients, activePatientId, bookingData, setBookingData, activeModal, setActiveModal, bookingMethod, setBookingMethod,
   facilities, specialties, doctorsList, clinics, clinicSearchQuery, setClinicSearchQuery, specialtySearchQuery, setSpecialtySearchQuery, doctorSearchQuery, setDoctorSearchQuery, onNextStep
 }: Step2BookingMethodProps) {
   
   const handleBookingDataChange = (updates: any) => {
-    setBookingData({ ...bookingData, ...updates });
+    setBookingData({ ...bookingData, ...updates, date: '' });
+    setPatients(patients.map(p => p.id === activePatientId ? { ...p, time: '' } : p));
   };
 
   return (
@@ -116,9 +118,9 @@ export default function Step2BookingMethod({
               <p className="text-sm text-gray-500">Tìm bác sĩ theo chuyên khoa</p>
             </div>
             {bookingData.specialty && bookingMethod === 'specialty' ? (
-              <div className="text-right">
-                <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.specialty}</span>
-                <span className="text-xs text-blue-500">Đổi</span>
+              <div className="text-right flex flex-col items-end">
+                <span className="text-[15px] font-bold text-[#2563EB] text-right">{bookingData.specialty}</span>
+                <span className="text-xs text-blue-500 hover:underline">Đổi</span>
               </div>
             ) : (
               <ChevronDown size={20} className={`transition-transform ${activeModal === 'specialty' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />
@@ -202,9 +204,9 @@ export default function Step2BookingMethod({
               <p className="text-sm text-gray-500">Chọn bác sĩ mong muốn</p>
             </div>
             {bookingData.doctor && bookingMethod === 'doctor' ? (
-              <div className="text-right">
-                <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.doctor}</span>
-                <span className="text-xs text-blue-500">Đổi</span>
+              <div className="text-right flex flex-col items-end">
+                <span className="text-[15px] font-bold text-[#2563EB] text-right">{bookingData.doctor}</span>
+                <span className="text-xs text-blue-500 hover:underline">Đổi</span>
               </div>
             ) : (
               <ChevronDown size={20} className={`transition-transform ${activeModal === 'doctor' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />
@@ -338,9 +340,9 @@ export default function Step2BookingMethod({
               <p className="text-sm text-gray-500">Chọn phòng khám mong muốn</p>
             </div>
             {bookingData.specialty && bookingMethod === 'clinic' ? (
-              <div className="text-right">
-                <span className="text-sm font-bold text-[#2563EB] block truncate max-w-[120px]">{bookingData.specialty}</span>
-                <span className="text-xs text-blue-500">Đổi</span>
+              <div className="text-right flex flex-col items-end">
+                <span className="text-[15px] font-bold text-[#2563EB] text-right">{bookingData.specialty}</span>
+                <span className="text-xs text-blue-500 hover:underline">Đổi</span>
               </div>
             ) : (
               <ChevronDown size={20} className={`transition-transform ${activeModal === 'clinic' ? 'rotate-180 text-[#2563EB]' : 'text-gray-400'}`} />

@@ -231,7 +231,7 @@ async function main() {
   }
 
   // 2. Create doctors
-  for (const doc of doctorsData) {
+  for (const [index, doc] of doctorsData.entries()) {
     const user = await prisma.user.upsert({
       where: { email: doc.email },
       update: {
@@ -275,8 +275,12 @@ async function main() {
       const d = new Date();
       d.setDate(d.getDate() + i);
       
-      // Bỏ qua Thứ 7 (6) và Chủ nhật (0)
-      if (d.getDay() === 0 || d.getDay() === 6) {
+      // Xác định xem bác sĩ này có làm việc cuối tuần không (9 người làm, 9 người không)
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const worksOnWeekend = index % 2 === 0;
+      
+      // Bỏ qua Thứ 7, CN nếu bác sĩ này không làm việc cuối tuần
+      if (isWeekend && !worksOnWeekend) {
         continue;
       }
 

@@ -51,7 +51,6 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
       group: 'LỊCH LÀM VIỆC',
       items: [
         { name: 'Lịch hẹn', href: '/doctor/appointments', icon: Calendar, id: 'appointments' },
-        { name: 'Lịch hẹn của tôi', href: '/doctor/my-appointments', icon: CalendarDays, id: 'my-appointments' },
         { name: 'Lịch hẹn hôm nay', href: '/doctor/today-appointments', icon: CalendarCheck, id: 'today-appointments' },
       ]
     },

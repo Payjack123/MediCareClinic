@@ -61,17 +61,20 @@ export default function TodayAppointmentsPage() {
   };
 
   const getStatusStyle = (status: string) => {
-    if (status === 'HOÀN THÀNH') return 'bg-green-100 text-green-700';
-    if (status === 'ĐÃ HỦY') return 'bg-gray-100 text-gray-700';
-    if (status === 'ĐANG KHÁM') return 'bg-blue-100 text-blue-700';
-    return 'bg-orange-100 text-orange-600'; // Đang chờ
+    switch(status) {
+      case 'Đã đặt': return 'bg-blue-50 text-blue-600 border border-blue-100';
+      case 'Đã xác nhận': return 'bg-emerald-50 text-emerald-600 border border-emerald-100';
+      case 'Đã check-in': return 'bg-yellow-50 text-yellow-600 border border-yellow-100';
+      case 'Đang khám': return 'bg-purple-50 text-purple-600 border border-purple-100';
+      case 'Đã khám': return 'bg-green-50 text-green-700 border border-green-100';
+      case 'Đã hủy': return 'bg-red-50 text-red-600 border border-red-100';
+      case 'Không đến': return 'bg-gray-100 text-gray-700 border border-gray-200';
+      default: return 'bg-gray-100 text-gray-700';
+    }
   };
 
   const getStatusText = (status: string) => {
-    if (status === 'HOÀN THÀNH') return 'Đã khám';
-    if (status === 'ĐÃ HỦY') return 'Đã hủy';
-    if (status === 'ĐANG KHÁM') return 'Đang khám';
-    return 'Đang chờ'; 
+    return status || 'Đã đặt';
   };
 
   const filteredAppointments = data?.appointments?.filter((apt: any) => {
@@ -182,11 +185,11 @@ export default function TodayAppointmentsPage() {
                 <Clock size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-500">Đang chờ</p>
+                <p className="text-xs font-bold text-gray-500">Đã check-in</p>
                 <p className="text-2xl font-black text-gray-900 mt-1 flex items-baseline gap-1">
-                  {waiting} <span className="text-sm font-medium text-gray-500">lịch</span>
+                  {data?.stats?.checkedIn || 0} <span className="text-sm font-medium text-gray-500">lịch</span>
                 </p>
-                <p className="text-[10px] font-bold text-gray-400 mt-0.5">{getPercent(waiting)}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">{getPercent(data?.stats?.checkedIn || 0)}</p>
               </div>
             </div>
 
@@ -197,9 +200,9 @@ export default function TodayAppointmentsPage() {
               <div>
                 <p className="text-xs font-bold text-gray-500">Đang khám</p>
                 <p className="text-2xl font-black text-gray-900 mt-1 flex items-baseline gap-1">
-                  {inProgress} <span className="text-sm font-medium text-gray-500">lịch</span>
+                  {data?.stats?.examining || 0} <span className="text-sm font-medium text-gray-500">lịch</span>
                 </p>
-                <p className="text-[10px] font-bold text-gray-400 mt-0.5">{getPercent(inProgress)}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-0.5">{getPercent(data?.stats?.examining || 0)}</p>
               </div>
             </div>
 
@@ -236,10 +239,13 @@ export default function TodayAppointmentsPage() {
               <div className="relative">
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
                   <option value="ALL">Tất cả trạng thái</option>
-                  <option value="Đang chờ">Đang chờ</option>
+                  <option value="Đã đặt">Đã đặt</option>
+                  <option value="Đã xác nhận">Đã xác nhận</option>
+                  <option value="Đã check-in">Đã check-in</option>
                   <option value="Đang khám">Đang khám</option>
                   <option value="Đã khám">Đã khám</option>
                   <option value="Đã hủy">Đã hủy</option>
+                  <option value="Không đến">Không đến</option>
                 </select>
                 <ChevronRight size={14} className="absolute right-3 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
               </div>
@@ -347,19 +353,23 @@ export default function TodayAppointmentsPage() {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-sm font-bold text-gray-700">
-                        {apt.rawStatus === 'ĐÃ HỦY' ? 'Bệnh nhân hủy' : apt.rawStatus === 'HOÀN THÀNH' ? `Đã khám lúc ${apt.time}` : '--'}
+                        {apt.rawStatus === 'Đã hủy' ? 'Bệnh nhân hủy' : apt.rawStatus === 'Đã khám' ? `Xong lúc ${apt.time}` : '--'}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center justify-center gap-1">
-                          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition" title="Xem chi tiết">
-                            <Eye size={16} />
-                          </button>
-                          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition" title="Chỉnh sửa">
-                            <Edit2 size={16} />
-                          </button>
-                          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition">
-                            <MoreVertical size={16} />
-                          </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <Link href={`/doctor/appointments/${apt.id}`} className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50 hover:text-gray-900 transition flex items-center gap-1">
+                            <Eye size={14} /> Xem
+                          </Link>
+                          {apt.rawStatus === 'Đã check-in' && (
+                            <Link href={`/doctor/records/${apt.id}`} className="px-3 py-1.5 rounded-lg bg-[#2563EB] text-white text-xs font-bold hover:bg-blue-600 transition shadow-sm flex items-center gap-1">
+                              <Stethoscope size={14} /> Bắt đầu khám
+                            </Link>
+                          )}
+                          {apt.rawStatus === 'Đang khám' && (
+                            <Link href={`/doctor/records/${apt.id}`} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition shadow-sm flex items-center gap-1">
+                              <Stethoscope size={14} /> Tiếp tục khám
+                            </Link>
+                          )}
                         </div>
                       </td>
                     </tr>

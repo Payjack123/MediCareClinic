@@ -92,6 +92,57 @@ export async function getBookedTimes(doctorId: number, date: string) {
   }
 }
 
+export async function getAvailableSchedules(bookingData: any) {
+  try {
+    let whereClause: any = {};
+    if (bookingData.doctorId) {
+      whereClause.doctorId = bookingData.doctorId;
+    } else if (bookingData.clinicName) {
+      whereClause.OR = [
+        { clinic: { name: bookingData.clinicName } },
+        { doctor: { doctorProfile: { clinics: { some: { name: bookingData.clinicName } } } } }
+      ];
+    } else if (bookingData.specialty) {
+      whereClause.doctor = { doctorProfile: { specialty: { name: bookingData.specialty } } };
+    }
+
+    const schedules = await prisma.doctorSchedule.findMany({
+      where: whereClause,
+      orderBy: { date: 'asc' },
+      include: {
+        doctor: {
+          select: { id: true, fullName: true, doctorProfile: { select: { specialty: { select: { name: true } } } } }
+        },
+        clinic: true
+      }
+    });
+
+    const dates = [...new Set(schedules.map(s => s.date))];
+    const doctorIds = [...new Set(schedules.map(s => s.doctorId))];
+    
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        doctorId: { in: doctorIds },
+        bookingDate: { in: dates.map(d => d.split('-').reverse().join('/')) },
+        status: { not: 'ĐÃ HỦY' }
+      },
+      select: { doctorId: true, bookingDate: true, bookingTime: true }
+    });
+
+    const schedulesWithBooked = schedules.map(s => {
+      const formattedDate = s.date.split('-').reverse().join('/');
+      const booked = appointments
+        .filter(a => a.doctorId === s.doctorId && a.bookingDate === formattedDate)
+        .map(a => a.bookingTime);
+      return { ...s, bookedTimes: booked };
+    });
+
+    return { success: true, schedules: schedulesWithBooked };
+  } catch (error) {
+    return { success: false, schedules: [] };
+  }
+}
+
 export async function getDoctorSchedules(doctorId: number) {
   try {
     console.log('--- FETCHING SCHEDULE FOR DOCTOR ---', doctorId);
