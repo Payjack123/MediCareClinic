@@ -18,7 +18,7 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
     // 2. Lấy thông tin Bác sĩ
     const doctor = await prisma.user.findUnique({
       where: { id: doctorId },
-      include: { doctorProfile: true }
+      include: { doctorProfile: { include: { specialty: true } } }
     });
 
     if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
@@ -74,17 +74,18 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
 
       return {
         id: apt.id,
+        patientId: apt.patient.id,
         patientName: patientDetails?.name || apt.patient.fullName,
         patientCode: apt.patient.patientProfile?.patientCode || `BN-${apt.patient.id}`,
         gender: apt.patient.gender || 'Nam',
         dob: dob,
-        time: apt.bookingTime, 
+        time: apt.bookingTime?.split(' - ')[0] || apt.bookingTime, 
         status: uiStatus,
         rawStatus: apt.status,
         reason: parsedNote || 'Khám bệnh',
         patientDetails,
         patientPhone: patientDetails?.phone || apt.patient.phone,
-        room: apt.room || apt.specialty || 'Phòng khám',
+        room: apt.specialty || doctor.doctorProfile?.specialty?.name || 'Phòng khám',
         avatar: apt.patient.avatar || `https://ui-avatars.com/api/?name=${apt.patient.fullName.replace(/ /g, '+')}&background=random`
       };
     });

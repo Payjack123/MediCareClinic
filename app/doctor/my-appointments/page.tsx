@@ -44,9 +44,16 @@ export default function MyAppointmentsPage() {
   };
 
   const getStatusStyle = (status: string) => {
-    if (status === 'Đã hoàn thành') return 'bg-blue-100 text-blue-700'; // Trong ảnh Đã hoàn thành là xanh dương
-    if (status === 'Đã hủy') return 'bg-red-50 text-red-500'; // Đã hủy nền cam nhạt, chữ cam/đỏ
-    return 'bg-green-100 text-green-600'; // Sắp tới là xanh lá
+    switch(status) {
+      case 'Đã đặt': return 'bg-blue-50 text-blue-600 border border-blue-100';
+      case 'Đã xác nhận': return 'bg-emerald-50 text-emerald-600 border border-emerald-100';
+      case 'Đã check-in': return 'bg-yellow-50 text-yellow-600 border border-yellow-100';
+      case 'Đang khám': return 'bg-purple-50 text-purple-600 border border-purple-100';
+      case 'Đã khám': return 'bg-green-50 text-green-700 border border-green-100';
+      case 'Đã hủy': return 'bg-red-50 text-red-600 border border-red-100';
+      case 'Không đến': return 'bg-gray-100 text-gray-700 border border-gray-200';
+      default: return 'bg-gray-100 text-gray-700';
+    }
   };
 
   const filteredAppointments = data?.appointments?.filter((apt: any) => {
@@ -125,7 +132,7 @@ export default function MyAppointmentsPage() {
                 <CheckCircle2 size={28} />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900">Đã hoàn thành</p>
+                <p className="text-sm font-bold text-gray-900">Đã khám</p>
                 <p className="text-3xl font-black text-gray-900 mt-1 flex items-baseline gap-1">
                   {completed} <span className="text-sm font-medium text-gray-500">lịch</span>
                 </p>
@@ -161,63 +168,67 @@ export default function MyAppointmentsPage() {
           </div>
 
           {/* MỚI: BỘ LỌC TÌM KIẾM THEO GIAO DIỆN YÊU CẦU */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[140px]">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6 flex flex-wrap xl:flex-nowrap gap-3 items-end w-full">
+            <div className="flex-1 min-w-[120px]">
               <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Từ ngày</label>
               <div className="relative">
-                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2563EB]" />
+                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-[#2563EB]" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Đến ngày</label>
+              <div className="relative">
+                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-[#2563EB]" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-[130px]">
+              <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Trạng thái</label>
+              <div className="relative">
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="Đã đặt">Đã đặt</option>
+                  <option value="Đã xác nhận">Đã xác nhận</option>
+                  <option value="Đã check-in">Đã check-in</option>
+                  <option value="Đang khám">Đang khám</option>
+                  <option value="Đã khám">Đã khám</option>
+                  <option value="Đã hủy">Đã hủy</option>
+                  <option value="Không đến">Không đến</option>
+                </select>
+                <ChevronRight size={14} className="absolute right-2 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
               </div>
             </div>
             <div className="flex-1 min-w-[140px]">
-              <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Đến ngày</label>
-              <div className="relative">
-                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2563EB]" />
-              </div>
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Trạng thái</label>
-              <div className="relative">
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
-                  <option value="ALL">Tất cả trạng thái</option>
-                  <option value="Sắp tới">Sắp tới</option>
-                  <option value="Đã hoàn thành">Đã hoàn thành</option>
-                  <option value="Đã hủy">Đã hủy</option>
-                </select>
-                <ChevronRight size={14} className="absolute right-3 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-            <div className="flex-1 min-w-[160px]">
               <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Chuyên khoa</label>
               <div className="relative">
-                <select value={specialtyFilter} onChange={(e) => setSpecialtyFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
+                <select value={specialtyFilter} onChange={(e) => setSpecialtyFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
                   <option value="ALL">Tất cả chuyên khoa</option>
                   {uniqueSpecialties.map((spec, idx) => (
                     <option key={idx} value={spec}>{spec}</option>
                   ))}
                 </select>
-                <ChevronRight size={14} className="absolute right-3 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
+                <ChevronRight size={14} className="absolute right-2 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
               </div>
             </div>
-            <div className="flex-1 min-w-[160px]">
+            <div className="flex-1 min-w-[140px]">
               <label className="block text-[11px] font-bold text-gray-500 mb-1.5">Bệnh nhân</label>
               <div className="relative">
-                <select value={patientFilter} onChange={(e) => setPatientFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
+                <select value={patientFilter} onChange={(e) => setPatientFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm appearance-none focus:outline-none focus:border-[#2563EB]">
                   <option value="ALL">Tất cả bệnh nhân</option>
                   {uniquePatients.map((name, idx) => (
                     <option key={idx} value={name}>{name}</option>
                   ))}
                 </select>
-                <ChevronRight size={14} className="absolute right-3 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
+                <ChevronRight size={14} className="absolute right-2 top-2.5 rotate-90 text-gray-400 pointer-events-none" />
               </div>
             </div>
-            <div className="flex-[1.5] min-w-[200px]">
+            <div className="flex-[1.5] min-w-[160px]">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-2.5 text-gray-400 pointer-events-none" />
                 <input 
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm kiếm lịch hẹn..." 
+                  placeholder="Tìm kiếm..." 
                   className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[#2563EB]" 
                 />
               </div>
@@ -231,7 +242,7 @@ export default function MyAppointmentsPage() {
                 setPatientFilter('ALL');
                 setSearchQuery('');
               }}
-              className="flex items-center gap-2 border border-blue-200 text-[#2563EB] bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-bold transition h-[38px]"
+              className="flex items-center justify-center gap-1.5 border border-blue-200 text-[#2563EB] bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg text-sm font-bold transition h-[38px] whitespace-nowrap shrink-0"
             >
               <Trash2 size={16} /> Bỏ lọc
             </button>
@@ -250,20 +261,19 @@ export default function MyAppointmentsPage() {
                   <th className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Giờ hẹn</th>
                   <th className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Lý do khám</th>
                   <th className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Trạng thái</th>
-                  <th className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Ghi chú</th>
                   <th className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-500">
+                    <td colSpan={9} className="py-12 text-center text-gray-500">
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-500">
+                    <td colSpan={9} className="py-12 text-center text-gray-500">
                       Không có lịch hẹn nào.
                     </td>
                   </tr>
@@ -301,14 +311,11 @@ export default function MyAppointmentsPage() {
                             {apt.status}
                           </span>
                         </td>
-                        <td className="py-4 px-4 text-sm font-bold text-gray-700">
-                          {apt.rawStatus === 'ĐÃ HỦY' ? 'Bệnh nhân hủy' : apt.rawStatus === 'HOÀN THÀNH' ? `Khám định kỳ` : '—'}
-                        </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-1">
-                            <button className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition" title="Xem chi tiết">
+                            <Link href={`/doctor/patients/${apt.patientId}`} className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition" title="Xem hồ sơ bệnh nhân">
                               <Eye size={16} />
-                            </button>
+                            </Link>
                             <button className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 transition" title="Lưu trữ">
                               <Calendar size={16} />
                             </button>

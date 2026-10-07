@@ -16,6 +16,7 @@ export default function Sidebar() {
     { name: 'Báo cáo', href: '/admin/reports', icon: TrendingUp },
     { type: 'divider' },
     { name: 'Bác sĩ', href: '/admin/doctors', icon: Stethoscope },
+    { name: 'Phân công ca làm', href: '/admin/schedules', icon: CalendarDays },
     { name: 'Bệnh nhân', href: '/admin/patients', icon: Users },
     { name: 'Lịch hẹn', href: '/admin/appointments', icon: CalendarDays },
     { name: 'Hồ sơ bệnh án', href: '/admin/records', icon: FileText },

@@ -1,480 +1,322 @@
 'use client';
-import { Star } from "lucide-react";
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  LayoutDashboard, CalendarDays, Users, FileText, Pill, TestTube, Mail,
-  BarChart3, Bell, User, Settings, LogOut, Search, Plus, Filter, ArrowRight,
-  CheckCircle2, Clock, Activity, PlayCircle, ChevronRight, CalendarX2, Printer,
-  ChevronLeft, QrCode, XCircle, Calendar as CalendarIcon, MapPin, Stethoscope, Loader2
+import { 
+  CalendarDays, MapPin, Loader2, ChevronLeft, ChevronRight, 
+  Calendar, Clock, CheckCircle2, User, Users, FileText
 } from 'lucide-react';
 import DoctorSidebar from '@/app/doctor/Sidebar';
+import { getMySchedules } from './actions';
 
-import { getDoctorAppointmentsData } from '@/app/doctor/appointments/actions';
-
-export default function DoctorAppointmentsPage() {
-  const router = useRouter();
-
-  // States dữ liệu
+export default function DoctorSchedulesPage() {
+  const [schedules, setSchedules] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
+  const [selectedShift, setSelectedShift] = useState<any | null>(null);
 
-  // State quản lý ngày và lịch khám
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedApptId, setSelectedApptId] = useState<number | null>(null);
-
-  // ==========================================
-  // THUẬT TOÁN SINH LỊCH FULL THÁNG (GIỐNG ẢNH)
-  // ==========================================
-  const [currentMonthView, setCurrentMonthView] = useState(new Date());
-
-  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    const day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1; // Đổi Chủ Nhật (0) thành 6, T2 thành 0 để grid bắt đầu từ T2
-  };
-
-  const formatDateStr = (date: Date) => {
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-  };
-
-  const generateCalendar = () => {
-    const year = currentMonthView.getFullYear();
-    const month = currentMonthView.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
-    const daysInPrevMonth = getDaysInMonth(year, month - 1);
-
-    const days = [];
-
-    // Ngày của tháng trước (in mờ)
-    for (let i = firstDay - 1; i >= 0; i--) {
-      days.push({ day: daysInPrevMonth - i, isCurrentMonth: false, date: new Date(year, month - 1, daysInPrevMonth - i) });
-    }
-
-    // Ngày của tháng hiện tại
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push({ day: i, isCurrentMonth: true, date: new Date(year, month, i) });
-    }
-
-    // Ngày của tháng sau (bù cho đủ grid 42 ô)
-    const remaining = 42 - days.length;
-    for (let i = 1; i <= remaining; i++) {
-      days.push({ day: i, isCurrentMonth: false, date: new Date(year, month + 1, i) });
-    }
-
-    return days;
-  };
-
-  const calendarDays = generateCalendar();
-
-  const handlePrevMonth = () => setCurrentMonthView(new Date(currentMonthView.getFullYear(), currentMonthView.getMonth() - 1, 1));
-  const handleNextMonth = () => setCurrentMonthView(new Date(currentMonthView.getFullYear(), currentMonthView.getMonth() + 1, 1));
-
-  // Khởi tạo ngày mặc định là hôm nay
   useEffect(() => {
-    setSelectedDate(formatDateStr(new Date()));
-  }, []);
-
-  // Fetch dữ liệu mỗi khi đổi ngày
-  useEffect(() => {
-    if (!selectedDate) return;
-
     const fetchData = async () => {
       setIsLoading(true);
-      const res = await getDoctorAppointmentsData(selectedDate);
-      if (res.success && res.data) {
-        setData(res.data);
-        if (res.data.appointments.length > 0) {
-          setSelectedApptId(res.data.appointments[0].id);
-        } else {
-          setSelectedApptId(null);
-        }
+      const res = await getMySchedules(currentDate.getFullYear(), currentDate.getMonth() + 1);
+      if (res.success) {
+        setSchedules(res.schedules || []);
       } else {
-        router.push('/login');
+        setSchedules([]);
       }
       setIsLoading(false);
     };
     fetchData();
-  }, [selectedDate, router]);
+  }, [currentDate.getMonth(), currentDate.getFullYear()]);
 
-  const handleLogout = () => router.push('/login');
-
-  // Tính khoảng cách Pixel để xếp khối đặt lịch
-  const calculateTopPosition = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    if (hours < 8) return 0;
-    const hourDiff = hours - 8;
-    const minDiff = minutes / 60;
-    return (hourDiff + minDiff) * 96;
+  const handlePrev = () => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
+    else if (viewMode === 'week') d.setDate(d.getDate() - 7);
+    else d.setDate(d.getDate() - 1);
+    setCurrentDate(d);
+    setSelectedShift(null);
   };
 
-  const getStatusColor = (rawStatus: string) => {
-    switch (rawStatus) {
-      case 'Đã khám': return 'bg-green-100 border-green-500 text-green-800';
-      case 'Đã hủy': return 'bg-red-100 border-red-500 text-red-800';
-      case 'Đã xác nhận': return 'bg-emerald-100 border-emerald-500 text-emerald-800';
-      case 'Đã check-in': return 'bg-yellow-100 border-yellow-500 text-yellow-800';
-      case 'Đang khám': return 'bg-purple-100 border-purple-500 text-purple-800';
-      case 'Không đến': return 'bg-gray-100 border-gray-500 text-gray-800';
-      default: return 'bg-blue-100 border-blue-500 text-blue-800'; // Đã đặt
+  const handleNext = () => {
+    const d = new Date(currentDate);
+    if (viewMode === 'month') d.setMonth(d.getMonth() + 1);
+    else if (viewMode === 'week') d.setDate(d.getDate() + 7);
+    else d.setDate(d.getDate() + 1);
+    setCurrentDate(d);
+    setSelectedShift(null);
+  };
+
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  
+  const renderMonthGrid = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Make Monday = 0
+    
+    const days = [];
+    for (let i = 0; i < startOffset; i++) {
+      days.push(<div key={`empty-${i}`} className="bg-gray-50/30 border-r border-b border-gray-100 min-h-[120px]"></div>);
     }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const daySchedules = schedules.filter(s => s.date === dateStr);
+      
+      const isToday = new Date().toDateString() === new Date(year, month, i).toDateString();
+
+      days.push(
+        <div key={i} className={`border-r border-b border-gray-100 p-2 min-h-[120px] transition hover:bg-blue-50/30 ${isToday ? 'bg-blue-50/30' : ''}`}>
+          <div className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-full mb-2 ${isToday ? 'bg-[#2563EB] text-white' : 'text-gray-500'}`}>
+            {i}
+          </div>
+          <div className="space-y-1.5">
+            {daySchedules.map((shift, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => setSelectedShift(shift)}
+                className={`text-[11px] p-2 rounded cursor-pointer border ${
+                  selectedShift?.id === shift.id 
+                    ? 'bg-blue-100 border-blue-200 text-blue-800 shadow-sm' 
+                    : 'bg-white border-gray-200 hover:border-blue-300 text-gray-700'
+                }`}
+              >
+                <div className="font-bold flex items-center gap-1"><Clock size={10} /> {shift.shiftTime}</div>
+                <div className="text-gray-500 truncate mt-0.5">{shift.room}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
+            <div key={d} className="py-3 text-center text-xs font-bold text-gray-500 border-r border-gray-200 last:border-0">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {days}
+        </div>
+      </div>
+    );
   };
 
-  if (isLoading || !data) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-10 h-10 text-[#2563EB] animate-spin" /></div>;
-  }
+  const renderShiftList = () => {
+    let filtered = schedules;
+    if (viewMode === 'day') {
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+      filtered = schedules.filter(s => s.date === dateStr);
+    } else if (viewMode === 'week') {
+      // Simplified week logic: just show all for the month in list for now if not day
+      // In a real app, we'd filter strictly by the 7 days of the week.
+    }
 
-  const activeAppt = data.appointments.find((a: any) => a.id === selectedApptId);
+    if (filtered.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-gray-200">
+          <CalendarDays className="mx-auto text-gray-300 mb-4" size={48} />
+          <h3 className="text-lg font-bold text-gray-900 mb-1">Không có ca khám</h3>
+          <p className="text-gray-500 text-sm">Bạn không có lịch làm việc trong thời gian này.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {filtered.map(shift => (
+          <div 
+            key={shift.id} 
+            onClick={() => setSelectedShift(shift)}
+            className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition ${
+              selectedShift?.id === shift.id ? 'border-[#2563EB] ring-1 ring-[#2563EB]' : 'border-gray-100 hover:border-blue-200'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900">{shift.shiftTime}</h3>
+                <p className="text-sm font-medium text-[#2563EB] mt-1">{shift.formattedDate}</p>
+              </div>
+              <span className={`px-2.5 py-1 rounded text-xs font-bold ${
+                shift.status === 'Đang hoạt động' ? 'bg-green-100 text-green-700' :
+                shift.status === 'Sắp diễn ra' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {shift.status}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+              <span className="flex items-center gap-1.5"><MapPin size={16} className="text-gray-400" /> Phòng: <strong className="text-gray-900">{shift.room}</strong></span>
+              <span className="flex items-center gap-1.5"><FileText size={16} className="text-gray-400" /> Khoa: <strong className="text-gray-900">{shift.specialty}</strong></span>
+            </div>
+
+            <div className="flex gap-4 p-3 bg-gray-50 rounded-xl text-sm border border-gray-100">
+               <div className="flex items-center gap-1"><Users size={16} className="text-gray-400"/> Tổng: <strong>{shift.stats.total}</strong></div>
+               <div className="flex items-center gap-1"><CheckCircle2 size={16} className="text-green-500"/> Đã khám: <strong>{shift.stats.completed}</strong></div>
+               <div className="flex items-center gap-1"><User size={16} className="text-purple-500"/> Đang khám: <strong>{shift.stats.examining}</strong></div>
+               <div className="flex items-center gap-1"><Clock size={16} className="text-orange-400"/> Chờ: <strong>{shift.stats.waiting}</strong></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 font-sans text-gray-800 overflow-hidden">
-
-      {/* SIDEBAR */}
+    <div className="min-h-screen flex bg-[#F8FAFC] font-sans text-gray-800">
       <DoctorSidebar activePage="appointments" />
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F4F7FE]">
-        {/* TOP HEADER */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 shrink-0 z-10">
-          <div className="flex-1 max-w-2xl relative">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Lịch khám của bác sĩ</h1>
-            <p className="text-sm text-gray-500 mt-1">Quản lý và theo dõi lịch hẹn khám trong ngày</p>
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* HEADER */}
+        <header className="bg-white border-b border-gray-100 px-8 h-20 shrink-0 flex items-center justify-between sticky top-0 z-10">
+          <div>
+            <h1 className="text-xl font-black text-gray-900">Lịch khám của Bác sĩ</h1>
+            <p className="text-sm text-gray-500">Quản lý các ca khám được phân công</p>
           </div>
-          <div className="flex items-center gap-5 pl-6">
-            <div className="relative cursor-pointer text-gray-500 hover:text-blue-600 transition">
-              <Bell size={20} />
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold border-2 border-white">5</span>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              <button 
+                onClick={() => setViewMode('day')}
+                className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'day' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Hôm nay
+              </button>
+              <button 
+                onClick={() => setViewMode('week')}
+                className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'week' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Tuần
+              </button>
+              <button 
+                onClick={() => setViewMode('month')}
+                className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${viewMode === 'month' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Tháng
+              </button>
             </div>
-            <div className="relative cursor-pointer text-gray-500 hover:text-blue-600 transition">
-              <Mail size={20} />
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold border-2 border-white">2</span>
-            </div>
-            <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-gray-900">BS. {data.doctorInfo.name}</p>
-                <p className="text-xs text-gray-500">{data.doctorInfo.rating} sao</p>
+            
+            <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm ml-4">
+              <button onClick={handlePrev} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded"><ChevronLeft size={18} /></button>
+              <div className="px-4 text-sm font-bold w-32 text-center uppercase">
+                {viewMode === 'month' 
+                  ? `Tháng ${currentDate.getMonth() + 1} / ${currentDate.getFullYear()}` 
+                  : `${currentDate.getDate()}/${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`}
               </div>
-              <img src={data.doctorInfo.avatar} alt="Doctor" className="w-9 h-9 rounded-full object-cover" />
+              <button onClick={handleNext} className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded"><ChevronRight size={18} /></button>
             </div>
           </div>
         </header>
 
-        {/* CỘT NỘI DUNG 3 PHẦN */}
-        <div className="flex-1 flex overflow-hidden p-6 gap-6">
-
-          {/* CỘT 1: LEFT SIDE (Calendar, Stats, Notifications) */}
-          <div className="w-[300px] shrink-0 flex flex-col gap-6 overflow-y-auto scrollbar-hide pr-1">
-
-            {/* Mini Calendar */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded text-gray-400"><ChevronLeft size={16} /></button>
-                <h3 className="font-bold text-sm text-gray-900">Tháng {currentMonthView.getMonth() + 1}, {currentMonthView.getFullYear()}</h3>
-                <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded text-gray-400"><ChevronRight size={16} /></button>
+        <div className="flex-1 overflow-hidden flex">
+          {/* Main Content (Calendar / List) */}
+          <div className={`flex-1 overflow-y-auto p-8 custom-scrollbar ${selectedShift ? 'w-2/3' : 'w-full'}`}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20 text-[#2563EB]">
+                <Loader2 className="animate-spin" size={32} />
+                <span className="ml-3 font-semibold">Đang tải lịch khám...</span>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2 text-gray-400 font-bold">
-                <div>T2</div><div>T3</div><div>T4</div><div>T5</div><div>T6</div><div>T7</div><div>CN</div>
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                {calendarDays.map((d, i) => {
-                  const dateStr = formatDateStr(d.date);
-                  const isSelected = selectedDate === dateStr;
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedDate(dateStr)}
-                      className={`p-1.5 rounded-full cursor-pointer transition flex items-center justify-center w-8 h-8 mx-auto ${!d.isCurrentMonth ? 'text-gray-300' :
-                          isSelected ? 'bg-[#2563EB] text-white shadow-md font-bold' :
-                            'text-gray-700 hover:bg-blue-50 hover:text-[#2563EB]'
-                        }`}
-                    >
-                      {d.day}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-4">Thống kê hôm nay</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><CalendarDays size={16} className="text-blue-500" /> Tổng lịch hẹn</span>
-                  <span className="font-bold text-gray-900">{data.stats.total}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><CheckCircle2 size={16} className="text-green-500" /> Đã khám</span>
-                  <span className="font-bold text-green-600">{data.stats.completed}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><Clock size={16} className="text-orange-500" /> Đang chờ</span>
-                  <span className="font-bold text-orange-600">{data.stats.waiting}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><XCircle size={16} className="text-red-500" /> Đã hủy</span>
-                  <span className="font-bold text-red-600">{data.stats.canceled}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="flex items-center gap-2 text-gray-600"><User size={16} className="text-blue-400" /> Chưa đến</span>
-                  <span className="font-bold text-gray-900">0</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Notifications */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-3">Thông báo</h3>
-              <ul className="space-y-2 text-xs text-gray-600 list-disc pl-4">
-                <li><span className="text-red-500 font-bold">Bạn có {data.stats.waiting} lịch hẹn đang chờ khám.</span></li>
-                <li>Ca khám 10:30 sẽ muộn 10 phút.</li>
-                <li>Bệnh nhân Trần Văn A có kết quả XN mới.</li>
-              </ul>
-              <button className="text-blue-600 text-xs font-bold mt-4 flex items-center gap-1 w-full justify-center hover:underline">
-                Xem tất cả thông báo <ArrowRight size={12} />
-              </button>
-            </div>
-
-            {/* Current Shift */}
-            <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-xs font-bold text-gray-900">Ca đang diễn ra</span>
-              </div>
-              <p className="text-sm font-bold text-[#2563EB] mb-1">Phòng khám 201</p>
-              <p className="text-xs text-gray-500 mb-4">08:30 - 11:30</p>
-              <button className="w-full py-2 bg-white border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 transition">
-                Kết thúc ca
-              </button>
-            </div>
-
+            ) : viewMode === 'month' ? (
+              renderMonthGrid()
+            ) : (
+              renderShiftList()
+            )}
           </div>
 
-          {/* CỘT 2: MIDDLE TINE LINE (Danh sách/Lịch) */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="bg-white flex-1 rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
-              {/* View options */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
-                <h2 className="font-bold text-gray-900">Thứ Năm, {data.currentDate}</h2>
+          {/* Right Sidebar: Selected Shift Details */}
+          {selectedShift && (
+            <div className="w-1/3 min-w-[350px] max-w-[400px] border-l border-gray-200 bg-white flex flex-col animate-in slide-in-from-right-8">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h2 className="font-black text-gray-900">CHI TIẾT CA KHÁM</h2>
+                <button onClick={() => setSelectedShift(null)} className="text-gray-400 hover:text-gray-900 bg-white rounded-full p-1 border shadow-sm">
+                  <ChevronRight size={18} />
+                </button>
               </div>
-
-              {/* Timeline List */}
-              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
                 <div className="space-y-3">
-                  {(() => {
-                    const getBucketInfo = (timeStr: string) => {
-                      let [time, modifier] = timeStr.split(' ');
-                      let [hours, minutes] = time.split(':').map(Number);
-                      
-                      if (modifier) {
-                        if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
-                        if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
-                      }
-                      
-                      const m = minutes >= 30 ? '30' : '00';
-                      const h = hours.toString().padStart(2, '0');
-                      
-                      return `${h}:${m}`;
-                    };
-
-                    const groupedAppointments = data.appointments.reduce((acc: any, apt: any) => {
-                       const bucket = getBucketInfo(apt.time);
-                       if (!acc[bucket]) acc[bucket] = [];
-                       acc[bucket].push(apt);
-                       return acc;
-                    }, {});
-
-                    return Array.from({ length: 48 }, (_, i) => {
-                      const h = Math.floor(i / 2).toString().padStart(2, '0');
-                      const m = (i % 2 === 0) ? '00' : '30';
-                      const timeSlot = `${h}:${m}`;
-
-                      const slotAppointments = groupedAppointments[timeSlot] || [];
-
-                    if (slotAppointments.length === 0) {
-                      return (
-                        <div key={timeSlot} className="flex gap-4 min-h-[40px] opacity-40 hover:opacity-100 transition group">
-                          <div className="w-12 text-right pt-2">
-                            <span className="text-xs font-bold text-gray-400 group-hover:text-gray-600">{timeSlot}</span>
-                          </div>
-                          <div className="flex-1 border-t border-dashed border-gray-200 mt-4"></div>
-                        </div>
-                      )
-                    }
-
-                    return (
-                      <div key={timeSlot} className="flex gap-4">
-                        <div className="w-12 text-right pt-2 shrink-0">
-                          <span className="text-xs font-bold text-gray-700">{timeSlot}</span>
-                        </div>
-                        <div className="flex-1 space-y-3">
-                          {slotAppointments.map((apt: any) => {
-                            // Card colors based on status
-                            let borderColor = 'border-l-blue-500';
-                            let bgColor = 'bg-blue-50/50';
-                            let badgeClass = 'bg-blue-100 text-blue-700';
-                            let Icon = Clock;
-
-                            if (apt.rawStatus === 'Đã khám') {
-                              borderColor = 'border-l-green-500';
-                              bgColor = 'bg-green-50/50';
-                              badgeClass = 'bg-green-100 text-green-700';
-                              Icon = CheckCircle2;
-                            } else if (apt.rawStatus === 'Đã hủy') {
-                              borderColor = 'border-l-red-500';
-                              bgColor = 'bg-red-50/50';
-                              badgeClass = 'bg-red-100 text-red-700';
-                              Icon = XCircle;
-                            } else if (apt.rawStatus === 'Đang chờ') {
-                              borderColor = 'border-l-orange-400';
-                              bgColor = 'bg-orange-50/30';
-                              badgeClass = 'bg-orange-100 text-orange-700';
-                              Icon = Clock;
-                            } else if (apt.rawStatus === 'Đang khám') {
-                              borderColor = 'border-l-purple-500';
-                              bgColor = 'bg-purple-50/50';
-                              badgeClass = 'bg-purple-100 text-purple-700';
-                              Icon = User;
-                            } else if (apt.rawStatus === 'Đã check-in') {
-                              borderColor = 'border-l-yellow-500';
-                              bgColor = 'bg-yellow-50/50';
-                              badgeClass = 'bg-yellow-100 text-yellow-700';
-                              Icon = CheckCircle2;
-                            }
-
-                            return (
-                              <div key={apt.id} className={`flex items-center justify-between p-3 rounded-xl border border-gray-100 shadow-sm border-l-4 ${borderColor} ${bgColor} hover:shadow-md transition cursor-pointer`}>
-                                <div className="flex items-center gap-4">
-                                  <div className="w-12 text-xs font-bold text-gray-500 shrink-0">{apt.time}</div>
-                                  <div>
-                                    <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                                      {apt.patientName} <span className="text-xs font-normal text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">{apt.gender}</span>
-                                    </p>
-                                    <p className="text-xs text-gray-600 mt-1 truncate max-w-[200px]">{apt.reason}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className={`px-2 py-1 text-[10px] font-bold rounded ${badgeClass}`}>{apt.status}</span>
-                                  <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-gray-400 hover:text-gray-900 transition">
-                                    <Icon size={16} />
-                                  </button>
-                                  <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-gray-400 hover:text-gray-900 transition">
-                                    <div className="flex gap-0.5"><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div></div>
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  });
-                  })()}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Ngày:</span>
+                    <strong className="text-gray-900">{selectedShift.formattedDate}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Khung giờ:</span>
+                    <strong className="text-gray-900">{selectedShift.shiftTime}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Chuyên khoa:</span>
+                    <strong className="text-gray-900">{selectedShift.specialty}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Cơ sở:</span>
+                    <strong className="text-gray-900">{selectedShift.facility}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Phòng khám:</span>
+                    <strong className="text-gray-900">{selectedShift.room}</strong>
+                  </div>
+                  <div className="flex justify-between text-sm pt-3 border-t border-gray-100">
+                    <span className="text-gray-500">Trạng thái:</span>
+                    <span className={`font-bold flex items-center gap-1.5 ${
+                      selectedShift.status === 'Đang hoạt động' ? 'text-green-600' :
+                      selectedShift.status === 'Sắp diễn ra' ? 'text-yellow-600' :
+                      'text-gray-500'
+                    }`}>
+                      {selectedShift.status === 'Đang hoạt động' && '🟢'}
+                      {selectedShift.status === 'Sắp diễn ra' && '🟡'}
+                      {selectedShift.status === 'Đã kết thúc' && '⚪'}
+                      {selectedShift.status}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          {/* CỘT 3: RIGHT SIDE (Shift info, Upcoming, Actions) */}
-          <div className="w-[320px] shrink-0 flex flex-col gap-6 overflow-y-auto scrollbar-hide pl-1">
-
-
-            {/* Shift Info */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-4 pb-3 border-b border-gray-100">Thông tin ca làm việc</h3>
-              <div className="space-y-3 mb-5">
-                <div className="flex items-start justify-between text-sm">
-                  <span className="text-gray-500 flex items-center gap-2"><User size={14} /> Bác sĩ</span>
-                  <span className="font-bold text-gray-900 text-right">BS. {data.doctorInfo.name}</span>
-                </div>
-                <div className="flex items-start justify-between text-sm">
-                  <span className="text-gray-500 flex items-center gap-2"><Stethoscope size={14} /> Chuyên khoa</span>
-                  <span className="font-medium text-gray-900 text-right">Nội tổng quát</span>
-                </div>
-                <div className="flex items-start justify-between text-sm">
-                  <span className="text-gray-500 flex items-center gap-2"><MapPin size={14} /> Phòng khám</span>
-                  <span className="font-medium text-gray-900 text-right">Phòng 201 - Tầng 2</span>
-                </div>
-                <div className="flex items-start justify-between text-sm">
-                  <span className="text-gray-500 flex items-center gap-2"><Clock size={14} /> Thời gian làm việc</span>
-                  <span className="font-medium text-gray-900 text-right">07:30 - 17:00</span>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs font-bold text-gray-900 mb-2">
-                  <span>Thời gian đã khám hôm nay</span>
-                  <span>{Math.round((data.stats.completed / (data.stats.total || 1)) * 100)}%</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#2563EB]" style={{ width: `${Math.round((data.stats.completed / (data.stats.total || 1)) * 100)}%` }}></div>
-                </div>
-                <p className="text-right text-xs text-gray-500 mt-2">{data.stats.completed}/{data.stats.total} bệnh nhân</p>
-              </div>
-            </div>
-
-            {/* Upcoming Patients */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex-1 flex flex-col min-h-0">
-              <h3 className="font-bold text-sm text-gray-900 mb-4 pb-3 border-b border-gray-100 shrink-0">Bệnh nhân sắp tới</h3>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {data.appointments.filter((a: any) => a.rawStatus !== 'Đã khám' && a.rawStatus !== 'Đã hủy').slice(0, 4).map((apt: any) => {
-                  let badgeClass = 'bg-blue-100 text-blue-700';
-                  if (apt.rawStatus === 'Đã check-in' || apt.rawStatus === 'Đang chờ') badgeClass = 'bg-orange-100 text-orange-700';
-                  else if (apt.rawStatus === 'Đang khám') badgeClass = 'bg-purple-100 text-purple-700';
-                  else if (apt.rawStatus === 'Đã xác nhận') badgeClass = 'bg-green-100 text-green-700';
-
-                  return (
-                  <div key={apt.id} className="flex gap-3 items-center">
-                    <span className="text-xs font-bold text-[#2563EB] w-9">{apt.time.split('-')[0].trim()}</span>
-                    <img src={apt.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{apt.patientName}</p>
-                      <p className="text-xs text-gray-500">{apt.gender}</p>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-3 uppercase text-xs tracking-wider text-gray-500">Lịch hẹn trong ca ({selectedShift.stats.total})</h3>
+                  
+                  {selectedShift.appointments.length === 0 ? (
+                    <div className="bg-gray-50 p-4 rounded-xl text-center text-sm text-gray-500 border border-gray-100">
+                      Chưa có lịch hẹn nào
                     </div>
-                    <span className={`px-2 py-1 text-[10px] font-bold rounded ${badgeClass} shrink-0 whitespace-nowrap`}>{apt.status}</span>
-                  </div>
-                  );
-                })}
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedShift.appointments.map((apt: any) => (
+                        <div key={apt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                          <div>
+                            <div className="font-bold text-[#2563EB] text-[10px]">{apt.code}</div>
+                            <div className="font-bold text-gray-900">{apt.patientName}</div>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded ${
+                            apt.status === 'Đã khám' ? 'bg-green-100 text-green-700' :
+                            apt.status === 'Đang khám' ? 'bg-purple-100 text-purple-700' :
+                            apt.status === 'Đã check-in' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <button className="text-[#2563EB] text-xs font-bold mt-4 pt-3 border-t border-gray-100 flex items-center justify-center gap-1 w-full hover:underline shrink-0">
-                Xem tất cả ({data.stats.waiting}) <ArrowRight size={12} />
-              </button>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-4 pb-3 border-b border-gray-100">Hành động nhanh</h3>
-              <div className="grid grid-cols-4 gap-2">
-                <button className="flex flex-col items-center justify-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition text-gray-600 group">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
-                    <CalendarDays size={18} />
-                  </div>
-                  <span className="text-[10px] font-medium text-center">Thêm lịch hẹn</span>
-                </button>
-                <button className="flex flex-col items-center justify-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition text-gray-600 group">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
-                    <Bell size={18} />
-                  </div>
-                  <span className="text-[10px] font-medium text-center">Gọi bệnh nhân</span>
-                </button>
-                <button className="flex flex-col items-center justify-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition text-gray-600 group">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
-                    <FileText size={18} />
-                  </div>
-                  <span className="text-[10px] font-medium text-center">Xem hồ sơ</span>
-                </button>
-                <button className="flex flex-col items-center justify-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition text-gray-600 group">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
-                    <Printer size={18} />
-                  </div>
-                  <span className="text-[10px] font-medium text-center">In danh sách</span>
-                </button>
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+                <Link 
+                  href={`/doctor/my-appointments?date=${selectedShift.date}`} 
+                  className="block w-full bg-[#2563EB] text-white text-center py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-sm"
+                >
+                  Xem chi tiết Lịch hẹn
+                </Link>
               </div>
             </div>
-
-          </div>
+          )}
         </div>
       </main>
     </div>

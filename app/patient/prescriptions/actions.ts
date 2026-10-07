@@ -28,7 +28,7 @@ export async function getPatientPrescriptionsData() {
 
     const formattedPrescriptions = patient.prescriptions.map((p) => {
       const doctorName = p.doctor ? `BS. ${p.doctor.fullName}` : 'Phòng khám';
-      const doctorSpecialty = p.doctor?.doctorProfile?.specialty || 'Khoa Nội';
+      const doctorSpecialty = (p.doctor?.doctorProfile as any)?.specialty || 'Khoa Nội';
 
       let status = p.status || 'Chờ phát';
       if (status === 'Đã phát') status = 'Đang sử dụng';
@@ -133,7 +133,7 @@ export async function getPrescriptionById(id: number) {
     if (prescription.patientId !== patientId) return { success: false, message: 'Không có quyền truy cập đơn thuốc này' };
 
     const doctorName = prescription.doctor ? `BS. ${prescription.doctor.fullName}` : 'Phòng khám';
-    const doctorSpecialty = prescription.doctor?.doctorProfile?.specialty || 'Khoa Nội';
+    const doctorSpecialty = (prescription.doctor?.doctorProfile as any)?.specialty || 'Khoa Nội';
     
     let status = prescription.status || 'Chờ phát';
     if (status === 'Đã phát') status = 'Đang sử dụng';
@@ -161,6 +161,15 @@ export async function getPrescriptionById(id: number) {
                    status === 'Đang sử dụng' ? 'text-green-700 bg-green-100 border-green-200' :
                    'text-gray-700 bg-gray-100 border-gray-200',
       diagnosis: prescription.diagnosis || 'Không có chẩn đoán',
+      followUpDate: (() => {
+        const rawDate = (prescription as any).followUpDate;
+        if (!rawDate) return null;
+        if (rawDate.includes('-')) {
+          const [y, m, d] = rawDate.split('-');
+          return `${d}/${m}/${y}`;
+        }
+        return rawDate;
+      })(),
       medicines: prescription.items.map(item => ({
         id: item.id,
         name: item.medicationName,

@@ -37,6 +37,8 @@ export default function DoctorDashboard() {
     );
   }
 
+  if (!dashboardData) return null;
+
   const { doctor, stats, appointments } = dashboardData;
 
   // Giả lập dữ liệu cho biểu đồ và timeline vì backend chưa có
@@ -197,18 +199,20 @@ export default function DoctorDashboard() {
                 <div className="space-y-1">
                   {appointments.slice(0, 5).map((apt: any) => {
                     const isCompleted = apt.status === 'HOÀN THÀNH';
+                    const age = apt.patient.dob ? new Date().getFullYear() - parseInt(apt.patient.dob.split(apt.patient.dob.includes('/') ? '/' : '-')[apt.patient.dob.includes('/') ? 2 : 0]) : 24;
+                    const gender = apt.patient.gender || 'Nam';
                     return (
-                      <div key={apt.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition cursor-pointer">
-                        <div className="flex items-center gap-3">
+                      <div key={apt.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                           <span className="text-sm font-bold text-[#2563EB] w-10 shrink-0">{apt.bookingTime}</span>
-                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(apt.patient.fullName)}&background=random`} alt="Avatar" className="w-10 h-10 rounded-full border border-gray-200" />
-                          <div>
-                            <h4 className="font-bold text-sm text-gray-900">{apt.patient.fullName}</h4>
-                            <p className="text-[11px] text-gray-500 mt-0.5">24 tuổi • Nam</p>
+                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(apt.patient.fullName)}&background=random`} alt="Avatar" className="w-8 h-8 rounded-full border border-gray-200 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-sm text-gray-900 truncate" title={apt.patient.fullName}>{apt.patient.fullName}</h4>
+                            <p className="text-[11px] text-gray-500 mt-0.5 truncate">{age} tuổi • {gender}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[11px] text-gray-600 max-w-[80px] truncate">{apt.reason || 'Khám tổng quát'}</p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <p className="text-[11px] text-gray-600 max-w-[80px] truncate" title={apt.reason || 'Khám tổng quát'}>{apt.reason || 'Khám tổng quát'}</p>
                           {isCompleted ? (
                             <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-[10px] font-bold shrink-0">Đã khám</span>
                           ) : (
@@ -335,20 +339,23 @@ export default function DoctorDashboard() {
               </div>
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 <div className="space-y-2">
-                  {appointments.filter((a: any) => a.status !== 'HOÀN THÀNH').slice(0, 4).map((apt: any, i: number) => (
-                    <div key={apt.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition">
-                      <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(apt.patient.fullName)}&background=random`} alt="Avatar" className="w-8 h-8 rounded-full border border-gray-200" />
-                      <div className="flex-1">
-                        <h4 className="font-bold text-sm text-gray-900">{apt.patient.fullName}</h4>
-                        <p className="text-[11px] text-gray-500">24 tuổi • Nữ</p>
+                  {appointments.filter((a: any) => a.status !== 'HOÀN THÀNH').slice(0, 4).map((apt: any, i: number) => {
+                    const age = apt.patient.dob ? new Date().getFullYear() - parseInt(apt.patient.dob.split(apt.patient.dob.includes('/') ? '/' : '-')[apt.patient.dob.includes('/') ? 2 : 0]) : 24;
+                    const gender = apt.patient.gender || 'Nam';
+                    return (
+                    <div key={apt.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition">
+                      <span className="text-xs font-bold text-gray-400 w-4 shrink-0 text-center">{i + 1}</span>
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(apt.patient.fullName)}&background=random`} alt="Avatar" className="w-8 h-8 rounded-full border border-gray-200 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-gray-900 truncate" title={apt.patient.fullName}>{apt.patient.fullName}</h4>
+                        <p className="text-[11px] text-gray-500 truncate">{age} tuổi • {gender}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[11px] font-bold text-gray-700">{apt.reason || 'Khám tổng quát'}</p>
-                        <p className="text-[10px] text-gray-400 flex items-center gap-1 justify-end mt-0.5"><Clock size={10} /> Đăng ký lúc {apt.bookingTime}</p>
+                      <div className="text-right shrink-0 max-w-[120px]">
+                        <p className="text-[11px] font-bold text-gray-700 truncate" title={apt.reason || 'Khám tổng quát'}>{apt.reason || 'Khám tổng quát'}</p>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1 justify-end mt-0.5"><Clock size={10} /> {apt.bookingTime}</p>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
               <div className="p-4 border-t border-gray-100 shrink-0">

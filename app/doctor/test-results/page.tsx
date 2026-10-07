@@ -336,7 +336,7 @@ export default function TestResultsPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-y-3 text-sm">
-                        <div><span className="text-gray-500">Ngày sinh:</span> <span className="font-bold text-gray-900 ml-1">{selectedResult.dob}</span></div>
+                        <div><span className="text-gray-500">Ngày sinh:</span> <span className="font-bold text-gray-900 ml-1">{selectedResult.dob?.includes('-') ? selectedResult.dob.split('-').reverse().join('/') : selectedResult.dob}</span></div>
                         <div><span className="text-gray-500">Giới tính:</span> <span className="font-bold text-gray-900 ml-1">{selectedResult.gender}</span></div>
                         <div><span className="text-gray-500">Số điện thoại:</span> <span className="font-bold text-gray-900 ml-1">{selectedResult.phone}</span></div>
                         <div><span className="text-gray-500">CCCD:</span> <span className="font-bold text-gray-900 ml-1">{selectedResult.cccd}</span></div>

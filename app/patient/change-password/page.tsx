@@ -84,7 +84,7 @@ export default function PatientChangePasswordPage() {
             <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{profileForm.fullName}</p>
-                <p className="text-xs text-gray-500 font-medium">Bệnh nhân ({profileForm.patientCode})</p>
+
               </div>
               <img src={profileForm.avatar} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-white shadow-sm group-hover:shadow-md transition object-cover"/>
             </div>

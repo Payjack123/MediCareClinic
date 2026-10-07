@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Activity, LayoutDashboard, CalendarDays, Calendar, CalendarCheck, Users, 
-  FileText, Pill, TestTube, BarChart3, Bell, User, Settings, LogOut, 
+  Activity, LayoutDashboard, CalendarDays, Calendar, CalendarCheck, Users,
+  FileText, Pill, TestTube, BarChart3, Bell, User, Settings, LogOut,
   ChevronUp, ChevronDown, Edit, ImageIcon, Stethoscope, ClipboardList,
   Microscope, HeartPulse, ArrowLeftToLine, Shield
 } from 'lucide-react';
@@ -38,6 +38,19 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
     activePage.startsWith('prescriptions') ? 'prescriptions' : ''
   );
 
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('doctorSidebarScroll');
+    if (savedScroll && sidebarRef.current) {
+      sidebarRef.current.scrollTop = Number(savedScroll);
+    }
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    sessionStorage.setItem('doctorSidebarScroll', e.currentTarget.scrollTop.toString());
+  };
+
   const handleLogout = () => router.push('/login');
 
   const navigation: NavGroup[] = [
@@ -50,7 +63,8 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
     {
       group: 'LỊCH LÀM VIỆC',
       items: [
-        { name: 'Lịch hẹn', href: '/doctor/appointments', icon: Calendar, id: 'appointments' },
+        { name: 'Lịch khám', href: '/doctor/appointments', icon: Calendar, id: 'appointments' },
+        { name: 'Lịch hẹn của tôi', href: '/doctor/my-appointments', icon: CalendarDays, id: 'my-appointments' },
         { name: 'Lịch hẹn hôm nay', href: '/doctor/today-appointments', icon: CalendarCheck, id: 'today-appointments' },
       ]
     },
@@ -64,17 +78,17 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
     {
       group: 'XÉT NGHIỆM',
       items: [
-        { name: 'Chỉ định xét nghiệm', href: '/doctor/test-orders', icon: TestTube, id: 'test-assign' },
-        { name: 'Kết quả xét nghiệm', href: '/doctor/test-results', icon: Microscope, id: 'test-result' },
+        { name: 'Chỉ định xét nghiệm', href: '/doctor/test-orders', icon: TestTube, id: 'test-orders' },
+        { name: 'Kết quả xét nghiệm', href: '/doctor/test-results', icon: Microscope, id: 'test-results' },
       ]
     },
     {
       group: 'QUẢN LÝ ĐIỀU TRỊ',
       items: [
-        { 
-          name: 'Đơn thuốc', 
-          href: '/doctor/prescriptions', 
-          icon: Pill, 
+        {
+          name: 'Đơn thuốc',
+          href: '/doctor/prescriptions',
+          icon: Pill,
           id: 'prescriptions',
           isExpandable: true,
           subItems: [
@@ -87,10 +101,10 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
     {
       group: 'HỆ THỐNG',
       items: [
-        { name: 'Thông báo', href: '/doctor/settings/notifications', icon: Bell, id: 'notifications' },
+        { name: 'Thông báo', href: '/doctor/settings/notifications', icon: Bell, id: 'settings/notifications' },
         { name: 'Hồ sơ cá nhân', href: '/doctor/settings/profile', icon: User, id: 'profile' },
         { name: 'Lịch làm việc', href: '/doctor/settings/schedule', icon: Calendar, id: 'schedule' },
-        { name: 'Bảo mật', href: '/doctor/settings/security', icon: Shield, id: 'security' },
+        { name: 'Bảo mật', href: '/doctor/settings/security', icon: Shield, id: 'settings/security' },
       ]
     }
   ];
@@ -111,28 +125,31 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-6 flex flex-col gap-6 custom-scrollbar px-3">
+      <div 
+        ref={sidebarRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto py-6 flex flex-col gap-6 custom-scrollbar px-3"
+      >
         {navigation.map((group, idx) => (
           <div key={idx} className="flex flex-col gap-1">
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-3">
               {group.group}
             </p>
-            
+
             <div className="flex flex-col space-y-1">
               {group.items.map((item) => {
                 const isActive = activePage === item.id || activePage.startsWith(item.id + '-');
-                
+
                 if (item.isExpandable) {
                   const isExpanded = isMenuOpen === item.id;
                   return (
                     <div key={item.id} className="flex flex-col gap-1">
                       <button
                         onClick={() => setIsMenuOpen(isExpanded ? '' : item.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm ${
-                          isActive 
-                            ? 'bg-blue-50 text-blue-600' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm ${isActive
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <item.icon size={18} className={isActive ? 'text-blue-600' : 'text-gray-400'} />
@@ -146,14 +163,13 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
                           {item.subItems.map((subItem) => {
                             const isSubActive = activePage === subItem.id;
                             return (
-                              <Link 
+                              <Link
                                 key={subItem.id}
-                                href={subItem.href} 
-                                className={`text-sm px-3 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${
-                                  isSubActive
-                                    ? 'text-blue-600 font-semibold'
-                                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                                }`}
+                                href={subItem.href}
+                                className={`text-sm px-3 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${isSubActive
+                                  ? 'text-blue-600 font-semibold'
+                                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                  }`}
                               >
                                 {isSubActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
                                 <span className={isSubActive ? '' : 'ml-3'}>{subItem.name}</span>
@@ -167,29 +183,27 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
                 }
 
                 return (
-                  <Link 
-                    key={item.id} 
-                    href={item.href} 
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm relative overflow-hidden group ${
-                      isActive 
-                        ? 'bg-blue-50/80 text-blue-700' 
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm relative overflow-hidden group ${isActive
+                      ? 'bg-blue-50/80 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
                   >
                     {isActive && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-r-md" />
                     )}
                     <div className="flex items-center gap-3 relative z-10">
-                      <item.icon size={18} className={isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} /> 
+                      <item.icon size={18} className={isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'} />
                       {item.name}
                     </div>
-                    
+
                     {item.badge && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isActive 
-                          ? 'bg-blue-200/50 text-blue-700' 
-                          : 'bg-red-50 text-red-500'
-                      }`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                        ? 'bg-blue-200/50 text-blue-700'
+                        : 'bg-red-50 text-red-500'
+                        }`}>
                         {item.badge}
                       </span>
                     )}
@@ -206,8 +220,8 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
         <div className="w-11 h-11 rounded-full bg-[#2a2a2a] text-white flex items-center justify-center font-bold text-lg shrink-0">
           N
         </div>
-        <button 
-          onClick={handleLogout} 
+        <button
+          onClick={handleLogout}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50/80 text-red-600 hover:bg-red-100 rounded-xl transition-all duration-200 text-sm font-bold"
         >
           <LogOut size={18} /> Đăng xuất

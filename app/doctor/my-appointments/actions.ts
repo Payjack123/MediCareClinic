@@ -12,7 +12,7 @@ export async function getAllDoctorAppointments() {
 
     const doctor = await prisma.user.findUnique({
       where: { id: doctorId },
-      include: { doctorProfile: true }
+      include: { doctorProfile: { include: { specialty: true } } }
     });
 
     if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
@@ -32,9 +32,8 @@ export async function getAllDoctorAppointments() {
     let canceled = 0;
 
     const formattedAppointments = appointments.map(apt => {
-      // Logic from image: "Đã hoàn thành", "Sắp tới", "Đã hủy"
-      if (apt.status === 'HOÀN THÀNH') completed++;
-      else if (apt.status === 'ĐÃ HỦY') canceled++;
+      if (apt.status === 'Đã khám') completed++;
+      else if (apt.status === 'Đã hủy' || apt.status === 'Không đến') canceled++;
       else upcoming++; // Any other status is Upcoming (Sắp tới/Chờ xác nhận)
 
       let parsedNote = apt.reason || '';
@@ -54,9 +53,7 @@ export async function getAllDoctorAppointments() {
         };
       }
 
-      let uiStatus = 'Sắp tới';
-      if (apt.status === 'HOÀN THÀNH') uiStatus = 'Đã hoàn thành';
-      else if (apt.status === 'ĐÃ HỦY') uiStatus = 'Đã hủy';
+      let uiStatus = apt.status || 'Đã đặt';
 
       // Parse bookingDate (dd/MM/yyyy) into weekday
       let dateWithDay = apt.bookingDate;
@@ -74,10 +71,11 @@ export async function getAllDoctorAppointments() {
 
       return {
         id: apt.id,
+        patientId: apt.patient.id,
         patientName: patientDetails?.name || apt.patient.fullName,
         patientCode: apt.patient.patientProfile?.patientCode || `BN-${apt.patient.id}`,
         gender: apt.patient.gender || 'Nam',
-        time: apt.bookingTime, 
+        time: apt.bookingTime?.split(' - ')[0] || apt.bookingTime, 
         date: apt.bookingDate,
         dateWithDay,
         status: uiStatus,
@@ -85,7 +83,7 @@ export async function getAllDoctorAppointments() {
         reason: parsedNote || 'Khám bệnh',
         patientDetails,
         patientPhone: patientDetails?.phone || apt.patient.phone,
-        room: doctor.doctorProfile?.specialty || 'Phòng khám',
+        room: apt.specialty || doctor.doctorProfile?.specialty?.name || 'Phòng khám',
         avatar: apt.patient.avatar || `https://ui-avatars.com/api/?name=${apt.patient.fullName.replace(/ /g, '+')}&background=random`
       };
     });

@@ -308,7 +308,17 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
                       <CalendarClock size={20} /> Tái khám
                     </h3>
                     <p className="text-gray-500 text-sm font-medium mb-1.5 uppercase tracking-wider">Ngày tái khám dự kiến</p>
-                    <p className="font-black text-gray-900 text-xl">{prescription.followUpDate || 'Không có hẹn'}</p>
+                    <p className="font-black text-gray-900 text-xl">
+                      {(() => {
+                        const raw = prescription.followUpDate;
+                        if (!raw) return 'Không có hẹn';
+                        if (raw.includes('-')) {
+                          const [y, m, d] = raw.split('-');
+                          if (y.length === 4) return `${d}/${m}/${y}`;
+                        }
+                        return raw;
+                      })()}
+                    </p>
                   </div>
                   
                   {isDraft && (

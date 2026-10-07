@@ -10,12 +10,8 @@ export default function DoctorSchedulesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Giả lập lấy userId của user hiện tại (ví dụ Nguyễn Văn Bình)
-    // Trong thực tế sẽ lấy từ Session/AuthContext
-    const userId = 30001; 
-
     const fetchData = async () => {
-      const res = await getMySchedules(userId);
+      const res = await getMySchedules();
       if (res.success) {
         setSchedules(res.schedules);
       }
@@ -87,6 +83,63 @@ export default function DoctorSchedulesPage() {
                           <strong className="text-gray-900">{schedule.clinic.name}</strong> 
                           {schedule.clinic.roomNumber && <><br/>{schedule.clinic.roomNumber}</>}
                         </span>
+                      </div>
+                    )}
+                    {schedule.timeSlots && (
+                      <div className="flex gap-3 text-sm text-gray-600 border-t border-gray-100 pt-4 mt-2">
+                        <Clock size={18} className="text-gray-400 shrink-0 mt-0.5" />
+                        <div className="flex flex-col gap-3 w-full">
+                          {(() => {
+                            try {
+                              const slots = typeof schedule.timeSlots === 'string' ? JSON.parse(schedule.timeSlots) : schedule.timeSlots;
+                              if (!Array.isArray(slots)) return null;
+
+                              const morningSlots = slots.filter((time: string) => parseInt(time.split(':')[0]) < 12);
+                              const afternoonSlots = slots.filter((time: string) => {
+                                const hour = parseInt(time.split(':')[0]);
+                                return hour >= 12 && hour < 18;
+                              });
+                              const eveningSlots = slots.filter((time: string) => parseInt(time.split(':')[0]) >= 18);
+
+                              return (
+                                <>
+                                  {morningSlots.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ca sáng</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        <span className="px-3 py-1.5 text-sm font-bold rounded-md bg-green-50 text-green-600 border border-green-100">
+                                          {morningSlots.length === 1 ? morningSlots[0] : `${morningSlots[0]} - ${morningSlots[morningSlots.length - 1]}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {afternoonSlots.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ca chiều</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        <span className="px-3 py-1.5 text-sm font-bold rounded-md bg-blue-50 text-blue-600 border border-blue-100">
+                                          {afternoonSlots.length === 1 ? afternoonSlots[0] : `${afternoonSlots[0]} - ${afternoonSlots[afternoonSlots.length - 1]}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {eveningSlots.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ca tối</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        <span className="px-3 py-1.5 text-sm font-bold rounded-md bg-purple-50 text-purple-600 border border-purple-100">
+                                          {eveningSlots.length === 1 ? eveningSlots[0] : `${eveningSlots[0]} - ${eveningSlots[eveningSlots.length - 1]}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            } catch (e) {
+                              return null;
+                            }
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>

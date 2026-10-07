@@ -106,7 +106,7 @@ export default function PatientDashboard() {
             <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{data.user.fullName}</p>
-                <p className="text-xs text-gray-500 font-medium">Bệnh nhân ({data.user.patientCode})</p>
+
               </div>
               <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.fullName)}&background=2563EB&color=fff`} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-white shadow-sm" />
             </div>

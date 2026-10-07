@@ -122,10 +122,14 @@ export default function MedicalHistoryPage() {
         {/* HEADER */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex-1">
-            {/* Thanh tìm kiếm trên header (tuỳ chọn theo thiết kế) */}
-            <div className="relative w-full max-w-md hidden sm:block">
-              <input type="text" placeholder="Tìm bác sĩ, chuyên khoa, dịch vụ..." className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition-all" />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <div className="flex items-center gap-3 w-full max-w-xl">
+              <div className="bg-blue-50 p-2.5 rounded-xl text-[#2563EB]">
+                <History size={24} />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-gray-900">Lịch sử khám</h1>
+                <p className="text-gray-500 text-xs mt-0.5">Theo dõi toàn bộ lịch sử khám và điều trị của bạn tại MediCare.</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -135,10 +139,9 @@ export default function MedicalHistoryPage() {
                 <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
             </div>
-            <div className="flex items-center gap-3 cursor-pointer group">
+            <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{userData?.fullName}</p>
-                <p className="text-xs text-gray-500 font-medium">{userData?.patientCode || 'BN0012345'}</p>
               </div>
               <img src={`https://ui-avatars.com/api/?name=${userData?.fullName}&background=2563EB&color=fff`} alt="Avatar" className="w-10 h-10 rounded-full border-2 border-white shadow-sm group-hover:shadow-md transition" />
             </div>
@@ -148,17 +151,8 @@ export default function MedicalHistoryPage() {
         {/* SCROLLABLE PAGE CONTENT */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 animate-in fade-in duration-500">
           
-          {/* TOP SECTION: TITLE & DOWNLOAD BUTTON */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Lịch sử khám</h1>
-              <p className="text-sm text-gray-500 mt-1">Theo dõi toàn bộ lịch sử khám và điều trị của bạn tại MediCare.</p>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 text-[#2563EB] rounded-lg text-sm font-bold hover:bg-blue-50 shadow-sm transition">
-              <Download size={16} />
-              Tải toàn bộ lịch sử
-            </button>
-          </div>
+          {/* TOP SECTION: (Removed for Header integration) */}
+          <div className="mb-2"></div>
 
           {/* STATS CARDS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

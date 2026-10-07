@@ -67,9 +67,14 @@ export default function Step3DateTime({
               const validDates = doctorSchedules ? doctorSchedules.map(s => s.date) : [];
 
               const daysArray = [];
+              const currentHour = new Date().getHours();
+              
+              // LOGIC: Nếu sau 5h chiều (>= 17h), chuyển sang ngày mai, hôm nay không có lịch vì bác sĩ không nhận thêm khách tối
+              const startOffset = currentHour >= 17 ? 1 : 0;
+
               for (let i = 0; i < 7; i++) {
                 const dateObj = new Date();
-                dateObj.setDate(dateObj.getDate() + i + 1);
+                dateObj.setDate(dateObj.getDate() + i + startOffset);
 
                 const dayOfWeek = dateObj.getDay();
 
@@ -85,7 +90,7 @@ export default function Step3DateTime({
 
                 daysArray.push({
                   dateString,
-                  displayDay: i === 0 ? 'Ngày mai' : dayOfWeek === 0 ? 'CN' : `T${dayOfWeek + 1}`,
+                  displayDay: (i + startOffset) === 0 ? 'Hôm nay' : (i + startOffset) === 1 ? 'Ngày mai' : dayOfWeek === 0 ? 'CN' : `T${dayOfWeek + 1}`,
                   displayDate: `${dateNum}/${monthNum}`
                 });
               }
@@ -132,7 +137,7 @@ export default function Step3DateTime({
                 <div className="flex items-center gap-3">
                   <Clock className="text-[#2563EB]" size={24} />
                   <div>
-                    <p className="text-2xl font-black text-[#2563EB]">{patients.find(p => p.id === activePatientId)?.time}</p>
+                    <p className="text-2xl font-black text-[#2563EB]">{patients.find(p => p.id === activePatientId)?.time?.split(' - ')[0]}</p>
                     <p className="text-sm text-gray-600 font-medium">Ngày: {bookingData.date.split('-').reverse().join('/')}</p>
                   </div>
                 </div>
@@ -161,8 +166,52 @@ export default function Step3DateTime({
               }
 
               return schedulesForDate.map(schedule => {
-                const morningTimes = schedule.timeSlots.filter((t: string) => parseInt(t.split(':')[0]) < 12);
-                const afternoonTimes = schedule.timeSlots.filter((t: string) => parseInt(t.split(':')[0]) >= 12);
+                let parsedTimeSlots = [];
+                try {
+                  parsedTimeSlots = typeof schedule.timeSlots === 'string' ? JSON.parse(schedule.timeSlots) : schedule.timeSlots;
+                } catch (e) {
+                  parsedTimeSlots = [];
+                }
+                
+                let allTimes = Array.isArray(parsedTimeSlots) ? parsedTimeSlots : [];
+                
+                // Lọc các khung giờ cho "Hôm nay"
+                const todayDateObj = new Date();
+                const todayDateString = `${todayDateObj.getFullYear()}-${String(todayDateObj.getMonth() + 1).padStart(2, '0')}-${String(todayDateObj.getDate()).padStart(2, '0')}`;
+                const isSelectedDateToday = bookingData.date === todayDateString;
+                const curHour = new Date().getHours();
+                
+                if (isSelectedDateToday) {
+                  allTimes = allTimes.filter((time: string) => {
+                    const [slotHourStr, slotMinStr] = time.split(':');
+                    const slotHour = parseInt(slotHourStr, 10);
+                    const slotMin = parseInt(slotMinStr, 10);
+                    const slotTimeFloat = slotHour + slotMin / 60;
+                    
+                    // LOGIC:
+                    // 1. Nếu đặt lúc sáng sớm (trước 11h), hiện các ca từ 11h trở đi (cuối sáng, chiều, tối)
+                    if (curHour < 11) {
+                      return slotTimeFloat >= 11;
+                    } 
+                    // 2. Nếu đặt buổi chiều sớm (11h đến trước 14h), hiện các ca từ 14h trở đi (chiều, tối)
+                    else if (curHour < 14) {
+                      return slotTimeFloat >= 14;
+                    }
+                    // 3. Nếu đặt buổi chiều muộn (14h đến trước 17h), chỉ hiện các ca từ 18h trở đi (buổi tối)
+                    else if (curHour < 17) {
+                      return slotTimeFloat >= 18;
+                    }
+                    // 4. Nếu đặt sau 17h, thì ngày hôm nay đã bị ẩn từ vòng lặp tạo ngày bên trên rồi
+                    return true;
+                  });
+                }
+                
+                const morningTimes = allTimes.filter((t: string) => parseInt(t.split(':')[0]) < 12);
+                const afternoonTimes = allTimes.filter((t: string) => {
+                  const hour = parseInt(t.split(':')[0]);
+                  return hour >= 12 && hour < 18;
+                });
+                const eveningTimes = allTimes.filter((t: string) => parseInt(t.split(':')[0]) >= 18);
                 const bookedTimes = schedule.bookedTimes || [];
                 
                 const clinicInfo = schedule.clinic 
@@ -171,13 +220,21 @@ export default function Step3DateTime({
                 
                 const docName = schedule.doctor?.fullName || bookingData.doctor;
 
+                if (morningTimes.length === 0 && afternoonTimes.length === 0 && eveningTimes.length === 0) {
+                  return (
+                    <div key={schedule.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6 p-5 text-center text-gray-500 italic">
+                      Bác sĩ {docName} đã hết ca khám trống hoặc đã qua giờ nhận đăng ký trong ngày hôm nay.
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={schedule.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
                     {/* Header: Cơ sở và Bác sĩ */}
                     <div className="bg-gray-50/80 p-4 border-b border-gray-100">
                       <div className="flex items-center gap-2 mb-2">
-                        <MapPin className="text-green-600" size={18} />
-                        <h4 className="font-bold text-green-700">{bookingData.facility || 'Cơ sở chính'}</h4>
+                        <MapPin className="text-blue-600" size={18} />
+                        <h4 className="font-bold text-blue-700">{bookingData.facility || 'Cơ sở chính'}</h4>
                       </div>
                       <div className="flex items-center gap-2 pl-1">
                         <div className="w-5 h-5 bg-gray-400 text-white rounded flex items-center justify-center text-[12px] shrink-0">+</div>
@@ -231,10 +288,10 @@ export default function Step3DateTime({
 
                       {/* Buổi chiều */}
                       {afternoonTimes.length > 0 && (
-                        <div>
+                        <div className={morningTimes.length > 0 ? "mt-6" : ""}>
                           <div className="flex items-center gap-2 mb-3">
                             <span className="text-xl">🌇</span>
-                            <h4 className="font-bold text-[#2563EB] text-lg">Buổi chiều</h4>
+                            <h4 className="font-bold text-[#ea580c] text-lg">Buổi chiều</h4>
                           </div>
                           <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
                             {afternoonTimes.map((time: string) => {
@@ -256,13 +313,54 @@ export default function Step3DateTime({
                                     setIsEditingTime(false);
                                   }}
                                   className={`shrink-0 min-w-[100px] py-2.5 rounded-xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-1.5 ${isSelected
-                                    ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-md transform scale-105'
+                                    ? 'bg-[#ea580c] text-white border-[#ea580c] shadow-md transform scale-105'
                                     : isBooked
                                       ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
-                                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#2563EB] hover:text-[#2563EB]'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#ea580c] hover:text-[#ea580c]'
                                     }`}
                                 >
-                                  <Clock size={14} className={isSelected ? 'text-blue-100' : 'text-gray-400'} /> {time}
+                                  <Clock size={14} className={isSelected ? 'text-orange-100' : 'text-gray-400'} /> {time}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Buổi tối */}
+                      {eveningTimes.length > 0 && (
+                        <div className={(morningTimes.length > 0 || afternoonTimes.length > 0) ? "mt-6" : ""}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-xl">🌙</span>
+                            <h4 className="font-bold text-[#6D28D9] text-lg">Buổi tối</h4>
+                          </div>
+                          <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
+                            {eveningTimes.map((time: string) => {
+                              const isBooked = bookedTimes.includes(time);
+                              const pData = patients.find(p => p.id === activePatientId);
+                              const isSelected = pData?.time === time && pData?.doctorId === schedule.doctorId;
+                              
+                              return (
+                                <button
+                                  key={time}
+                                  disabled={isBooked}
+                                  onClick={() => {
+                                    setPatients(patients.map(p => p.id === activePatientId ? { 
+                                      ...p, time, 
+                                      doctorId: schedule.doctorId, 
+                                      doctor: schedule.doctor?.fullName,
+                                      facility: bookingData.facility || 'Cơ sở chính'
+                                    } : p));
+                                    setIsEditingTime(false);
+                                  }}
+                                  className={`shrink-0 min-w-[100px] py-2.5 rounded-xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-1.5 ${isSelected
+                                    ? 'bg-[#6D28D9] text-white border-[#6D28D9] shadow-md transform scale-105'
+                                    : isBooked
+                                      ? 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-[#6D28D9] hover:text-[#6D28D9]'
+                                    }`}
+                                >
+                                  <Clock size={14} className={isSelected ? 'text-purple-100' : 'text-gray-400'} /> {time}
                                 </button>
                               )
                             })}

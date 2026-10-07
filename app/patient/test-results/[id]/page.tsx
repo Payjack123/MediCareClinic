@@ -76,7 +76,7 @@ export default function TestResultDetailPage() {
             <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition">Nguyễn Văn A</p>
-                <p className="text-xs text-gray-500 font-medium">Bệnh nhân (BN-202611)</p>
+
               </div>
               <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
                 A

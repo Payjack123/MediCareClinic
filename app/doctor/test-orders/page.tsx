@@ -441,7 +441,7 @@ export default function TestOrdersPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-y-3 text-sm">
-                        <div><span className="text-gray-500">Ngày sinh:</span> <span className="font-bold text-gray-900 ml-1">{viewingOrder.dob}</span></div>
+                        <div><span className="text-gray-500">Ngày sinh:</span> <span className="font-bold text-gray-900 ml-1">{viewingOrder.dob?.includes('-') ? viewingOrder.dob.split('-').reverse().join('/') : viewingOrder.dob}</span></div>
                         <div><span className="text-gray-500">Giới tính:</span> <span className="font-bold text-gray-900 ml-1">{viewingOrder.gender}</span></div>
                         <div><span className="text-gray-500">Số điện thoại:</span> <span className="font-bold text-gray-900 ml-1">{viewingOrder.phone}</span></div>
                         <div><span className="text-gray-500">CCCD:</span> <span className="font-bold text-gray-900 ml-1">{viewingOrder.cccd}</span></div>
@@ -611,7 +611,7 @@ export default function TestOrdersPage() {
                                 </span>
                               </div>
                               <div className="grid grid-cols-2 gap-y-1.5 text-sm text-gray-600 mt-2">
-                                <div>Ngày sinh: <span className="font-bold text-gray-900">{selectedPatient.dob || 'N/A'}</span></div>
+                                <div>Ngày sinh: <span className="font-bold text-gray-900">{selectedPatient.dob?.includes('-') ? selectedPatient.dob.split('-').reverse().join('/') : (selectedPatient.dob || 'N/A')}</span></div>
                                 <div>SĐT: <span className="font-bold text-gray-900">{selectedPatient.phone || 'N/A'}</span></div>
                                 <div>Giới tính: <span className="font-bold text-gray-900">{selectedPatient.gender || 'N/A'}</span></div>
                                 <div>CCCD: <span className="font-bold text-gray-900">{selectedPatient.cccd || 'N/A'}</span></div>

@@ -1,10 +1,14 @@
 'use server';
 
-import { PrismaClient } from '@/lib/generated/prisma';
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
+import { cookies } from 'next/headers';
 
-export async function getMySchedules(userId: number) {
+export async function getMySchedules() {
   try {
+    const cookieStore = await cookies();
+    const userIdStr = cookieStore.get('user_id')?.value;
+    if (!userIdStr) return { success: false, schedules: [] };
+    const userId = parseInt(userIdStr);
     const doctorProfile = await prisma.doctorProfile.findUnique({
       where: { userId }
     });

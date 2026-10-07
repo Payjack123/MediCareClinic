@@ -105,6 +105,8 @@ export async function searchPatients(query: string) {
           ...patient,
           dob: formattedDob,
           gender: patient.gender || "Khác",
+          patientCode: patient.patientProfile?.patientCode || "",
+          cccd: patient.patientProfile?.cccd || "N/A",
         },
       };
     }

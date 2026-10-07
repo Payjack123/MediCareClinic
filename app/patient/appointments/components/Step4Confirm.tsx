@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CheckCircle2, FileText, Info, LayoutDashboard, Loader2, CreditCard, X, User, Calendar, Clock, Building, UserRound, Stethoscope } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface Step4ConfirmProps {
   setStep: (step: number) => void;
@@ -53,7 +54,9 @@ export default function Step4Confirm({
 
       <div className="space-y-6">
         <div>
-          <h3 className="font-bold text-[#2563EB] mb-3 text-lg flex items-center gap-2"><FileText size={20} /> Triệu chứng/Lý do khám:</h3>
+          <h3 className="font-bold text-[#2563EB] mb-3 text-lg flex items-center gap-2">
+            <FileText size={20} /> Triệu chứng/Lý do khám <span className="text-red-500">*</span>:
+          </h3>
           <textarea
             rows={4}
             value={patients.find(p => p.id === activePatientId)?.reason || ''}
@@ -72,7 +75,7 @@ export default function Step4Confirm({
             <div className="flex"><span className="w-36 text-gray-500">Chuyên khoa:</span> <span className="font-bold text-gray-900">{bookingMethod === 'clinic' ? getSpecialtyFromClinic(bookingData.specialty) : bookingData.specialty || 'Đang cập nhật'}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Bác sĩ:</span> <span className="font-bold text-gray-900 uppercase">{patients.find(p => p.id === activePatientId)?.doctor || bookingData.doctor || 'Đang cập nhật'}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Ngày khám:</span> <span className="font-bold text-gray-900">{bookingData.date ? bookingData.date.split('-').reverse().join('/') : ''}</span></div>
-            <div className="flex"><span className="w-36 text-gray-500">Giờ khám:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.time}</span></div>
+            <div className="flex"><span className="w-36 text-gray-500">Giờ khám:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.time?.split(' - ')[0]}</span></div>
             <div className="flex">
               <span className="w-36 text-gray-500">Phòng khám:</span> 
               <span className="font-bold text-gray-900">
@@ -84,11 +87,11 @@ export default function Step4Confirm({
           </div>
         </div>
 
-        <div className="p-4 bg-green-50/80 rounded-xl border border-green-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-green-700 font-bold">
+        <div className="p-4 bg-blue-50/80 rounded-xl border border-blue-200 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-blue-700 font-bold">
             <CreditCard size={20} /> Phí khám dự kiến:
           </div>
-          <div className="text-xl font-black text-green-600">
+          <div className="text-xl font-black text-blue-600">
             {patients.find(p => p.id === activePatientId)?.doctorPrice?.toLocaleString('vi-VN') || '350,000'} VNĐ
           </div>
         </div>
@@ -111,7 +114,14 @@ export default function Step4Confirm({
         <button onClick={() => setStep(3)} className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Quay lại</button>
         <button
           disabled={isSubmitting}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            const missingReason = patients.some(p => !p.reason || p.reason.trim() === '');
+            if (missingReason) {
+              toast.error('Vui lòng nhập triệu chứng/lý do khám bệnh cho tất cả bệnh nhân!');
+              return;
+            }
+            setIsModalOpen(true);
+          }}
           className="flex-[2] bg-[#2563EB] text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 disabled:bg-blue-400"
         >
           {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />} Xác nhận đặt lịch
@@ -123,7 +133,7 @@ export default function Step4Confirm({
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden relative shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <div className="bg-green-100 text-green-700 p-1.5 rounded-lg">
+                <div className="bg-blue-100 text-blue-700 p-1.5 rounded-lg">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><line x1="9" y1="16" x2="15" y2="16"></line><line x1="12" y1="13" x2="12" y2="19"></line></svg>
                 </div>
                 Xác nhận đặt lịch
@@ -138,20 +148,20 @@ export default function Step4Confirm({
                 <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><User size={16}/> Họ tên:</span> <span className="font-bold text-gray-900 flex-1">{patients.find(p => p.id === activePatientId)?.name}</span></div>
                 <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><UserRound size={16}/> Bác sĩ:</span> <span className="font-bold text-gray-900 uppercase flex-1">{patients.find(p => p.id === activePatientId)?.doctor || bookingData.doctor}</span></div>
                 <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><Calendar size={16}/> Ngày khám:</span> <span className="font-bold text-gray-900 flex-1">{bookingData.date ? bookingData.date.split('-').reverse().join('/') : ''}</span></div>
-                <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><Clock size={16}/> Giờ khám:</span> <span className="font-bold text-gray-900 flex-1">{patients.find(p => p.id === activePatientId)?.time}</span></div>
+                <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><Clock size={16}/> Giờ khám:</span> <span className="font-bold text-gray-900 flex-1">{patients.find(p => p.id === activePatientId)?.time?.split(' - ')[0]}</span></div>
                 <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><Building size={16}/> Phòng khám:</span> <span className="font-bold text-gray-900 flex-1">{bookingData.clinicName || getClinicName(bookingMethod, bookingData)}{bookingData.roomNumber ? ` - Phòng: ${bookingData.roomNumber}` : ''}</span></div>
                 <div className="flex items-start"><span className="w-32 text-gray-500 flex items-center gap-2"><FileText size={16}/> Triệu chứng:</span> <span className="font-bold text-gray-900 flex-1">{patients.find(p => p.id === activePatientId)?.reason || 'Không có'}</span></div>
               </div>
               
-              <div className="bg-green-50/80 rounded-2xl p-4 flex items-start gap-3 mt-4 border border-green-100">
-                <Info className="text-green-600 mt-0.5 shrink-0" size={18} />
-                <p className="text-green-700 text-sm font-medium italic">Sau khi đặt lịch thành công, bạn sẽ nhận được thông báo xác nhận.</p>
+              <div className="bg-blue-50/80 rounded-2xl p-4 flex items-start gap-3 mt-4 border border-blue-100">
+                <Info className="text-blue-600 mt-0.5 shrink-0" size={18} />
+                <p className="text-blue-700 text-sm font-medium italic">Sau khi đặt lịch thành công, bạn sẽ nhận được thông báo xác nhận.</p>
               </div>
             </div>
             
             <div className="p-4 border-t border-gray-100 flex gap-3 bg-gray-50/50">
               <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition">Hủy</button>
-              <button onClick={() => { setIsModalOpen(false); setStep(5); }} className="flex-1 py-3.5 bg-[#10b981] text-white rounded-xl font-bold hover:bg-[#059669] transition shadow-md shadow-green-500/20">Xác nhận đặt lịch</button>
+              <button onClick={() => { setIsModalOpen(false); setStep(5); }} className="flex-1 py-3.5 bg-[#2563EB] text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md shadow-blue-500/20">Xác nhận đặt lịch</button>
             </div>
           </div>
         </div>

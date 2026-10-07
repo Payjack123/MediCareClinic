@@ -9,7 +9,6 @@ datasource db {
 }
 
 model User {
-
   id                    Int              @id @default(autoincrement())
   fullName              String           @map("full_name") @db.VarChar(100)
   email                 String           @unique @db.VarChar(100)
@@ -62,8 +61,8 @@ model FamilyMember {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user         User     @relation("UserFamilyMembers", fields: [userId], references: [id], onDelete: Cascade)
-  patient      User     @relation("PatientFamilyMembers", fields: [patientId], references: [id], onDelete: Cascade)
+  user    User @relation("UserFamilyMembers", fields: [userId], references: [id], onDelete: Cascade)
+  patient User @relation("PatientFamilyMembers", fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([userId, patientId])
   @@index([userId])
@@ -71,24 +70,24 @@ model FamilyMember {
 }
 
 model DoctorProfile {
-  id                Int       @id @default(autoincrement())
-  userId            Int       @unique
+  id                Int        @id @default(autoincrement())
+  userId            Int        @unique
   specialtyId       Int?
   experience        String
-  status            String  @default("Đang làm việc")
-  rating            Float   @default(5)
-  price             Int     @default(150000)
-  imagePrefix       String  @default("D")
-  degree            String? @default("Thạc sĩ Y Khoa")
-  university        String? @default("Đại học Y Hà Nội")
-  languages         String? @default("Việt, Anh")
+  status            String     @default("Đang làm việc")
+  rating            Float      @default(5)
+  price             Int        @default(150000)
+  imagePrefix       String     @default("D")
+  degree            String?    @default("Thạc sĩ Y Khoa")
+  university        String?    @default("Đại học Y Hà Nội")
+  languages         String?    @default("Việt, Anh")
   certificates      Json?
-  bio               String? @db.Text
-  certificateNumber String? @db.VarChar(100)
-  doctorCode        String? @db.VarChar(20)
+  bio               String?    @db.Text
+  certificateNumber String?    @db.VarChar(100)
+  doctorCode        String?    @db.VarChar(20)
   schedule          Json?
-  maxPatientsPerDay Int       @default(10)
-  user              User      @relation(fields: [userId], references: [id])
+  maxPatientsPerDay Int        @default(10)
+  user              User       @relation(fields: [userId], references: [id])
   specialty         Specialty? @relation(fields: [specialtyId], references: [id])
   clinics           Clinic[]
 }
@@ -139,25 +138,25 @@ model Appointment {
 }
 
 model Examination {
-  id             Int         @id @default(autoincrement())
-  appointmentId  Int         @unique
-  patientId      Int
-  doctorId       Int
-  symptoms       String      @db.Text
-  medicalHistory String?     @db.Text
+  id                 Int         @id @default(autoincrement())
+  appointmentId      Int         @unique
+  patientId          Int
+  doctorId           Int
+  symptoms           String      @db.Text
+  medicalHistory     String?     @db.Text
   diagnosis          String      @db.Text
   secondaryDiagnosis String?     @db.Text
   treatment          String?     @db.Text
   notes              String?     @db.Text
-  followUpDate   String?     @db.VarChar(20)
-  followUpTime   String?     @db.VarChar(20)
-  followUpReason String?     @db.Text
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  clinicalExam   String?     @db.Text
-  appointment    Appointment @relation(fields: [appointmentId], references: [id])
-  doctor         User        @relation("DoctorExaminations", fields: [doctorId], references: [id])
-  patient        User        @relation("PatientExaminations", fields: [patientId], references: [id])
+  followUpDate       String?     @db.VarChar(20)
+  followUpTime       String?     @db.VarChar(20)
+  followUpReason     String?     @db.Text
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  clinicalExam       String?     @db.Text
+  appointment        Appointment @relation(fields: [appointmentId], references: [id])
+  doctor             User        @relation("DoctorExaminations", fields: [doctorId], references: [id])
+  patient            User        @relation("PatientExaminations", fields: [patientId], references: [id])
 
   @@index([doctorId], map: "Examination_doctorId_fkey")
   @@index([patientId], map: "Examination_patientId_fkey")
@@ -199,16 +198,16 @@ model PrescriptionItem {
 }
 
 model LabTest {
-  id         Int      @id @default(autoincrement())
-  patientId  Int
-  testName   String
-  date       DateTime
-  doctorName String
-  result     String
-  statusType String
+  id          Int      @id @default(autoincrement())
+  patientId   Int
+  testName    String
+  date        DateTime
+  doctorName  String
+  result      String
+  statusType  String
   testsDetail Json?
-  notes      String?  @db.Text
-  patient    User     @relation(fields: [patientId], references: [id])
+  notes       String?  @db.Text
+  patient     User     @relation(fields: [patientId], references: [id])
 
   @@index([patientId], map: "LabTest_patientId_fkey")
 }
@@ -247,52 +246,53 @@ enum Role {
   DOCTOR
   RECEPTIONIST
   ADMIN
+  COORDINATOR
 }
 
 model Invoice {
-  id              Int            @id @default(autoincrement())
-  invoiceCode     String         @unique @db.VarChar(50)
-  appointmentId   Int?           @unique
+  id              Int       @id @default(autoincrement())
+  invoiceCode     String    @unique @db.VarChar(50)
+  appointmentId   Int?      @unique
   patientId       Int
   doctorId        Int
-  totalAmount     Int            @default(0)
-  insuranceAmount Int            @default(0)
-  finalAmount     Int            @default(0)
-  status          String         @default("Chờ thanh toán")
-  paymentMethod   String?        @db.VarChar(50)
+  totalAmount     Int       @default(0)
+  insuranceAmount Int       @default(0)
+  finalAmount     Int       @default(0)
+  status          String    @default("Chờ thanh toán")
+  paymentMethod   String?   @db.VarChar(50)
   paymentDate     DateTime?
-  paymentRef      String?        @db.VarChar(100)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  paymentRef      String?   @db.VarChar(100)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  patient         User           @relation("PatientInvoices", fields: [patientId], references: [id])
-  doctor          User           @relation("DoctorInvoices", fields: [doctorId], references: [id])
-  appointment     Appointment?   @relation(fields: [appointmentId], references: [id])
-  items           InvoiceItem[]
+  patient     User          @relation("PatientInvoices", fields: [patientId], references: [id])
+  doctor      User          @relation("DoctorInvoices", fields: [doctorId], references: [id])
+  appointment Appointment?  @relation(fields: [appointmentId], references: [id])
+  items       InvoiceItem[]
 
   @@index([patientId], map: "Invoice_patientId_fkey")
   @@index([doctorId], map: "Invoice_doctorId_fkey")
 }
 
 model InvoiceItem {
-  id         Int      @id @default(autoincrement())
-  invoiceId  Int
-  name       String   @db.VarChar(255)
-  price      Int      @default(0)
-  quantity   Int      @default(1)
-  total      Int      @default(0)
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  invoiceId Int
+  name      String  @db.VarChar(255)
+  price     Int     @default(0)
+  quantity  Int     @default(1)
+  total     Int     @default(0)
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId], map: "InvoiceItem_invoiceId_fkey")
 }
 
 model OtpCode {
-  id         Int      @id @default(autoincrement())
-  email      String   @db.VarChar(100)
-  code       String   @db.VarChar(10)
-  expiresAt  DateTime
-  verified   Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(100)
+  code      String   @db.VarChar(10)
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([email])
 }
@@ -320,18 +320,18 @@ model Specialty {
 }
 
 model Clinic {
-  id          Int             @id @default(autoincrement())
-  name        String          @db.VarChar(100)
-  roomNumber  String?         @db.VarChar(50)
-  type        String          @db.VarChar(100)
-  facilityId  Int
-  specialtyId Int?
-  facility    Facility        @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  specialty   Specialty?      @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+  id              Int              @id @default(autoincrement())
+  name            String           @db.VarChar(100)
+  roomNumber      String?          @db.VarChar(50)
+  type            String           @db.VarChar(100)
+  facilityId      Int
+  specialtyId     Int?
+  facility        Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  specialty       Specialty?       @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
   doctors         DoctorProfile[]
   doctorSchedules DoctorSchedule[] @relation("ClinicSchedules")
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model DoctorSchedule {
@@ -339,14 +339,15 @@ model DoctorSchedule {
   doctorId  Int
   clinicId  Int?
   date      String   @db.VarChar(20) // Format: YYYY-MM-DD
-  timeSlots Json     // Array of available time slots like ["07:00", "07:15", "08:00"]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  doctor    User     @relation("DoctorSchedules", fields: [doctorId], references: [id], onDelete: Cascade)
-  clinic    Clinic?  @relation("ClinicSchedules", fields: [clinicId], references: [id], onDelete: SetNull)
+  doctor    User               @relation("DoctorSchedules", fields: [doctorId], references: [id], onDelete: Cascade)
+  clinic    Clinic?            @relation("ClinicSchedules", fields: [clinicId], references: [id], onDelete: SetNull)
+  timeSlots String?            @db.Text
 
   @@index([doctorId])
   @@index([clinicId])
   @@index([date])
 }
+

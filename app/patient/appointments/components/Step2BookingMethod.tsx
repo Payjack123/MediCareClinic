@@ -112,7 +112,7 @@ export default function Step2BookingMethod({
             }}
           >
             <input type="radio" name="method" className="w-5 h-5 text-[#2563EB]" readOnly checked={bookingMethod === 'specialty'} />
-            <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0"><HeartPulse size={24} /></div>
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><HeartPulse size={24} /></div>
             <div className="flex-1">
               <p className="font-bold text-gray-900 text-lg">Theo chuyên khoa</p>
               <p className="text-sm text-gray-500">Tìm bác sĩ theo chuyên khoa</p>
@@ -168,7 +168,15 @@ export default function Step2BookingMethod({
                         <h4 className={`font-bold text-[16px] mb-1.5 transition-colors ${isSelected ? 'text-[#2563EB]' : 'text-gray-900'}`}>{spec.name}</h4>
                         <div className="text-[13px] text-gray-500 leading-relaxed bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
                           <span className="inline-flex items-center rounded-md bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700 ring-1 ring-inset ring-orange-600/20 mr-2 shadow-sm">Triệu chứng</span>
-                          {spec.name === 'Da liễu' ? 'Các triệu chứng ngoài da: ngứa, mụn, phỏng nước, các bệnh lây nhiễm qua đường tình dục...' : spec.name === 'Hỗ trợ sinh sản' ? 'Khám vô sinh, mong con, IUI, IVF; bảo tồn sinh sản, tiền hôn nhân, thai nghén, nội tiết, phụ khoa hiếm muộn...' : spec.name === 'Nội tổng quát' ? 'Kiểm tra sức khỏe tổng quát, tầm soát bệnh lý...' : 'Đang cập nhật triệu chứng...'}
+                          {
+                            spec.name === 'Nội tổng quát' ? 'Kiểm tra sức khỏe tổng quát, tầm soát bệnh lý...' : 
+                            spec.name === 'Tim mạch' ? 'Khám và điều trị các bệnh lý về tim mạch, huyết áp...' : 
+                            spec.name === 'Da liễu' ? 'Các bệnh ngoài da: mụn, dị ứng, viêm da, lây nhiễm qua đường tình dục...' : 
+                            spec.name === 'Răng hàm mặt' ? 'Nhổ răng, trám răng, chỉnh nha, các bệnh lý răng miệng...' : 
+                            spec.name === 'Cơ xương khớp' ? 'Khám và điều trị đau nhức xương khớp, thoái hóa, chấn thương...' : 
+                            spec.name === 'Mắt' ? 'Đo thị lực, các bệnh lý về mắt, đục thủy tinh thể...' : 
+                            spec.description || 'Đang cập nhật triệu chứng...'
+                          }
                         </div>
                       </div>
                       {isSelected && <div className="w-6 h-6 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 mt-2 shadow-sm"><Check size={14} strokeWidth={3} /></div>}
@@ -283,13 +291,18 @@ export default function Step2BookingMethod({
                               key={doc.id} 
                               className={`p-4 rounded-2xl cursor-pointer flex items-center gap-4 transition-all duration-200 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 ${isSelected ? 'bg-blue-50/50 shadow-sm' : 'bg-white'}`} 
                               onClick={() => { 
+                                // Tìm ID của Cơ sở (Bệnh viện) mà bệnh nhân đang chọn ở Bước 1
+                                const selectedFacilityId = facilities.find(f => f.name === bookingData.facility)?.id;
+                                // Tìm phòng khám của Bác sĩ khớp với Cơ sở đang chọn, nếu không tìm thấy thì dự phòng lấy phòng khám đầu tiên
+                                const matchedClinic = doc.clinics?.find((c: any) => c.facilityId === selectedFacilityId) || doc.clinics?.[0];
+                                
                                 handleBookingDataChange({ 
                                   doctor: doc.name, 
                                   doctorId: doc.id, 
                                   doctorPrice: doc.rawPrice, 
                                   specialty: doc.specialty,
-                                  clinicName: doc.clinics && doc.clinics.length > 0 ? doc.clinics[0].name : '',
-                                  roomNumber: doc.clinics && doc.clinics.length > 0 ? doc.clinics[0].roomNumber : ''
+                                  clinicName: matchedClinic ? matchedClinic.name : '',
+                                  roomNumber: matchedClinic ? matchedClinic.roomNumber : ''
                                 }); 
                                 setActiveModal(null); 
                               }}

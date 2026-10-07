@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Lock, Activity, ArrowLeft, Loader2, User, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Apple } from 'lucide-react';
+import { Mail, Lock, Activity, ArrowLeft, Loader2, User, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Apple, Network } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { loginUser } from '@/app/(auth)/actions/auth';
 
@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [selectedRole, setSelectedRole] = useState<'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST'>('PATIENT');
+  const [selectedRole, setSelectedRole] = useState<'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST' | 'COORDINATOR'>('PATIENT');
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +38,9 @@ export default function LoginPage() {
             break;
           case 'receptionist':
             router.push('/receptionist/dashboard');
+            break;
+          case 'coordinator':
+            router.push('/coordinator/dashboard');
             break;
           default:
             router.push('/patient/dashboard');
@@ -139,21 +142,25 @@ export default function LoginPage() {
           </div>
 
           {/* Role Toggle Tabs */}
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-6 shadow-inner">
+          <div className="flex flex-wrap bg-slate-100 p-1 rounded-xl mb-6 shadow-inner gap-1">
             <button type="button" onClick={() => { setError(''); setSelectedRole('PATIENT'); }}
-              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 text-[11px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'PATIENT' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'PATIENT' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <User size={18} /> Bệnh nhân
             </button>
             <button type="button" onClick={() => { setError(''); setSelectedRole('DOCTOR'); }}
-              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 text-[11px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'DOCTOR' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'DOCTOR' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <Stethoscope size={18} /> Bác sĩ
             </button>
             <button type="button" onClick={() => { setError(''); setSelectedRole('RECEPTIONIST'); }}
-              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 text-[11px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'RECEPTIONIST' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'RECEPTIONIST' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <ClipboardList size={18} /> Lễ tân
             </button>
+            <button type="button" onClick={() => { setError(''); setSelectedRole('COORDINATOR'); }}
+              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'COORDINATOR' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              <Network size={18} /> Điều phối
+            </button>
             <button type="button" onClick={() => { setError(''); setSelectedRole('ADMIN'); }}
-              className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 text-[11px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'ADMIN' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'ADMIN' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <ShieldCheck size={18} /> Admin
             </button>
           </div>

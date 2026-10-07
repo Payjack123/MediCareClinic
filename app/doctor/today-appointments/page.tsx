@@ -313,20 +313,19 @@ export default function TodayAppointmentsPage() {
                   <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Chuyên khoa</th>
                   <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Lý do khám</th>
                   <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Trạng thái</th>
-                  <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Ghi chú</th>
                   <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-gray-500">
+                    <td colSpan={8} className="py-12 text-center text-gray-500">
                       Đang tải dữ liệu...
                     </td>
                   </tr>
                 ) : filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-gray-500">
+                    <td colSpan={8} className="py-12 text-center text-gray-500">
                       Không tìm thấy lịch hẹn nào.
                     </td>
                   </tr>
@@ -352,21 +351,19 @@ export default function TodayAppointmentsPage() {
                           {getStatusText(apt.rawStatus)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-sm font-bold text-gray-700">
-                        {apt.rawStatus === 'Đã hủy' ? 'Bệnh nhân hủy' : apt.rawStatus === 'Đã khám' ? `Xong lúc ${apt.time}` : '--'}
-                      </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center justify-center gap-2">
-                          <Link href={`/doctor/appointments/${apt.id}`} className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50 hover:text-gray-900 transition flex items-center gap-1">
+                          <Link href={`/doctor/patients/${apt.patientId}`} className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-50 hover:text-gray-900 transition flex items-center gap-1" title="Xem hồ sơ bệnh nhân">
                             <Eye size={14} /> Xem
                           </Link>
+                          
                           {apt.rawStatus === 'Đã check-in' && (
-                            <Link href={`/doctor/records/${apt.id}`} className="px-3 py-1.5 rounded-lg bg-[#2563EB] text-white text-xs font-bold hover:bg-blue-600 transition shadow-sm flex items-center gap-1">
+                            <Link href={`/doctor/records/create?patientId=${apt.patientId}&appointmentId=${apt.id}`} className="px-3 py-1.5 rounded-lg bg-[#2563EB] text-white text-xs font-bold hover:bg-blue-600 transition shadow-sm flex items-center gap-1">
                               <Stethoscope size={14} /> Bắt đầu khám
                             </Link>
                           )}
                           {apt.rawStatus === 'Đang khám' && (
-                            <Link href={`/doctor/records/${apt.id}`} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition shadow-sm flex items-center gap-1">
+                            <Link href={`/doctor/records/create?patientId=${apt.patientId}&appointmentId=${apt.id}`} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition shadow-sm flex items-center gap-1">
                               <Stethoscope size={14} /> Tiếp tục khám
                             </Link>
                           )}

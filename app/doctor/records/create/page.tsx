@@ -160,7 +160,7 @@ function DoctorMedicalRecordCreateContent() {
                         </div>
                         <div>
                            <p className="text-gray-500 mb-1">Ngày sinh</p>
-                           <p className="font-bold text-gray-900">{initData.patient.dob}</p>
+                           <p className="font-bold text-gray-900">{initData.patient.dob?.includes('-') ? initData.patient.dob.split('-').reverse().join('/') : initData.patient.dob}</p>
                         </div>
                         <div>
                            <p className="text-gray-500 mb-1">Giới tính</p>
@@ -289,7 +289,18 @@ function DoctorMedicalRecordCreateContent() {
                      <div>
                         <label className="block text-[13px] font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><CalendarClock size={16} className="text-orange-500"/> Kế hoạch tái khám</label>
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                           <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500" />
+                           <div className="relative w-full h-full">
+                              <div className={`absolute inset-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm flex items-center justify-between pointer-events-none ${followUpDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                                 <span>{followUpDate ? followUpDate.split('-').reverse().join('/') : 'dd/mm/yyyy'}</span>
+                                 <CalendarClock size={16} className="text-gray-400" />
+                              </div>
+                              <input 
+                                 type="date" 
+                                 value={followUpDate} 
+                                 onChange={e => setFollowUpDate(e.target.value)} 
+                                 className="date-picker-overlay absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                              />
+                           </div>
                            <input type="time" value={followUpTime} onChange={e => setFollowUpTime(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500" />
                         </div>
                         <input type="text" value={followUpReason} onChange={e => setFollowUpReason(e.target.value)} placeholder="Lý do tái khám (nếu có)" className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-orange-500" />

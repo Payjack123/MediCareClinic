@@ -244,15 +244,28 @@ export async function getPatientDetailForDoctor(patientId: number) {
       healthMetric: patient.healthMetric,
       
       // Mảng Lịch hẹn
-      appointments: patient.appointmentsAsPatient.map(a => ({
-        id: a.id,
-        date: a.bookingDate,
-        time: a.bookingTime,
-        doctor: a.doctor?.fullName || 'Không rõ',
-        room: a.room || 'Chưa sắp phòng',
-        reason: a.reason || 'Không rõ',
-        status: a.status
-      })),
+      appointments: patient.appointmentsAsPatient.map(a => {
+        let extractedReason = a.reason || 'Không rõ';
+        if (extractedReason.includes('Triệu chứng/Lý do khám: ')) {
+          extractedReason = extractedReason.split('Triệu chứng/Lý do khám: ')[1].split('-')[0].trim();
+        } else if (extractedReason.includes('Lý do khám: ')) {
+          extractedReason = extractedReason.split('Lý do khám: ')[1].split('-')[0].trim();
+        } else if (extractedReason.includes('. Lý do: ')) {
+          extractedReason = extractedReason.split('. Lý do: ')[1].split('-')[0].trim();
+        } else if (extractedReason.includes('Người khám:') || extractedReason.includes('Mã thanh toán:')) {
+          extractedReason = 'Khám bệnh';
+        }
+        
+        return {
+          id: a.id,
+          date: a.bookingDate,
+          time: a.bookingTime,
+          doctor: a.doctor?.fullName || 'Không rõ',
+          room: a.room || 'Chưa sắp phòng',
+          reason: extractedReason,
+          status: a.status
+        };
+      }),
 
       // Mảng Bệnh án
       records: patient.examinationsAsPatient.map(e => ({

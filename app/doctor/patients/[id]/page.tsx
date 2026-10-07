@@ -53,9 +53,7 @@ export default function PatientDetailPage() {
       { id: 'info', label: 'Thông tin', icon: <User size={16} /> },
       { id: 'history', label: 'Lịch sử khám', icon: <Clock size={16} /> },
       { id: 'appointments', label: 'Lịch hẹn', icon: <Calendar size={16} /> },
-      { id: 'records', label: 'Bệnh án', icon: <FileText size={16} /> },
-      { id: 'prescriptions', label: 'Đơn thuốc', icon: <Pill size={16} /> },
-      { id: 'tests', label: 'Xét nghiệm', icon: <FlaskConical size={16} /> }
+      { id: 'records', label: 'Bệnh án', icon: <FileText size={16} /> }
    ];
 
    return (
@@ -94,7 +92,14 @@ export default function PatientDetailPage() {
                               <div>
                                  <h2 className="text-2xl font-bold text-gray-900 uppercase">{patientData.name}</h2>
                                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                                    <div className="flex items-center gap-1.5"><Calendar size={14} className="text-gray-400" /> {patientData.dob} ({patientData.age} tuổi)</div>
+                                    <div className="flex items-center gap-1.5"><Calendar size={14} className="text-gray-400" /> {(() => {
+                                       const fDob = patientData.dob || '';
+                                       if (fDob.includes('-')) {
+                                          const p = fDob.split('-');
+                                          if (p[0].length === 4) return `${p[2]}/${p[1]}/${p[0]}`;
+                                       }
+                                       return fDob;
+                                    })()} ({patientData.age} tuổi)</div>
                                     <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                                     <div className="flex items-center gap-1.5"><User size={14} className="text-gray-400" /> Giới tính: {patientData.gender}</div>
                                  </div>
@@ -172,14 +177,14 @@ export default function PatientDetailPage() {
                                  <span className="font-bold text-gray-900 text-sm">{patientData.bhyt}</span>
                               </div>
                               <div className="flex justify-between pb-3 border-b border-gray-50">
-                                 <span className="text-gray-500 text-sm">Email</span>
-                                 <span className="font-bold text-gray-900 text-sm">{patientData.email}</span>
+                                 <span className="text-gray-500 text-sm">Số điện thoại</span>
+                                 <span className="font-bold text-gray-900 text-sm">{patientData.phone}</span>
                               </div>
                            </div>
                         </div>
 
                         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                           <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><Activity size={20} className="text-red-500" /> Chỉ số sinh tồn gần nhất</h3>
+                           <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2"><Activity size={20} className="text-red-500" />Tình trạng sức khỏe</h3>
                            {patientData.healthMetric ? (
                               <div className="grid grid-cols-2 gap-4">
                                  <div className="p-4 bg-gray-50 rounded-xl">
@@ -279,18 +284,48 @@ export default function PatientDetailPage() {
                      </div>
                   )}
 
-                  {/* OTHER TABS (Simplified for now) */}
-                  {['appointments', 'prescriptions', 'tests'].includes(activeTab) && (
-                     <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-4">
-                           {activeTab === 'appointments' && <Calendar size={28} />}
-                           {activeTab === 'prescriptions' && <Pill size={28} />}
-                           {activeTab === 'tests' && <FlaskConical size={28} />}
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">Đang trong quá trình phát triển</h3>
-                        <p className="text-gray-500 text-sm max-w-md">Dữ liệu chi tiết cho tab này đang được cập nhật. Vui lòng quay lại sau.</p>
+                  {/* TAB LỊCH HẸN */}
+                  {activeTab === 'appointments' && (
+                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                           <thead className="bg-gray-50/50 text-gray-500 font-bold uppercase text-[11px] tracking-wider">
+                              <tr>
+                                 <th className="px-4 py-3 border-b border-gray-100 w-28">Ngày hẹn</th>
+                                 <th className="px-4 py-3 border-b border-gray-100 w-20">Giờ</th>
+                                 <th className="px-4 py-3 border-b border-gray-100">Bác sĩ / Chuyên khoa</th>
+                                 <th className="px-4 py-3 border-b border-gray-100">Lý do</th>
+                                 <th className="px-4 py-3 border-b border-gray-100 text-center whitespace-nowrap">Trạng thái</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-gray-50">
+                              {patientData.appointments && patientData.appointments.length > 0 ? patientData.appointments.map((apt: any) => (
+                                 <tr key={apt.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-4 py-2.5 font-medium">{new Date(apt.date).toLocaleDateString('vi-VN')}</td>
+                                    <td className="px-4 py-2.5 text-[#2563EB] font-bold">{apt.time}</td>
+                                    <td className="px-4 py-2.5">
+                                       <p className="font-bold text-gray-900">BS. {apt.doctor}</p>
+                                       <p className="text-xs text-gray-500">{apt.department}</p>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-gray-700">{apt.reason}</td>
+                                    <td className="px-4 py-2.5 text-center">
+                                       <span className={`px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap font-bold ${apt.status === 'Đã khám' || apt.status === 'Hoàn thành' ? 'bg-green-50 text-green-700' :
+                                             apt.status === 'Chờ khám' || apt.status === 'Đã xác nhận' ? 'bg-blue-50 text-blue-700' :
+                                                apt.status === 'Đã hủy' ? 'bg-red-50 text-red-700' :
+                                                   'bg-gray-100 text-gray-700'
+                                          }`}>
+                                          {apt.status}
+                                       </span>
+                                    </td>
+                                 </tr>
+                              )) : (
+                                 <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Chưa có lịch hẹn nào</td></tr>
+                              )}
+                           </tbody>
+                        </table>
                      </div>
                   )}
+
+
 
                </div>
             </div>

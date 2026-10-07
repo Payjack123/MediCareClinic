@@ -1,0 +1,189 @@
+MẪU BÌA                     
+Khổ 
+A4 (
+210 x 297 mm
+TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI
+KHOA CÔNG NGHỆ THÔNG TIN
+BÁO CÁO
+THỰC TẬP 
+TỐT NGHIỆP
+CỬ NHÂN
+/KỸ SƯ
+ 
+Sinh viên thực hiện
+:
+Mã sinh viên
+:
+Lớp
+:
+Khóa
+:
+Ngành đào tạo
+Công nghệ thông tin/ KHMT
+Giảng viên hướng dẫn
+:
+CBHD
+ tại đơn vị 
+TT
+:
+Thời gian thực tập
+Từ ngày ….  … đến ngày …….
+Hà Nội – 20..
+MẪU BÌA 
+PHỤ
+                   
+Khổ 210 x 297 mm
+TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI
+KHOA CÔNG NGHỆ THÔNG TIN
+BÁO CÁO
+THỰC TẬP 
+TỐT NGHIỆP
+ 
+CỬ NHÂN
+/KỸ SƯ
+Sinh viên thực hiện
+:
+Mã sinh viên
+:
+Lớp
+:
+Khóa
+:
+Ngành đào tạo
+Công nghệ thông tin/KHMT
+Giảng viên hướng dẫn
+:
+CBHD
+ tại đơn vị 
+TT
+:
+Đơn vị thực tập:
+Thời gian thực tập
+Từ ngày ….  … đến ngày …….
+Hà Nội – 20…
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+Hà Nội, ngày …. tháng … năm 20….
+BẢN NHẬN XÉT CỦA CƠ SỞ THỰC TẬP
+Kính gửi
+: Khoa Công nghệ thông tin, Trường Đại học Giao thông vận tải
+Cơ sở thực tập: 
+Người đại diện: 
+Chức vụ: 
+Xác nhận sinh viên:
+Họ tên:
+ Mã sinh viên:    
+Lớp: 
+Đã thực tập tốt nghiệp tại cơ sở trong thời gian từ:               đến: 
+Nội dung thực tập:
+Về tinh thần, ý thức, thái độ đối với công việc được giao:
+Về trình độ, kỹ năng làm việc/ khả năng thực hành:
+Ưu điểm nổi bật:
+Hạn chế cần khắc phục:
+Các nhận xét khác (nếu có):
+Điểm thực tập (thang điểm 10): …… điểm.
+ĐẠI DIỆN CƠ SỞ THỰC TẬP
+(Họ tên, chữ ký và đóng dấu nếu có)
+LỜI CẢM ƠN
+(Trình bày lời cảm ơn giảng viên hướng dẫn, đơn vị thực tập, Khoa và các cá nhân đã hỗ trợ sinh viên trong quá trình thực tập)
+MỤC LỤC
+LỜI CẢM ƠN
+4
+MỤC LỤC
+5
+DANH MỤC HÌNH VẼ (nếu có)
+5
+DANH MỤC BẢNG BIỂU (nếu có)
+5
+DANH MỤC TỪ VIẾT TẮT (Nếu có)
+5
+1. GIỚI THIỆU CHUNG VỀ ĐƠN VỊ THỰC TẬP
+6
+1.1. Thông tin chung về đơn vị thực tập
+6
+1.2. Chức năng, nhiệm vụ của bộ phận thực tập
+6
+1.3. Môi trường làm việc và quy trình công tác
+6
+2. NỘI DUNG THỰC TẬP
+6
+2.1. Mục tiêu và yêu cầu của đợt thực tập
+6
+2.2. Kế hoạch thực tập
+6
+2.3. Các công việc đã thực hiện
+6
+2.4. Công nghệ, công cụ và kỹ thuật sử dụng
+6
+3. KẾT QUẢ VÀ ĐÁNH GIÁ
+6
+3.1. Kết quả đạt được trong quá trình thực tập
+6
+3.2. Kiến thức và kỹ năng tích lũy được
+6
+3.3. Thuận lợi và khó khăn
+7
+4. NHẬN XÉT VÀ ĐỊNH HƯỚNG
+7
+4.1. Nhận xét chung về đợt thực tập
+7
+4.2. Bài học kinh nghiệm rút ra
+7
+4.3. Định hướng nghề nghiệp và học tập sau thực tập
+7
+TÀI LIỆU THAM KHẢO
+7
+PHỤ LỤC (NẾU CÓ)
+7
+DANH MỤC HÌNH VẼ (nếu có)
+DANH MỤC BẢNG BIỂU (nếu có)
+DANH MỤC TỪ VIẾT TẮT (Nếu có)
+1. GIỚI THIỆU CHUNG VỀ ĐƠN VỊ THỰC TẬP
+1.1. Thông tin chung về đơn vị thực tập
+Tên đơn vị
+Lĩnh vực hoạt động
+Cơ cấu tổ chức
+Quy mô và định hướng phát triển
+1.2. Chức năng, nhiệm vụ của bộ phận thực tập
+1.3. Môi trường làm việc và quy trình công tác
+2. NỘI DUNG THỰC TẬP
+2.1. Mục tiêu và yêu cầu của đợt thực tập
+Nếu rõ mục tiêu của đợt thực tập cần đạt được là gì
+2.2. Kế hoạch thực tập
+(Bảng kế hoạch theo tuần/tháng)
+2.3. Các công việc đã thực hiện
+Mô tả chi tiết từng công việc
+Vai trò và trách nhiệm của sinh viên
+Kết quả đạt được
+Lưu ý:
+ n
+ếu thực tập tại trường
+,
+ 
+m
+ô tả các công việc được giảng viên giao
+2.4. Công nghệ, công cụ và kỹ thuật sử dụng
+Ngôn ngữ lập trình
+Framework, nền tảng
+Công cụ hỗ trợ (IDE, quản lý mã nguồn, CSDL…)
+3. KẾT QUẢ VÀ ĐÁNH GIÁ
+3.1. Kết quả đạt được trong quá trình thực tập
+3.2. Kiến thức và kỹ năng tích lũy được
+Kiến thức chuyên môn
+Kỹ năng làm việc nhóm
+Kỹ năng phân tích, giải quyết vấn đề
+3.3. Thuận lợi và khó khăn
+4. NHẬN XÉT VÀ ĐỊNH HƯỚNG
+4.1. Nhận xét chung về đợt thực tập
+4.2. Bài học kinh nghiệm rút ra
+4.3. Định hướng nghề nghiệp và học tập sau thực tập
+TÀI LIỆU THAM KHẢO
+(T
+rình bày theo 
+chuẩn 
+IEEE
+)
+PHỤ LỤC (NẾU CÓ)
+Nhật ký thực tập
+Hình ảnh, tài liệu minh chứng
+Sản phẩm thực tập (mã nguồn, tài liệu kỹ thuật…)

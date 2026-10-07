@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, Search, Plus, Trash2, 
-  Save, Send, User, Stethoscope, Loader2 
+import {
+  ArrowLeft, Search, Plus, Trash2,
+  Save, Send, User, Stethoscope, Loader2, X
 } from 'lucide-react';
 import DoctorSidebar from "@/app/doctor/Sidebar";
 import { getDoctorPrescriptionsData, createFullPrescription } from '@/app/doctor/prescriptions/actions';
@@ -16,15 +16,16 @@ export default function CreatePrescriptionPage() {
 
   // States
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
   const [selectedExamId, setSelectedExamId] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
-  
+
   // Medicines
   const [items, setItems] = useState<any[]>([]);
   const [drugForm, setDrugForm] = useState({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '' });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -44,6 +45,19 @@ export default function CreatePrescriptionPage() {
 
   const activePatient = data?.patients?.find((p: any) => p.id.toString() === selectedPatientId);
   const examinations = activePatient?.examinationsAsPatient || [];
+
+  const handleSearchPatient = () => {
+    if (!patientSearch.trim()) return;
+    const found = data?.patients?.find((p: any) =>
+      p.patientProfile?.patientCode === patientSearch.trim()
+    );
+    if (found) {
+      setSelectedPatientId(found.id.toString());
+      setErrorMsg('');
+    } else {
+      setErrorMsg('Không tìm thấy bệnh nhân trong danh sách đã khám của bạn. Vui lòng kiểm tra lại mã.');
+    }
+  };
 
   // Auto fill when examination changes
   useEffect(() => {
@@ -70,10 +84,10 @@ export default function CreatePrescriptionPage() {
 
   const handleAddDrug = () => {
     if (!drugForm.name || !drugForm.quantity) return;
-    
+
     // Create combined instruction
     const fullInstruction = [
-      drugForm.dosage, 
+      drugForm.dosage,
       drugForm.frequency ? `${drugForm.frequency}` : '',
       drugForm.duration ? `trong ${drugForm.duration}` : '',
       drugForm.usage ? `(${drugForm.usage})` : ''
@@ -129,9 +143,9 @@ export default function CreatePrescriptionPage() {
 
   return (
     <div className="min-h-screen flex bg-[#F8FAFC] font-sans text-gray-800">
-      <DoctorSidebar activePage="prescriptions-list" />
+      <DoctorSidebar activePage="prescriptions-create" />
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
-        
+
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
           <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
             <ArrowLeft size={20} />
@@ -143,7 +157,7 @@ export default function CreatePrescriptionPage() {
         </header>
 
         <div className="p-8 max-w-5xl mx-auto w-full space-y-8">
-          
+
           {errorMsg && (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-bold">
               {errorMsg}
@@ -154,34 +168,66 @@ export default function CreatePrescriptionPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <User className="text-[#2563EB]" /> Thông tin Bệnh nhân & Lần khám
             </h2>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Chọn Bệnh nhân <span className="text-red-500">*</span></label>
-                <select 
-                  value={selectedPatientId} 
-                  onChange={(e) => setSelectedPatientId(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium"
-                >
-                  <option value="">-- Chọn bệnh nhân --</option>
-                  {data?.patients?.map((p: any) => (
-                    <option key={p.id} value={p.id}>{p.fullName} - {p.patientProfile?.patientCode || `BN${p.id}`}</option>
-                  ))}
-                </select>
+                {!selectedPatientId ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={patientSearch}
+                      onChange={(e) => setPatientSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchPatient()}
+                      placeholder="Nhập mã bệnh nhân"
+                      className="w-full pl-11 pr-24 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium"
+                    />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <button
+                      onClick={handleSearchPatient}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-[#2563EB] text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition"
+                    >
+                      Tìm kiếm
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                        {activePatient?.fullName?.split(' ').slice(-1)[0][0]}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 leading-tight">{activePatient?.fullName}</p>
+                        <p className="text-xs text-gray-500">{activePatient?.patientProfile?.patientCode || `BN${activePatient?.id}`}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedPatientId('');
+                        setPatientSearch('');
+                        setSelectedExamId('');
+                      }}
+                      className="text-gray-400 hover:text-red-500 p-1 transition"
+                      title="Chọn bệnh nhân khác"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Chọn Lần khám (Hồ sơ bệnh án)</label>
-                <select 
-                  value={selectedExamId} 
+                <select
+                  value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
                   disabled={!selectedPatientId || examinations.length === 0}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium disabled:opacity-50"
                 >
-                  <option value="">-- Khám mới (Không liên kết) --</option>
+                  <option value="">-- Khám mới --</option>
                   {examinations.map((e: any) => (
                     <option key={e.id} value={e.id}>
-                      Ngày: {new Date(e.createdAt).toLocaleDateString('vi-VN')} - Chẩn đoán: {e.diagnosis?.substring(0, 30)}...
+                      Ngày: {new Date(e.createdAt).toLocaleDateString('vi-VN')}
                     </option>
                   ))}
                 </select>
@@ -190,8 +236,8 @@ export default function CreatePrescriptionPage() {
 
             <div className="mt-6">
               <label className="block text-sm font-bold text-gray-700 mb-2">Chẩn đoán <span className="text-red-500">*</span></label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
                 placeholder="VD: Viêm họng cấp"
@@ -204,24 +250,24 @@ export default function CreatePrescriptionPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <Stethoscope className="text-[#2563EB]" /> Thêm Thuốc
             </h2>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100 mb-6">
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tên thuốc</label>
-                <input type="text" value={drugForm.name} onChange={e => setDrugForm({...drugForm, name: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="Paracetamol" />
+                <input type="text" value={drugForm.name} onChange={e => setDrugForm({ ...drugForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="Paracetamol" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Hàm lượng</label>
-                <input type="text" value={drugForm.dosage} onChange={e => setDrugForm({...drugForm, dosage: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="500mg" />
+                <input type="text" value={drugForm.dosage} onChange={e => setDrugForm({ ...drugForm, dosage: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="500mg" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">SL</label>
-                  <input type="number" value={drugForm.quantity} onChange={e => setDrugForm({...drugForm, quantity: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="10" />
+                  <input type="number" min="1" value={drugForm.quantity} onChange={e => setDrugForm({ ...drugForm, quantity: parseInt(e.target.value) < 1 ? '1' : e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="10" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Đ.Vị</label>
-                  <select value={drugForm.form} onChange={e => setDrugForm({...drugForm, form: e.target.value})} className="w-full px-2 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]">
+                  <select value={drugForm.form} onChange={e => setDrugForm({ ...drugForm, form: e.target.value })} className="w-full px-2 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]">
                     <option value="Viên">Viên</option>
                     <option value="Dung dịch">Lọ</option>
                     <option value="Vỉ">Vỉ</option>
@@ -229,22 +275,22 @@ export default function CreatePrescriptionPage() {
                   </select>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Liều / lần</label>
-                <input type="text" value={drugForm.usage} onChange={e => setDrugForm({...drugForm, usage: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="1 viên" />
+                <input type="text" value={drugForm.usage} onChange={e => setDrugForm({ ...drugForm, usage: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="1 viên" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tần suất</label>
-                <input type="text" value={drugForm.frequency} onChange={e => setDrugForm({...drugForm, frequency: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="2 lần/ngày" />
+                <input type="text" value={drugForm.frequency} onChange={e => setDrugForm({ ...drugForm, frequency: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="2 lần/ngày" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Thời gian</label>
-                <input type="text" value={drugForm.duration} onChange={e => setDrugForm({...drugForm, duration: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="5 ngày" />
+                <input type="text" value={drugForm.duration} onChange={e => setDrugForm({ ...drugForm, duration: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="5 ngày" />
               </div>
               <div className="flex items-end">
                 <button onClick={handleAddDrug} className="w-full bg-[#2563EB] text-white font-bold h-[38px] rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition">
-                  <Plus size={16}/> Thêm
+                  <Plus size={16} /> Thêm
                 </button>
               </div>
             </div>
@@ -284,45 +330,51 @@ export default function CreatePrescriptionPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-             <div className="grid md:grid-cols-2 gap-6">
-               <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Ghi chú / Lời dặn</label>
-                  <textarea 
-                    rows={4}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Dặn dò bệnh nhân..."
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium resize-none"
-                  ></textarea>
-               </div>
-               <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Ngày tái khám (Nếu có)</label>
-                  <input 
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Ghi chú / Lời dặn</label>
+                <textarea
+                  rows={4}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Dặn dò bệnh nhân..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium resize-none"
+                ></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Ngày tái khám (Nếu có)</label>
+                <div className="relative w-full mb-6">
+                  <div className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl transition-all font-medium flex items-center justify-between pointer-events-none ${followUpDate ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <span>{followUpDate ? followUpDate.split('-').reverse().join('/') : 'dd/mm/yyyy'}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
+                  </div>
+                  <input
                     type="date"
                     value={followUpDate}
                     onChange={(e) => setFollowUpDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium mb-6"
+                    className="date-picker-overlay absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => handleSubmit('Nháp')}
-                      disabled={isSubmitting}
-                      className="flex-1 border-2 border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <Save size={20} /> Lưu nháp
-                    </button>
-                    <button 
-                      onClick={() => handleSubmit('Đã kê')}
-                      disabled={isSubmitting}
-                      className="flex-[2] bg-[#2563EB] text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />} 
-                      Phát hành Đơn thuốc
-                    </button>
-                  </div>
-               </div>
-             </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => handleSubmit('Nháp')}
+                    disabled={isSubmitting}
+                    className="flex-1 border-2 border-gray-200 text-gray-700 font-bold py-3.5 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Save size={20} /> Lưu nháp
+                  </button>
+                  <button
+                    onClick={() => handleSubmit('Đã kê')}
+                    disabled={isSubmitting}
+                    className="flex-[2] bg-[#2563EB] text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
+                    Phát hành Đơn thuốc
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>

@@ -94,17 +94,28 @@ export async function getBookedTimes(doctorId: number, date: string) {
 
 export async function getAvailableSchedules(bookingData: any) {
   try {
-    let whereClause: any = {};
-    if (bookingData.doctorId) {
-      whereClause.doctorId = bookingData.doctorId;
-    } else if (bookingData.clinicName) {
-      whereClause.OR = [
-        { clinic: { name: bookingData.clinicName } },
-        { doctor: { doctorProfile: { clinics: { some: { name: bookingData.clinicName } } } } }
-      ];
-    } else if (bookingData.specialty) {
-      whereClause.doctor = { doctorProfile: { specialty: { name: bookingData.specialty } } };
+    let conditions: any[] = [];
+
+    // Luôn luôn lọc lịch khám theo đúng Cơ sở (Bệnh viện) mà bệnh nhân đã chọn
+    // Tránh việc hiển thị lịch khám ở HCM khi bệnh nhân đang đặt lịch ở Hà Nội
+    if (bookingData.facility) {
+      conditions.push({ clinic: { facility: { name: bookingData.facility } } });
     }
+
+    if (bookingData.doctorId) {
+      conditions.push({ doctorId: bookingData.doctorId });
+    } else if (bookingData.clinicName) {
+      conditions.push({
+        OR: [
+          { clinic: { name: bookingData.clinicName } },
+          { doctor: { doctorProfile: { clinics: { some: { name: bookingData.clinicName } } } } }
+        ]
+      });
+    } else if (bookingData.specialty) {
+      conditions.push({ doctor: { doctorProfile: { specialty: { name: bookingData.specialty } } } });
+    }
+
+    const whereClause = conditions.length > 0 ? { AND: conditions } : {};
 
     const schedules = await prisma.doctorSchedule.findMany({
       where: whereClause,

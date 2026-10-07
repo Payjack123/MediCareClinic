@@ -4,23 +4,13 @@
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { verifyOtp } from './otp';
 
 // Tự định nghĩa kiểu để chống lỗi TypeScript
-export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST';
+export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST' | 'COORDINATOR';
 
 // 1. HÀM ĐĂNG KÝ
-export async function registerUser(fullName: string, email: string, password: string, roleInput: UserRole, otpCode?: string) {
+export async function registerUser(fullName: string, email: string, password: string, roleInput: UserRole) {
   try {
-    if (otpCode) {
-      const verifyRes = await verifyOtp(email, otpCode);
-      if (!verifyRes.success) {
-        return { success: false, message: verifyRes.message };
-      }
-    } else {
-      // Bắt buộc OTP cho luồng đăng ký mới
-      return { success: false, message: 'Vui lòng xác thực mã OTP trước khi đăng ký!' };
-    }
 
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -77,7 +67,7 @@ export async function loginUser(email: string, password: string, loginRole: User
 
     // So sánh quyền người dùng chọn với quyền trong Database
     if (user.role !== loginRole) {
-      const roleName = loginRole === 'ADMIN' ? 'Quản trị viên' : loginRole === 'DOCTOR' ? 'Bác sĩ' : loginRole === 'RECEPTIONIST' ? 'Lễ tân' : 'Bệnh nhân';
+      const roleName = loginRole === 'ADMIN' ? 'Quản trị viên' : loginRole === 'DOCTOR' ? 'Bác sĩ' : loginRole === 'RECEPTIONIST' ? 'Lễ tân' : loginRole === 'COORDINATOR' ? 'Điều phối viên' : 'Bệnh nhân';
       return { success: false, message: `Tài khoản này không có quyền truy cập với vai trò ${roleName}!` };
     }
 

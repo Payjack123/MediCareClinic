@@ -3,108 +3,146 @@
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
-export async function getDoctorAppointmentsData(selectedDate?: string) {
+export async function getMySchedules(year: number, month: number) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
     if (!userIdStr) return { success: false, message: 'Chưa đăng nhập' };
     const doctorId = parseInt(userIdStr);
 
-    // 1. Xác định ngày cần lấy dữ liệu (Mặc định là hôm nay)
-    const today = new Date();
-    const dateStr = selectedDate || 
-      `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-
-    // 2. Lấy thông tin Bác sĩ
-    const doctor = await prisma.user.findUnique({
-      where: { id: doctorId },
-      include: { doctorProfile: true }
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: doctorId },
+      include: { specialty: true }
     });
 
-    if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
+    if (!doctorProfile) {
+      return { success: false, schedules: [] };
+    }
 
-    // 3. Lấy danh sách lịch khám của Bác sĩ vào NGÀY ĐÃ CHỌN
-    const appointments = await prisma.appointment.findMany({
+    // Format start and end date for the month (YYYY-MM-DD)
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    
+    const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-01`;
+    const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+    // Get schedules
+    const schedules = await prisma.doctorSchedule.findMany({
+      where: { 
+        doctorId: doctorProfile.userId,
+        date: {
+          gte: startStr,
+          lte: endStr
+        }
+      },
+      orderBy: { date: 'asc' },
+      include: { 
+        clinic: {
+          include: { facility: true }
+        }
+      }
+    });
+
+    // Get appointments for the doctor in this month
+    // Appointments have bookingDate in DD/MM/YYYY format
+    // We fetch all appointments for the doctor and filter in memory since string format doesn't allow easy DB filtering by month
+    const allAppointments = await prisma.appointment.findMany({
       where: {
-        doctorId: doctorId,
-        bookingDate: dateStr
+        doctorId: doctorId
       },
       include: {
-        patient: { include: { patientProfile: true } }
-      },
-      orderBy: {
-        bookingTime: 'asc' // Sắp xếp giờ từ sáng đến chiều
+        patient: true
       }
     });
 
-    // 4. Tính toán thống kê
-    let completed = 0;
-    let waiting = 0;
-    let canceled = 0;
+    const monthStr = String(month).padStart(2, '0');
+    const yearStr = String(year);
 
-    const formattedAppointments = appointments.map(apt => {
-      if (apt.status === 'Đã khám') completed++;
-      else if (apt.status === 'Đã hủy' || apt.status === 'Không đến') canceled++;
-      else waiting++; 
+    const monthAppointments = allAppointments.filter(apt => {
+       const parts = apt.bookingDate.split('/');
+       return parts[1] === monthStr && parts[2] === yearStr;
+    });
 
-      let dob = apt.patient.dob || 'N/A';
+    // Format the schedules to include appointment stats
+    const formattedSchedules = schedules.map(schedule => {
+      // Convert schedule.date (YYYY-MM-DD) to DD/MM/YYYY
+      const parts = schedule.date.split('-');
+      const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
 
-      let parsedNote = apt.reason || '';
-      let patientDetails: any = null;
+      // Get appointments for this day
+      const dayAppointments = monthAppointments.filter(apt => apt.bookingDate === formattedDate);
 
-      if (parsedNote.startsWith('Người khám: ')) {
-        const parts = parsedNote.split('. Lý do: ');
-        const patientPart = parts[0]; 
-        parsedNote = parts[1] || '';
-
-        const subParts = patientPart.split(' - ');
-        patientDetails = {
-          name: subParts.find((p: string) => p.startsWith('Người khám: '))?.replace('Người khám: ', '') || '',
-          cccd: subParts.find((p: string) => p.startsWith('CCCD: '))?.replace('CCCD: ', '') || '',
-          phone: subParts.find((p: string) => p.startsWith('SĐT: '))?.replace('SĐT: ', '') || '',
-          address: subParts.find((p: string) => p.startsWith('ĐC: '))?.replace('ĐC: ', '') || ''
-        };
+      // Now we might have multiple time slots in the schedule.timeSlots
+      // The requirement treats a "Ca khám" (Shift) as a combination of Date and a block of time.
+      // But DoctorSchedule stores timeSlots like ["08:00", "08:30", "09:00"]. 
+      // We'll summarize it as one shift for the day (e.g., 08:00 - 10:00).
+      let timeSlots = [];
+      try {
+        timeSlots = typeof schedule.timeSlots === 'string' ? JSON.parse(schedule.timeSlots) : schedule.timeSlots;
+      } catch (e) {
+        timeSlots = [];
+      }
+      
+      let shiftTime = 'N/A';
+      if (Array.isArray(timeSlots) && timeSlots.length > 0) {
+        const sorted = [...timeSlots].sort();
+        const firstSlot = sorted[0];
+        const lastSlot = sorted[sorted.length - 1];
+        const startTime = firstSlot.includes(' - ') ? firstSlot.split(' - ')[0] : firstSlot;
+        const endTime = lastSlot.includes(' - ') ? lastSlot.split(' - ')[1] : lastSlot;
+        shiftTime = `${startTime} - ${endTime}`;
       }
 
-      let uiStatus = apt.status || 'Đã đặt';
+      // Check shift status based on today
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const scheduleDateObj = new Date(schedule.date);
+      
+      let shiftStatus = 'Sắp diễn ra';
+      if (scheduleDateObj < today) shiftStatus = 'Đã kết thúc';
+      else if (scheduleDateObj.getTime() === today.getTime()) shiftStatus = 'Đang hoạt động';
+
+      // Appointments summary
+      let totalApt = dayAppointments.length;
+      let completedApt = 0;
+      let examiningApt = 0;
+      let waitingApt = 0;
+
+      const aptDetails = dayAppointments.map(apt => {
+         if (apt.status === 'Đã khám') completedApt++;
+         else if (apt.status === 'Đang khám') examiningApt++;
+         else if (apt.status !== 'Đã hủy' && apt.status !== 'Không đến') waitingApt++;
+
+         return {
+           id: apt.id,
+           code: apt.appointmentCode || `LH-${apt.id}`,
+           patientName: apt.patient.fullName,
+           status: apt.status
+         };
+      });
 
       return {
-        id: apt.id,
-        patientName: patientDetails?.name || apt.patient.fullName,
-        patientCode: apt.patient.patientProfile?.patientCode || `BN-${apt.patient.id}`,
-        gender: apt.patient.gender || 'Nam',
-        dob: dob,
-        time: apt.bookingTime, 
-        status: uiStatus,
-        rawStatus: apt.status,
-        reason: parsedNote || 'Khám bệnh',
-        patientDetails,
-        patientPhone: patientDetails?.phone || apt.patient.phone,
-        room: apt.room || apt.specialty || 'Phòng khám',
-        avatar: apt.patient.avatar || `https://ui-avatars.com/api/?name=${apt.patient.fullName.replace(/ /g, '+')}&background=random`
+        id: schedule.id,
+        date: schedule.date, // YYYY-MM-DD
+        formattedDate, // DD/MM/YYYY
+        shiftTime,
+        room: schedule.clinic?.roomNumber ? `P. ${schedule.clinic.roomNumber}` : (schedule.clinic?.name || 'P. Khám'),
+        facility: schedule.clinic?.facility?.name || schedule.clinic?.name || 'Cơ sở chính',
+        specialty: doctorProfile.specialty?.name || 'Đa khoa',
+        status: shiftStatus, // Đang hoạt động, Sắp diễn ra, Đã kết thúc, Hủy
+        stats: {
+          total: totalApt,
+          completed: completedApt,
+          examining: examiningApt,
+          waiting: waitingApt
+        },
+        appointments: aptDetails
       };
     });
 
-    return {
-      success: true,
-      data: {
-        doctorInfo: {
-          name: doctor.fullName,
-          rating: doctor.doctorProfile?.rating || 5.0,
-          avatar: doctor.avatar || `https://ui-avatars.com/api/?name=${doctor.fullName.replace(/ /g, '+')}&background=172554&color=fff`
-        },
-        stats: {
-          total: appointments.length,
-          completed,
-          waiting,
-          canceled
-        },
-        appointments: formattedAppointments,
-        currentDate: dateStr
-      }
-    };
+    return { success: true, schedules: formattedSchedules };
   } catch (error) {
-    console.error('Lỗi lấy dữ liệu lịch khám:', error);
-    return { success: false, message: 'Lỗi máy chủ' };
+    console.error('Error fetching schedules:', error);
+    return { success: false, schedules: [] };
   }
 }

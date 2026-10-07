@@ -1,0 +1,133 @@
+TRƯỜNG ĐẠI HỌC GTVT
+KHOA CÔNG NGHỆ THÔNG TIN
+CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+Hà Nội, ngày     tháng    năm 
+ 2025
+ĐỀ CƯƠNG ĐỒ ÁN TỐT NGHIỆP
+Họ và tên sinh viên: 
+Mã SV
+: 
+                                                
+Lớp: 
+Số ĐT
+: 
+                     
+                          
+ 
+Email: 
+Ngành
+: Công nghệ thông tin              
+ 
+Hệ: Chính quy
+Giảng viên (cán bộ) hướng dẫn
+: 
+TS. 
+Nguyễn Hiếu Cường
+Đơn vị công tác
+: Trường đại học Giao Thông Vận Tải Hà Nội.
+Số ĐT
+:
+ 096788
+6712
+            
+              Email:
+ 
+cuonggt@gmail.com
+Tên đề tài
+: Thiết kế xây dựng 
+a
+pp nhắn tin
+Nội dung, phạm vi của đề tài:
+Nội dung của đề tài: 
+Cung cấp cho người dùng các chức năng cơ bản như nhắn tin, gửi tin nhắn thoại, gọi điện, quay video, hiển thị thông báo đến thiết bị….
+Có các chức năng nâng cao hơn như tài khoản admin quản lý,chia sẻ 
+file, các channel để giao tiếp cho các nhóm,…
+ 
+.
+Nắm vững kiến thức cơ bản và nâng cao  về kotlin và android, có hiểu biết về java và các framework Firebase,Chat Message API
+Phát triển 
+ứng dụng hướng người dùng và có thể mở rộng sau này
+.
+Phạm vi của đề tài:
+Phạm vi ứng dụng: Sử dụng online giữa các người dùng
+.
+Đối tượng sử dụng: Người dùng sẽ sử dụng thông qua các tài khoản của app
+.
+Công nghệ, công cụ và ngôn ngữ lập trình.
+Thiết kế 
+giao diện được code trên Android UI cùng với các phần mở rộng để làm đẹp mắt hơn
+Quản lý source code b
+ằng Gitlab
+Ứng dụng sẽ thiết kế theo mô hình MVVM, trên app sẽ sử dụng database ROOM còn sever sẽ sử dụng firebase để demo, tùy theo tiến độ và nhu cầu có thể xây dựng sever riêng.
+Unit test sẽ sử dụng framework mockk đ
+ể test
+Xong khi build xong, 
+đánh giá, kiểm thử
+ và dùng Google Play Console đưa lên Google P
+lay
+ 
+Sử 
+dụng Andro
+id Studio để code ứng dụng bằng ngôn ngữ kotlin cùng với các phần mở rộng
+, 
+nếu xây dựng sever sẽ dùng 
+IntelliJ IDEA
+ để code bằng java
+Các kết quả chính dự kiến đạt được.
+Hoàn t
+hành ứng dụng chat với đầy đủ tính năng được nêu và các phần 
+mở rộng thêm, có vận dụng AI vào phần chat tin nhắn.
+Đẹp mắt, đáp ứng được yêu cầu của người dùng và các luồng chạy trong app phải đạt được hiệu năng tốt nhất.
+Unit test phải đạt tối thiểu 70% 
+trở lên và ứng dụng tuân thủ đủ các chính sách 
+bảo mật 
+cho người dùng
+ 
+trên G
+oogle play.
+Kế hoạch thực hiện đề tài
+STT
+Nội dung công việc
+Thời gian dự kiến
+Ghi chú
+1
+Khảo sát
+ các app
+ thực tế 
+1/3/2023
+2
+Hoàn thành và nộp bản báo cáo thực tập tốt nghiệp
+1/3/2023
+3
+Hoàn thiện phần giao diện và các chức năng cơ bản
+ 
+cho app
+ và chức năng nâng cao
+20
+/3/2023
+4
+Review app cho người dùng và mở rộng tính năng
+2/4
+/2023
+5
+Hoàn thiện các tính năng và t
+hiết kế, kết nối đến chat sev
+er
+16/4/2023
+6
+Unit test, đánh giá, fix bug, review app cho người dùng để lấy ý kiến
+30/4/2023
+Unit test và fix bug sẽ được thực hiện đồng thời trong lúc code
+7
+Hoàn thiện ứng dụng và đưa lên google play
+16/5/2023
+8
+Nộp và báo cáo kết quả đồ án 
+30/5/2023
+Trưởng Khoa
+Trưởng Bộ môn
+Giảng viên hướng dẫn
+Nguyễn Hiếu Cường
+Sinh viên thực hiện
+ 

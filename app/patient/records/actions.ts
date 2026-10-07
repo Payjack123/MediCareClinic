@@ -89,20 +89,20 @@ export async function getPatientMedicalRecordsData() {
       temp: patient.healthMetric?.temperature ? `${patient.healthMetric.temperature}°C` : '36.8°C',
     };
 
-    // 3. Chuẩn bị lịch sử khám bệnh (Visit History) TỪ BẢNG APPOINTMENT
-    const visitHistory = patient.appointmentsAsPatient.map((apt) => {
-      const dateStr = apt.bookingDate || new Date(apt.createdAt).toLocaleDateString('vi-VN', {
+    // 3. Chuẩn bị lịch sử khám bệnh (Visit History) TỪ BẢNG EXAMINATION
+    const visitHistory = patient.examinationsAsPatient.map((exam) => {
+      const dateStr = new Date(exam.createdAt).toLocaleDateString('vi-VN', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
       });
 
       return {
-        id: apt.id,
+        id: exam.id,
         date: dateStr,
-        doctor: apt.doctor ? `BS. ${apt.doctor.fullName}` : 'BS. Ẩn danh',
-        dept: apt.specialty || 'Đa khoa',
-        status: apt.status,
+        doctor: exam.doctor ? `BS. ${exam.doctor.fullName}` : 'BS. Ẩn danh',
+        dept: exam.appointment?.specialty || exam.diagnosis || 'Đa khoa',
+        status: 'Hoàn thành',
       };
     });
 
