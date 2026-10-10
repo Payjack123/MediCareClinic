@@ -192,6 +192,7 @@ model PrescriptionItem {
   remaining      String
   statusText     String
   iconType       String
+  price          Int?         @default(0)
   prescription   Prescription @relation(fields: [prescriptionId], references: [id])
 
   @@index([prescriptionId], map: "PrescriptionItem_prescriptionId_fkey")

@@ -45,10 +45,25 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
     let checkedIn = 0;
 
     const formattedAppointments = appointments.map(apt => {
-      if (apt.status === 'Đã khám') completed++;
-      else if (apt.status === 'Đã hủy' || apt.status === 'Không đến') canceled++;
-      else if (apt.status === 'Đang khám') examining++;
-      else if (apt.status === 'Đã check-in') checkedIn++;
+      let uiStatus = apt.status || 'Đã đặt';
+      
+      // Chuyển đổi trạng thái từ Lễ tân (uppercase) sang Bác sĩ (Title case)
+      if (apt.status === 'ĐÃ XÁC NHẬN' || apt.status === 'ĐÃ CẤP SỐ') {
+        uiStatus = 'Đã check-in';
+      } else if (apt.status === 'ĐANG KHÁM') {
+        uiStatus = 'Đang khám';
+      } else if (apt.status === 'HOÀN THÀNH') {
+        uiStatus = 'Đã khám';
+      } else if (apt.status === 'ĐÃ HỦY' || apt.status === 'BỎ LƯỢT') {
+        uiStatus = 'Đã hủy';
+      } else if (apt.status === 'CHỜ XÁC NHẬN') {
+        uiStatus = 'Đã đặt';
+      }
+
+      if (uiStatus === 'Đã khám') completed++;
+      else if (uiStatus === 'Đã hủy' || uiStatus === 'Không đến') canceled++;
+      else if (uiStatus === 'Đang khám') examining++;
+      else if (uiStatus === 'Đã check-in') checkedIn++;
       else waiting++; 
 
       let dob = apt.patient.dob || 'N/A';
@@ -70,8 +85,6 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
         };
       }
 
-      let uiStatus = apt.status || 'Đã đặt';
-
       return {
         id: apt.id,
         patientId: apt.patient.id,
@@ -81,7 +94,7 @@ export async function getDoctorAppointmentsData(selectedDate?: string) {
         dob: dob,
         time: apt.bookingTime?.split(' - ')[0] || apt.bookingTime, 
         status: uiStatus,
-        rawStatus: apt.status,
+        rawStatus: uiStatus,
         reason: parsedNote || 'Khám bệnh',
         patientDetails,
         patientPhone: patientDetails?.phone || apt.patient.phone,

@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,6 +10,18 @@ import {
 export default function PatientSidebar({ activePage }: { activePage: string }) {
   const router = useRouter();
 
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('patientSidebarScroll');
+    if (savedScroll && sidebarRef.current) {
+      sidebarRef.current.scrollTop = Number(savedScroll);
+    }
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    sessionStorage.setItem('patientSidebarScroll', e.currentTarget.scrollTop.toString());
+  };
 
   const handleLogout = () => {
     router.push('/login');
@@ -24,14 +36,23 @@ export default function PatientSidebar({ activePage }: { activePage: string }) {
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0 shrink-0 shadow-sm z-20">
-      <div className="h-20 flex items-center justify-center border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <Activity className="text-[#2563EB]" size={28} />
-          <span className="font-black text-xl tracking-tight text-gray-900">HEALTH<span className="text-[#2563EB]">CARE</span></span>
+      <div className="h-20 flex items-center px-6 border-b border-gray-100 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+            <HeartPulse size={26} strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-xl text-blue-700 tracking-tight">MediCare</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Hệ thống phòng khám</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-6 flex flex-col gap-2 px-4 custom-scrollbar">
+      <div 
+        ref={sidebarRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto py-6 flex flex-col gap-2 px-4 custom-scrollbar"
+      >
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Tổng quan</p>
         <Link href="/patient/dashboard" className={getMenuItemClass('dashboard')}>
           <LayoutDashboard size={18} /> Dashboard

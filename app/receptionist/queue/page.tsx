@@ -5,7 +5,10 @@ import {
   Search, Calendar, RefreshCcw, User, Phone, MapPin, 
   CheckCircle2, Clock, Volume2, RotateCcw, XSquare, Printer, Settings, ChevronLeft, ChevronRight, Activity, ChevronDown, Loader2
 } from 'lucide-react';
-import { getQueueList, callPatient, callNextPatient, updateQueueStatus, transferTurn } from './actions';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import dayjs from "dayjs";
+import { getQueueList, callPatient, callNextPatient, updateQueueStatus, transferTurn, getFilterMetadata } from './actions';
 
 export default function QueuePage() {
   const [activeTab, setActiveTab] = useState('Đang chờ');
@@ -19,9 +22,21 @@ export default function QueuePage() {
   const [filterRoom, setFilterRoom] = useState('all');
   const [filterDoctor, setFilterDoctor] = useState('all');
 
+  const [filterData, setFilterData] = useState({ specialties: [] as string[], rooms: [] as string[], doctors: [] as string[] });
+
   useEffect(() => {
     fetchData();
   }, [filterDate]);
+
+  useEffect(() => {
+    const loadFilterData = async () => {
+      const res = await getFilterMetadata();
+      if (res.success && res.data) {
+        setFilterData(res.data);
+      }
+    };
+    loadFilterData();
+  }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -84,17 +99,14 @@ export default function QueuePage() {
   const finishedPatients = filteredQueue.filter(p => p.status === 'Đã khám');
   const skippedPatients = filteredQueue.filter(p => p.status === 'Bỏ lượt');
 
-  const activePatient = examiningPatients.length > 0 ? examiningPatients[0] : null;
-
+  // No longer using single activePatient
   let currentTabPatients: any[] = [];
   if (activeTab === 'Đang chờ') currentTabPatients = waitingPatients;
   else if (activeTab === 'Đã khám') currentTabPatients = finishedPatients;
   else if (activeTab === 'Bỏ lượt') currentTabPatients = skippedPatients;
 
   // Dropdown lists
-  const specialties = Array.from(new Set(queue.map(p => p.specialty).filter(Boolean)));
-  const rooms = Array.from(new Set(queue.map(p => p.room).filter(Boolean)));
-  const doctors = Array.from(new Set(queue.map(p => p.doctor).filter(Boolean)));
+  const { specialties, rooms, doctors } = filterData;
 
   // TỔNG QUAN STATS
   const totalToday = queue.length;
@@ -118,11 +130,16 @@ export default function QueuePage() {
           <div className="w-48">
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Ngày làm việc</label>
             <div className="relative">
-              <input 
-                type="date" 
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              <DatePicker
+                selected={filterDate ? new Date(filterDate) : null}
+                onChange={(date: Date | null) => {
+                  if (date) {
+                    setFilterDate(dayjs(date).format('YYYY-MM-DD'));
+                  }
+                }}
+                dateFormat="dd/MM/yyyy"
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholderText="Ngày làm việc"
               />
             </div>
           </div>
@@ -167,80 +184,46 @@ export default function QueuePage() {
         {/* LEFT COLUMN (9/12) */}
         <div className="xl:col-span-9 space-y-6">
           
-          {/* ACTIVE PATIENT CARD */}
-          {activePatient ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden relative">
-            {/* Background green gradient subtle */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-white/20 pointer-events-none"></div>
-            
-            <div className="p-6 relative z-10 flex flex-col md:flex-row items-center md:items-stretch justify-between gap-6">
-              
-              {/* Patient Info */}
-              <div className="flex items-center gap-6 xl:w-[40%] shrink-0">
-                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(activePatient.name)}&background=16a34a&color=fff&size=100`} className="w-24 h-24 rounded-full shadow-sm border-4 border-white shrink-0" alt="avatar" />
-                <div className="flex flex-col min-w-0">
-                  <div className="text-[11px] font-bold text-green-600 uppercase tracking-wider mb-1 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ĐANG KHÁM</div>
-                  <div className="text-5xl font-black text-green-600 tracking-tighter mb-1.5 leading-none">{activePatient.queueNumber}</div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1 truncate">{activePatient.name}</h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 whitespace-nowrap overflow-hidden text-ellipsis">
-                    <User size={13} className="shrink-0"/> <span className="truncate">{activePatient.gender} - {activePatient.age} tuổi</span>
-                    <span className="text-gray-300 shrink-0">|</span>
-                    <Phone size={13} className="shrink-0"/> <span className="truncate">{activePatient.phone}</span>
-                  </div>
-                  <div className="text-[10px] text-gray-500 bg-gray-50 inline-flex px-2 py-1 rounded border border-gray-100 self-start truncate max-w-full">
-                    Mã bệnh nhân: <span className="font-bold text-gray-700 ml-1 truncate">{activePatient.patientCode}</span>
+          {/* ACTIVE PATIENTS LIST */}
+          {examiningPatients.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {examiningPatients.map(patient => (
+                <div key={patient.id} className="bg-white rounded-2xl shadow-sm border border-green-100 overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-white/20 pointer-events-none"></div>
+                  <div className="p-5 relative z-10">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ĐANG KHÁM
+                        </div>
+                        <div className="text-3xl font-black text-green-600 tracking-tighter leading-none">{patient.queueNumber}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-gray-800 text-sm">{patient.room}</div>
+                        <div className="text-xs text-gray-500">{patient.doctor}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 mb-4">
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(patient.name)}&background=16a34a&color=fff`} className="w-10 h-10 rounded-full" alt="avatar" />
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">{patient.name}</h3>
+                        <div className="text-xs text-gray-500">{patient.gender} - {patient.age} tuổi • {patient.phone}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4 border-t border-gray-100/50">
+                      <button onClick={() => handleUpdateStatus(patient.id, 'HOÀN THÀNH')} disabled={isActionLoading} className="flex-1 py-1.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors">
+                        <CheckCircle2 size={14}/> Kết thúc
+                      </button>
+                      <button onClick={() => handleUpdateStatus(patient.id, 'ĐÃ HỦY')} disabled={isActionLoading} className="flex-1 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-medium rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors">
+                        <XSquare size={14}/> Hủy khám
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Appointment details */}
-              <div className="xl:w-[40%] flex flex-col justify-center bg-white/60 p-4 rounded-xl border border-gray-100/50">
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Giờ hẹn</span>
-                    <span className="font-semibold text-gray-900">{activePatient.appointmentTime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Thời gian check-in</span>
-                    <span className="font-semibold text-gray-900">{activePatient.checkInTime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Thời gian chờ</span>
-                    <span className="font-bold text-orange-600">{activePatient.waitTime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Lịch hẹn</span>
-                    <span className="text-gray-900">{activePatient.appointmentCode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Bảo hiểm y tế</span>
-                    <span className="font-bold text-green-600">{activePatient.hasInsurance ? 'Có' : 'Không'}</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-100">
-                    <span className="text-gray-500 whitespace-nowrap mr-2">Lý do khám</span>
-                    <span className="font-bold text-gray-900 line-clamp-2 text-right">{activePatient.reason}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Timer & Actions */}
-              <div className="xl:w-[20%] flex flex-col items-center justify-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm shrink-0">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Thời gian khám</div>
-                <div className="text-3xl font-black text-gray-900 mb-1 tabular-nums">12:30</div>
-                <div className="text-[10px] text-gray-400 mb-4">(Đang tính thời gian)</div>
-
-                <div className="w-full space-y-2">
-                  <button onClick={() => handleUpdateStatus(activePatient.id, 'HOÀN THÀNH')} disabled={isActionLoading} className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors">
-                    <CheckCircle2 size={14}/> Kết thúc khám
-                  </button>
-                  <button onClick={() => handleUpdateStatus(activePatient.id, 'ĐÃ HỦY')} disabled={isActionLoading} className="w-full py-2 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-medium rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors">
-                    <XSquare size={14}/> Hủy khám
-                  </button>
-                </div>
-              </div>
-
+              ))}
             </div>
-          </div>
           ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
@@ -360,25 +343,25 @@ export default function QueuePage() {
                 </div>
               </button>
 
-              <button disabled={(!activePatient && waitingPatients.length === 0) || isActionLoading} onClick={() => {
-                const targetId = activePatient ? activePatient.id : waitingPatients[0]?.id;
+              <button disabled={waitingPatients.length === 0 || isActionLoading} onClick={() => {
+                const targetId = waitingPatients[0]?.id;
                 if (targetId) handleTransfer(targetId);
               }} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors text-left group">
                 <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform"><RefreshCcw size={20}/></div>
                 <div>
                   <div className="text-sm font-bold text-gray-800">Chuyển lượt</div>
-                  <div className="text-[10px] text-gray-500">Chuyển bệnh nhân xuống cuối hàng</div>
+                  <div className="text-[10px] text-gray-500">Chuyển bệnh nhân tiếp theo xuống cuối</div>
                 </div>
               </button>
 
-              <button disabled={(!activePatient && waitingPatients.length === 0) || isActionLoading} onClick={() => {
-                const targetId = activePatient ? activePatient.id : waitingPatients[0]?.id;
+              <button disabled={waitingPatients.length === 0 || isActionLoading} onClick={() => {
+                const targetId = waitingPatients[0]?.id;
                 if (targetId) handleUpdateStatus(targetId, 'BỎ LƯỢT');
               }} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors text-left group">
                 <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform"><XSquare size={20}/></div>
                 <div>
                   <div className="text-sm font-bold text-gray-800">Bỏ lượt</div>
-                  <div className="text-[10px] text-gray-500">Bỏ lượt bệnh nhân hiện tại</div>
+                  <div className="text-[10px] text-gray-500">Bỏ lượt bệnh nhân tiếp theo</div>
                 </div>
               </button>
 

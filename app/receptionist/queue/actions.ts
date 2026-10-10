@@ -215,3 +215,43 @@ export async function transferTurn(appointmentId: number, dateStr: string) {
     return { success: false, message: 'Không thể chuyển lượt lúc này.' };
   }
 }
+
+// 6. Lấy dữ liệu metadata cho bộ lọc (Chuyên khoa, Phòng khám, Bác sĩ)
+export async function getFilterMetadata() {
+  try {
+    const specialties = await prisma.specialty.findMany({ select: { name: true } });
+    const clinics = await prisma.clinic.findMany({ select: { name: true, roomNumber: true } });
+    const doctors = await prisma.user.findMany({ 
+      where: { role: 'DOCTOR', status: 'Hoạt động' },
+      select: { fullName: true } 
+    });
+
+    const uniqueSpecialties = Array.from(new Set(specialties.map(s => s.name)));
+    
+    // Format room number properly (e.g., "Phòng 201")
+    const uniqueRooms = Array.from(
+      new Set(
+        clinics
+          .filter(c => c.roomNumber)
+          .map(c => {
+            const rn = c.roomNumber as string;
+            return rn.toLowerCase().startsWith('phòng') ? rn : `Phòng ${rn}`;
+          })
+      )
+    ).sort();
+    
+    const uniqueDoctors = Array.from(new Set(doctors.map(d => `BS. ${d.fullName}`)));
+
+    return {
+      success: true,
+      data: {
+        specialties: uniqueSpecialties,
+        rooms: uniqueRooms,
+        doctors: uniqueDoctors
+      }
+    };
+  } catch (error) {
+    console.error('Lỗi khi lấy filter metadata:', error);
+    return { success: false, data: { specialties: [], rooms: [], doctors: [] } };
+  }
+}

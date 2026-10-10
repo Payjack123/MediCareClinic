@@ -130,7 +130,7 @@ export default function PatientPrescriptionDetailPage({ params }: { params: Prom
                       <th className="px-6 py-4 font-bold">STT</th>
                       <th className="px-6 py-4 font-bold">Tên thuốc</th>
                       <th className="px-6 py-4 font-bold">Hàm lượng</th>
-                      <th className="px-6 py-4 font-bold">Dạng bào chế</th>
+                      <th className="px-6 py-4 font-bold">Đơn giá</th>
                       <th className="px-6 py-4 font-bold text-center">Số lượng</th>
                       <th className="px-6 py-4 font-bold">Cách dùng / Ghi chú</th>
                     </tr>
@@ -141,7 +141,9 @@ export default function PatientPrescriptionDetailPage({ params }: { params: Prom
                         <td className="px-6 py-5 text-gray-500 font-medium">{idx + 1}</td>
                         <td className="px-6 py-5 font-bold text-gray-900 text-base">{med.name}</td>
                         <td className="px-6 py-5 text-gray-600">{med.dosage || '-'}</td>
-                        <td className="px-6 py-5 text-gray-600">{med.form || '-'}</td>
+                        <td className="px-6 py-5 text-gray-600 font-medium">
+                          {med.price ? `${med.price.toLocaleString('vi-VN')} đ` : '--'}
+                        </td>
                         <td className="px-6 py-5 font-black text-gray-900 text-center text-base">{med.quantity}</td>
                         <td className="px-6 py-5 text-gray-600 leading-relaxed whitespace-pre-line font-medium">
                           {med.note}

@@ -32,8 +32,23 @@ export async function getAllDoctorAppointments() {
     let canceled = 0;
 
     const formattedAppointments = appointments.map(apt => {
-      if (apt.status === 'Đã khám') completed++;
-      else if (apt.status === 'Đã hủy' || apt.status === 'Không đến') canceled++;
+      let uiStatus = apt.status || 'Đã đặt';
+
+      // Chuyển đổi trạng thái từ Lễ tân (uppercase) sang Bác sĩ (Title case)
+      if (apt.status === 'ĐÃ XÁC NHẬN' || apt.status === 'ĐÃ CẤP SỐ') {
+        uiStatus = 'Đã check-in';
+      } else if (apt.status === 'ĐANG KHÁM') {
+        uiStatus = 'Đang khám';
+      } else if (apt.status === 'HOÀN THÀNH') {
+        uiStatus = 'Đã khám';
+      } else if (apt.status === 'ĐÃ HỦY' || apt.status === 'BỎ LƯỢT') {
+        uiStatus = 'Đã hủy';
+      } else if (apt.status === 'CHỜ XÁC NHẬN') {
+        uiStatus = 'Đã đặt';
+      }
+
+      if (uiStatus === 'Đã khám') completed++;
+      else if (uiStatus === 'Đã hủy' || uiStatus === 'Không đến') canceled++;
       else upcoming++; // Any other status is Upcoming (Sắp tới/Chờ xác nhận)
 
       let parsedNote = apt.reason || '';
@@ -52,8 +67,6 @@ export async function getAllDoctorAppointments() {
           address: subParts.find((p: string) => p.startsWith('ĐC: '))?.replace('ĐC: ', '') || ''
         };
       }
-
-      let uiStatus = apt.status || 'Đã đặt';
 
       // Parse bookingDate (dd/MM/yyyy) into weekday
       let dateWithDay = apt.bookingDate;
@@ -79,7 +92,7 @@ export async function getAllDoctorAppointments() {
         date: apt.bookingDate,
         dateWithDay,
         status: uiStatus,
-        rawStatus: apt.status,
+        rawStatus: uiStatus,
         reason: parsedNote || 'Khám bệnh',
         patientDetails,
         patientPhone: patientDetails?.phone || apt.patient.phone,

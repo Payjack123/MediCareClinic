@@ -150,7 +150,8 @@ export async function createFullPrescription(data: { patientId: number, diagnosi
           instructions: item.instructions || item.usage || item.dosage,
           remaining: item.quantity.toString(),
           statusText: data.status || 'Nháp',
-          iconType: item.form === 'Dung dịch' ? 'liquid' : 'pill'
+          iconType: item.form === 'Dung dịch' ? 'liquid' : 'pill',
+          price: parseInt(item.price?.toString().replace(/\D/g, '')) || 0
         }))
       });
     }

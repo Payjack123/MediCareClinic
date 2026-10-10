@@ -115,9 +115,10 @@ export default function Step4Confirm({
         <button
           disabled={isSubmitting}
           onClick={() => {
-            const missingReason = patients.some(p => !p.reason || p.reason.trim() === '');
+            const bookingPatients = patients.filter(p => p.time);
+            const missingReason = bookingPatients.some(p => !p.reason || p.reason.trim() === '');
             if (missingReason) {
-              toast.error('Vui lòng nhập triệu chứng/lý do khám bệnh cho tất cả bệnh nhân!');
+              toast.error('Vui lòng nhập triệu chứng/lý do khám bệnh!');
               return;
             }
             setIsModalOpen(true);

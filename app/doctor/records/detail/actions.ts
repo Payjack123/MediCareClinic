@@ -27,7 +27,7 @@ export async function getDoctorMedicalRecordById(recordId: number) {
           }
         },
         doctor: {
-          include: { doctorProfile: true }
+          include: { doctorProfile: { include: { specialty: true } } }
         }
       }
     });
@@ -79,7 +79,7 @@ export async function getDoctorMedicalRecordById(recordId: number) {
       date: examDateStr,
       time: examTimeStr,
       doctor: (record as any).doctor.fullName,
-      doctorSpecialty: (record as any).doctor.doctorProfile?.specialty || 'Đa khoa',
+      doctorSpecialty: (record as any).doctor.doctorProfile?.specialty?.name || (record as any).appointment?.specialty || 'Đa khoa',
       reason: extractedReason,
       symptoms: record.symptoms || 'Không có ghi nhận',
       clinicalExam: (record as any).clinicalExam || 'Không có ghi nhận',

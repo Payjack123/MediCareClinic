@@ -137,7 +137,21 @@ export default function PatientAppointmentsPage() {
     const fetchData = async () => {
       const res = await getPatientAppointmentData();
       if (res.success && res.data) {
-        setUserData(res.data.user);
+        // KIỂM TRA HỒ SƠ ĐẦY ĐỦ CHƯA TRƯỚC KHI CHO ĐẶT LỊCH
+        const u = res.data.user;
+        if (!u) {
+          router.push('/login');
+          return;
+        }
+
+        const isProfileComplete = u.fullName && u.phone && u.dob && u.gender && u.address && u.patientProfile?.cccd;
+        
+        if (!isProfileComplete) {
+          router.push('/patient/complete-profile');
+          return;
+        }
+
+        setUserData(u);
 
         // Cập nhật người đầu tiên và nạp danh sách người thân từ DB
         if (patients[0].name === '' && res.data.user) {
@@ -265,9 +279,10 @@ export default function PatientAppointmentsPage() {
     const codes: string[] = [];
     const pCode = overrideCode || '';
 
-    // Tạo lịch cho từng người
-    for (const patient of patients) {
+    const bookingPatients = patients.filter(p => p.time);
+    for (const patient of bookingPatients) {
       const res = await createAppointment({
+        patientId: patient.id,
         doctorId: patient.doctorId,
         specialty: patient.specialty,
         date: fullDate,
@@ -472,7 +487,7 @@ export default function PatientAppointmentsPage() {
                     <div className="text-center mb-8 pb-8 border-b border-gray-100">
                       <h2 className="font-bold text-gray-500 mb-2">Số tiền cần thanh toán</h2>
                       <p className="font-black text-4xl xl:text-5xl text-[#2563EB]">
-                        {patients.reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} <span className="text-3xl">₫</span>
+                        {patients.filter(p => p.time).reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} <span className="text-3xl">₫</span>
                       </p>
                     </div>
 
@@ -567,7 +582,7 @@ export default function PatientAppointmentsPage() {
 
                     <div className="p-4 bg-white border-2 border-dashed border-[#2563EB] rounded-2xl shadow-sm mb-8 flex justify-center">
                       <QRCode
-                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mock-payment?code=${paymentCode}&amount=${patients.reduce((sum, p) => sum + p.doctorPrice, 0)}`}
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mock-payment?code=${paymentCode}&amount=${patients.filter(p => p.time).reduce((sum, p) => sum + p.doctorPrice, 0)}`}
                         size={200}
                         level="M"
                       />
@@ -576,7 +591,7 @@ export default function PatientAppointmentsPage() {
                     <div className="w-full space-y-4 text-sm mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
                       <div className="flex justify-between items-center pb-3 border-b border-gray-200">
                         <span className="text-gray-500 font-medium">Số tiền:</span>
-                        <strong className="text-[#2563EB] text-xl">{patients.reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} ₫</strong>
+                        <strong className="text-[#2563EB] text-xl">{patients.filter(p => p.time).reduce((sum, p) => sum + p.doctorPrice, 0).toLocaleString('vi-VN')} ₫</strong>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-500 font-medium">Số tài khoản:</span>
@@ -611,10 +626,10 @@ export default function PatientAppointmentsPage() {
                     <Check size={48} strokeWidth={3} />
                   </div>
                   <h2 className="text-3xl font-black text-gray-900 mb-2">Đặt lịch thành công!</h2>
-                  <p className="text-gray-600 max-w-md">Bạn đã đặt thành công <strong className="text-gray-900">{patients.length} lịch khám</strong> vào ngày <strong className="text-[#2563EB]">{bookingData.date}/{new Date().getFullYear()}</strong>.</p>
+                  <p className="text-gray-600 max-w-md">Bạn đã đặt thành công <strong className="text-gray-900">{patients.filter(p => p.time).length} lịch khám</strong> vào ngày <strong className="text-[#2563EB]">{bookingData.date}/{new Date().getFullYear()}</strong>.</p>
 
-                  <div className={`mt-8 w-full flex gap-6 overflow-x-auto p-6 custom-scrollbar items-start ${patients.length > 3 ? 'justify-start' : 'justify-center'}`}>
-                    {patients.map((p, idx) => {
+                  <div className={`mt-8 w-full flex gap-6 overflow-x-auto p-6 custom-scrollbar items-start ${patients.filter(p => p.time).length > 3 ? 'justify-start' : 'justify-center'}`}>
+                    {patients.filter(p => p.time).map((p, idx) => {
                       const code = bookingData.finalCodes[idx] || `LK${Date.now()}`;
                       const dateParts = bookingData.date.split('-');
                       const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : bookingData.date;

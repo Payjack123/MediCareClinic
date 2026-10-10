@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Search, Plus, Trash2,
   Save, Send, User, Stethoscope, Loader2, X
@@ -11,6 +11,7 @@ import { getDoctorPrescriptionsData, createFullPrescription } from '@/app/doctor
 
 export default function CreatePrescriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -24,7 +25,7 @@ export default function CreatePrescriptionPage() {
 
   // Medicines
   const [items, setItems] = useState<any[]>([]);
-  const [drugForm, setDrugForm] = useState({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '' });
+  const [drugForm, setDrugForm] = useState({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '', price: '' });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,6 +43,13 @@ export default function CreatePrescriptionPage() {
     };
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    const pid = searchParams.get('patientId');
+    const examId = searchParams.get('examId');
+    if (pid) setSelectedPatientId(pid);
+    if (examId) setSelectedExamId(examId);
+  }, [searchParams]);
 
   const activePatient = data?.patients?.find((p: any) => p.id.toString() === selectedPatientId);
   const examinations = activePatient?.examinationsAsPatient || [];
@@ -94,7 +102,7 @@ export default function CreatePrescriptionPage() {
     ].filter(Boolean).join(' - ');
 
     setItems([...items, { ...drugForm, instructions: fullInstruction }]);
-    setDrugForm({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '' });
+    setDrugForm({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '', price: '' });
   };
 
   const handleRemoveDrug = (index: number) => {
@@ -191,27 +199,41 @@ export default function CreatePrescriptionPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                        {activePatient?.fullName?.split(' ').slice(-1)[0][0]}
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 relative">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-sm">
+                          {activePatient?.fullName?.split(' ').slice(-1)[0][0] || '?'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-lg leading-tight mb-1">{activePatient?.fullName}</p>
+                          <div className="flex items-center gap-3 text-xs text-gray-600">
+                            <span className="font-semibold text-blue-700 bg-white px-2 py-0.5 rounded shadow-sm">{activePatient?.patientProfile?.patientCode || `BN${activePatient?.id}`}</span>
+                            <span>•</span>
+                            <span>{activePatient?.gender || 'N/A'} - {activePatient?.dob ? (new Date().getFullYear() - parseInt(activePatient.dob.split('-')[0])) : '?'} tuổi</span>
+                            <span>•</span>
+                            <span>{activePatient?.phone || 'Chưa có SĐT'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-900 leading-tight">{activePatient?.fullName}</p>
-                        <p className="text-xs text-gray-500">{activePatient?.patientProfile?.patientCode || `BN${activePatient?.id}`}</p>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedPatientId('');
+                          setPatientSearch('');
+                          setSelectedExamId('');
+                        }}
+                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"
+                        title="Chọn bệnh nhân khác"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedPatientId('');
-                        setPatientSearch('');
-                        setSelectedExamId('');
-                      }}
-                      className="text-gray-400 hover:text-red-500 p-1 transition"
-                      title="Chọn bệnh nhân khác"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    
+                    {activePatient?.healthMetric?.allergies && activePatient.healthMetric.allergies !== "Không có" && (
+                      <div className="mt-3 bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg border border-red-100 font-medium">
+                        <span className="font-bold">⚠️ Tiền sử dị ứng: </span> {activePatient.healthMetric.allergies}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -251,8 +273,8 @@ export default function CreatePrescriptionPage() {
               <Stethoscope className="text-[#2563EB]" /> Thêm Thuốc
             </h2>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100 mb-6">
-              <div className="col-span-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 bg-gray-50 p-5 rounded-xl border border-gray-100 mb-6">
+              <div className="col-span-2 md:col-span-3">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tên thuốc</label>
                 <input type="text" value={drugForm.name} onChange={e => setDrugForm({ ...drugForm, name: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="Paracetamol" />
               </div>
@@ -260,6 +282,7 @@ export default function CreatePrescriptionPage() {
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Hàm lượng</label>
                 <input type="text" value={drugForm.dosage} onChange={e => setDrugForm({ ...drugForm, dosage: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="500mg" />
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">SL</label>
@@ -288,6 +311,10 @@ export default function CreatePrescriptionPage() {
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Thời gian</label>
                 <input type="text" value={drugForm.duration} onChange={e => setDrugForm({ ...drugForm, duration: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="5 ngày" />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Đơn giá</label>
+                <input type="text" value={drugForm.price} onChange={e => setDrugForm({ ...drugForm, price: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]" placeholder="5000" />
+              </div>
               <div className="flex items-end">
                 <button onClick={handleAddDrug} className="w-full bg-[#2563EB] text-white font-bold h-[38px] rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition">
                   <Plus size={16} /> Thêm
@@ -302,6 +329,7 @@ export default function CreatePrescriptionPage() {
                     <tr>
                       <th className="px-4 py-3">Thuốc</th>
                       <th className="px-4 py-3 text-center">SL</th>
+                      <th className="px-4 py-3 text-center">Đơn giá</th>
                       <th className="px-4 py-3">Cách dùng</th>
                       <th className="px-4 py-3 w-16"></th>
                     </tr>
@@ -311,6 +339,7 @@ export default function CreatePrescriptionPage() {
                       <tr key={idx}>
                         <td className="px-4 py-3 font-bold text-gray-900">{item.name} <span className="font-normal text-gray-500 text-xs block">{item.dosage} • {item.form}</span></td>
                         <td className="px-4 py-3 text-center font-black">{item.quantity}</td>
+                        <td className="px-4 py-3 text-center text-gray-600 font-medium">{item.price ? `${item.price}đ` : '--'}</td>
                         <td className="px-4 py-3 text-gray-700">{item.instructions}</td>
                         <td className="px-4 py-3 text-center">
                           <button onClick={() => handleRemoveDrug(idx)} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition">
@@ -341,22 +370,8 @@ export default function CreatePrescriptionPage() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all font-medium resize-none"
                 ></textarea>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Ngày tái khám (Nếu có)</label>
-                <div className="relative w-full mb-6">
-                  <div className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl transition-all font-medium flex items-center justify-between pointer-events-none ${followUpDate ? 'text-gray-900' : 'text-gray-400'}`}>
-                    <span>{followUpDate ? followUpDate.split('-').reverse().join('/') : 'dd/mm/yyyy'}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
-                  </div>
-                  <input
-                    type="date"
-                    value={followUpDate}
-                    onChange={(e) => setFollowUpDate(e.target.value)}
-                    className="date-picker-overlay absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                </div>
-
-                <div className="flex gap-4">
+              <div className="flex flex-col justify-end h-full pt-6">
+                <div className="flex gap-4 mt-auto">
                   <button
                     onClick={() => handleSubmit('Nháp')}
                     disabled={isSubmitting}

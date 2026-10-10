@@ -15,7 +15,7 @@ export async function getMedicalRecordsList() {
       where: { patientId },
       orderBy: { createdAt: 'desc' },
       include: {
-        doctor: { include: { doctorProfile: true } },
+        doctor: { include: { doctorProfile: { include: { specialty: true } } } },
         appointment: true
       }
     });
@@ -26,7 +26,7 @@ export async function getMedicalRecordsList() {
       date: exam.createdAt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       time: exam.createdAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       doctorName: exam.doctor ? `BS. ${exam.doctor.fullName}` : 'Chưa cập nhật',
-      specialty: exam.doctor?.doctorProfile?.specialty || 'Khám bệnh',
+      specialty: exam.doctor?.doctorProfile?.specialty?.name || exam.appointment?.specialty || 'Khám bệnh',
       diagnosis: exam.diagnosis || 'Chưa chẩn đoán',
       status: exam.appointment?.status === 'HOÀN THÀNH' ? 'Hoàn thành' : 'Đang điều trị'
     }));
@@ -52,7 +52,7 @@ export async function getMedicalRecordById(recordId: number) {
     const exam = await prisma.examination.findUnique({
       where: { id: recordId },
       include: {
-        doctor: { include: { doctorProfile: true } },
+        doctor: { include: { doctorProfile: { include: { specialty: true } } } },
         appointment: true,
         patient: { include: { healthMetric: true } }
       }
@@ -104,7 +104,7 @@ export async function getMedicalRecordById(recordId: number) {
       // THÔNG TIN KHÁM
       date: `${exam.createdAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${exam.createdAt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
       doctorName: exam.doctor ? `BS. ${exam.doctor.fullName}` : 'Chưa cập nhật',
-      specialty: exam.doctor?.doctorProfile?.specialty || 'Khám bệnh',
+      specialty: exam.doctor?.doctorProfile?.specialty?.name || exam.appointment?.specialty || 'Khám bệnh',
       reason: extractedReason,
       symptoms: exam.symptoms || 'Không ghi nhận', // Bệnh sử
       medicalHistory: exam.medicalHistory || exam.patient?.healthMetric?.medicalHistory || 'Không có tiền sử bệnh lý', // Tiền sử bệnh

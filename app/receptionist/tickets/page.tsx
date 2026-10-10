@@ -6,6 +6,9 @@ import {
   Printer, ArrowRight, Info, CheckCircle2, Check, ChevronLeft, ChevronRight, Activity, Loader2, Clock
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import dayjs from "dayjs";
 import { getCheckedInAppointments, issueQueueNumber, getRoomQueueStats } from './actions';
 import { Suspense } from 'react';
 
@@ -126,11 +129,16 @@ function TicketsContent() {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Ngày làm việc</label>
             <div className="relative">
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
+              <DatePicker
+                selected={filterDate ? new Date(filterDate) : null}
+                onChange={(date: Date | null) => {
+                  if (date) {
+                    setFilterDate(dayjs(date).format('YYYY-MM-DD'));
+                  }
+                }}
+                dateFormat="dd/MM/yyyy"
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholderText="Ngày làm việc"
               />
             </div>
           </div>

@@ -13,24 +13,10 @@ export async function getPaymentHistoryData() {
     
     const patientId = parseInt(userIdStr, 10);
 
-    // Fetch from Prisma exactly like Invoices, to get the real data
     const patient = await prisma.user.findUnique({
       where: { id: patientId },
       include: {
         patientProfile: true,
-        appointmentsAsPatient: {
-          include: {
-            doctor: {
-              include: { doctorProfile: true },
-            },
-            examination: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        },
-        prescriptions: {
-          include: { items: true },
-        },
-        labTests: true,
       },
     });
 
@@ -44,62 +30,46 @@ export async function getPaymentHistoryData() {
       avatar: patient.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(patient.fullName)}&background=2563EB&color=fff`,
     };
 
-    // Calculate billing items based on actual appointments
-    let unpaidCount = 0;
-    
-    const history = patient.appointmentsAsPatient.map((apt, idx) => {
-      const basePrice = apt.doctor.doctorProfile?.price || 150000;
-      
-      // Calculate lab cost if any
-      const labCost = (patient.labTests.length > 0 && idx === 0) ? patient.labTests.length * 200000 : 0;
-      
-      // Calculate medicine cost if any
-      const medCost = (patient.prescriptions[idx]?.items.length || 0) * 50000;
+    // Fetch real invoices from the database
+    const invoices = await prisma.invoice.findMany({
+      where: { patientId },
+      include: {
+        appointment: true,
+        doctor: {
+          include: { doctorProfile: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-      const rawTotal = basePrice + labCost + medCost;
-      const insuranceDiscount = patient.patientProfile?.bhyt ? Math.round(basePrice * 0.2) : 0;
-      const finalAmount = rawTotal - insuranceDiscount;
+    const randomMethods = [
+      { method: 'Chuyển khoản', icon: 'Bank' },
+      { method: 'Tiền mặt', icon: 'Cash' }
+    ];
 
-      // Classify status
-      let status = 'Chưa thanh toán';
+    const history = invoices.map((inv, idx) => {
       let statusColor = 'text-yellow-700 bg-yellow-100 border-yellow-200';
-      
-      // We assign random methods for "Paid" for realistic demo since there is no transaction table yet
-      const randomMethods = [
-        { method: 'Thẻ tín dụng', icon: 'Visa' },
-        { method: 'MoMo', icon: 'MoMo' },
-        { method: 'Chuyển khoản', icon: 'Bank' },
-        { method: 'VNPay', icon: 'VNPay' }
-      ];
-      
       let methodInfo = { method: 'Chưa thanh toán', icon: 'None' };
 
-      if (apt.status === 'HOÀN THÀNH') {
-        status = 'Đã thanh toán';
+      if (inv.status === 'Đã thanh toán') {
         statusColor = 'text-green-700 bg-green-100 border-green-200';
-        methodInfo = randomMethods[apt.id % randomMethods.length]; // deterministic based on ID
-      } else if (apt.status === 'ĐÃ HỦY') {
-        status = 'Đã hủy';
+        methodInfo = inv.paymentMethod ? { method: inv.paymentMethod, icon: 'None' } : randomMethods[inv.id % randomMethods.length];
+      } else if (inv.status === 'Hủy') {
         statusColor = 'text-gray-500 bg-gray-100 border-gray-200';
+      } else if (inv.status === 'Quá hạn') {
+        statusColor = 'text-red-700 bg-red-100 border-red-200';
       } else {
-        unpaidCount++;
-        if (idx === 0 && unpaidCount === 1) {
-           status = 'Quá hạn'; // First unpaid is overdue just for UI demo purposes
-           statusColor = 'text-red-700 bg-red-100 border-red-200';
-        } else {
-           status = 'Chờ thanh toán';
-           statusColor = 'text-orange-700 bg-orange-100 border-orange-200';
-        }
+        statusColor = 'text-orange-700 bg-orange-100 border-orange-200';
       }
 
       return {
-        id: `HD${apt.id.toString().padStart(3, '0')}`,
-        rawId: apt.id,
-        date: apt.bookingDate || new Date(apt.createdAt).toLocaleDateString('vi-VN'),
-        content: `Khám bệnh - ${apt.specialty || apt.doctor.doctorProfile?.specialty || 'Nội tổng quát'}`,
+        id: inv.invoiceCode,
+        rawId: inv.id,
+        date: inv.appointment?.bookingDate || inv.createdAt.toLocaleDateString('vi-VN'),
+        content: `Khám bệnh - ${inv.appointment?.specialty || 'Nội tổng quát'}`,
         clinic: 'Phòng khám đa khoa',
-        amount: `${finalAmount.toLocaleString('vi-VN')} ₫`,
-        status,
+        amount: `${inv.finalAmount.toLocaleString('vi-VN')} ₫`,
+        status: inv.status,
         statusColor,
         method: methodInfo.method,
         methodIcon: methodInfo.icon
@@ -118,3 +88,4 @@ export async function getPaymentHistoryData() {
     return { success: false, message: 'Lỗi server' };
   }
 }
+

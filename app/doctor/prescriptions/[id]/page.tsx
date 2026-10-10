@@ -23,7 +23,7 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<any[]>([]);
-  const [drugForm, setDrugForm] = useState({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '' });
+  const [drugForm, setDrugForm] = useState({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '', price: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +39,8 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
             dosage: item.dosage,
             quantity: parseInt(item.remaining),
             form: item.iconType === 'liquid' ? 'Dung dịch' : 'Viên',
-            instructions: item.instructions
+            instructions: item.instructions,
+            price: item.price || 0
           }));
           setItems(parsedItems);
         } else {
@@ -62,7 +63,7 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
       drugForm.usage ? `(${drugForm.usage})` : ''
     ].filter(Boolean).join(' - ');
     setItems([...items, { ...drugForm, instructions: fullInstruction }]);
-    setDrugForm({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '' });
+    setDrugForm({ name: '', dosage: '', quantity: '', form: 'Viên', usage: '', frequency: '', duration: '', price: '' });
   };
 
   const handleRemoveDrug = (index: number) => setItems(items.filter((_, i) => i !== index));
@@ -255,6 +256,7 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
                       <th className="px-6 py-4 font-bold w-12">STT</th>
                       <th className="px-6 py-4 font-bold">Tên thuốc</th>
                       <th className="px-6 py-4 font-bold text-center">Số lượng</th>
+                      <th className="px-6 py-4 font-bold text-center">Đơn giá</th>
                       <th className="px-6 py-4 font-bold">Hướng dẫn</th>
                       {isDraft && <th className="px-6 py-4 font-bold text-center w-16">Xóa</th>}
                     </tr>
@@ -265,6 +267,9 @@ export default function DoctorPrescriptionDetailPage({ params }: { params: Promi
                         <td className="px-6 py-5 text-gray-500 font-medium text-center">{idx + 1}</td>
                         <td className="px-6 py-5 font-bold text-gray-900 text-base">{med.name} <span className="block font-normal text-sm text-gray-500">{med.dosage} - {med.form}</span></td>
                         <td className="px-6 py-5 font-black text-[#2563EB] text-center text-base">{med.quantity}</td>
+                        <td className="px-6 py-5 text-gray-500 text-center font-medium">
+                          {med.price ? `${med.price.toLocaleString('vi-VN')} đ` : <span className="italic">--</span>}
+                        </td>
                         <td className="px-6 py-5 text-gray-700 leading-relaxed font-medium">{med.instructions}</td>
                         {isDraft && (
                           <td className="px-6 py-5 text-center">

@@ -176,7 +176,8 @@ export async function getPrescriptionById(id: number) {
         dosage: item.dosage,
         quantity: item.remaining,
         note: item.instructions || item.dosage,
-        form: item.iconType === 'liquid' ? 'Dung dịch' : 'Viên'
+        form: item.iconType === 'liquid' ? 'Dung dịch' : 'Viên',
+        price: item.price || 0
       })),
       instructions: instructions
     };

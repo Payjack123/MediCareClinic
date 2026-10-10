@@ -308,6 +308,7 @@ function MedicalRecordDetailContent() {
                                                       <th className="px-3 py-2">Tên thuốc</th>
                                                       <th className="px-3 py-2">Hàm lượng</th>
                                                       <th className="px-3 py-2 text-center">Số lượng</th>
+                                                      <th className="px-3 py-2">Giá thuốc</th>
                                                       <th className="px-3 py-2">Cách dùng</th>
                                                    </tr>
                                                 </thead>
@@ -320,6 +321,7 @@ function MedicalRecordDetailContent() {
                                                          </td>
                                                          <td className="px-3 py-2 text-gray-600">{item.dosage || '--'}</td>
                                                          <td className="px-3 py-2 text-center font-bold text-[#2563EB]">{item.remaining}</td>
+                                                         <td className="px-3 py-2 text-gray-500 italic">--</td>
                                                          <td className="px-3 py-2 text-gray-600 text-xs italic">{item.instructions}</td>
                                                       </tr>
                                                    ))}

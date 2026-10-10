@@ -6,7 +6,7 @@ import {
   CreditCard, ShieldPlus, MoreVertical, FileText,
   Calendar, CheckCircle2, UserPlus, Clock
 } from 'lucide-react';
-import { getPatients, createPatientRecord } from './actions';
+import { getPatients } from './actions';
 
 export default function PatientsListPage() {
   const [patients, setPatients] = useState<any[]>([]);
@@ -17,11 +17,8 @@ export default function PatientsListPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newPatientData, setNewPatientData] = useState({
-    fullName: '', phone: '', email: '', cccd: '', bhyt: '', dob: '', gender: 'Nam', address: ''
-  });
+  const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -39,21 +36,6 @@ export default function PatientsListPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchData();
-  };
-
-  const handleAddPatient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    const res = await createPatientRecord(newPatientData);
-    if (res.success) {
-      alert('Thêm bệnh nhân thành công! Mã BN: ' + res.patientCode);
-      setIsAddModalOpen(false);
-      setNewPatientData({ fullName: '', phone: '', email: '', cccd: '', bhyt: '', dob: '', gender: 'Nam', address: '' });
-      fetchData();
-    } else {
-      alert(res.message || 'Lỗi khi thêm bệnh nhân');
-    }
-    setIsSubmitting(false);
   };
 
   const getAptStatusBadge = (status: string) => {
@@ -81,12 +63,6 @@ export default function PatientsListPage() {
           <h1 className="text-2xl font-bold text-gray-900">Danh sách Bệnh nhân</h1>
           <p className="text-sm text-gray-500">Quản lý hồ sơ và lịch trình khám của bệnh nhân</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
-        >
-          <UserPlus size={18}/> Thêm bệnh nhân
-        </button>
       </div>
 
       {/* TOP FILTERS */}
@@ -210,7 +186,10 @@ export default function PatientsListPage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0 w-full lg:w-auto">
-                  <button className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+                  <button 
+                    onClick={() => { setSelectedPatient(p); setIsViewModalOpen(true); }}
+                    className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+                  >
                     <FileText size={16} /> Xem hồ sơ
                   </button>
                   
@@ -236,71 +215,68 @@ export default function PatientsListPage() {
         )}
       </div>
 
-      {/* Add Patient Modal */}
-      {isAddModalOpen && (
+      {/* View Patient Modal */}
+      {isViewModalOpen && selectedPatient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <UserPlus className="text-blue-600" /> Thêm mới Hồ sơ Bệnh nhân
+                <User className="text-blue-600" /> Chi tiết Hồ sơ Bệnh nhân
               </h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+              <button onClick={() => setIsViewModalOpen(false)} className="text-gray-400 hover:text-gray-700">
                 ✕
               </button>
             </div>
             
-            <form onSubmit={handleAddPatient} className="flex-1 overflow-y-auto p-6 space-y-5">
-              <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-xl mb-4">
-                <p className="text-sm text-blue-800 font-medium">Lưu ý: Bạn phải điền đúng SĐT/Email để khách vãng lai có thể lấy mã OTP đồng bộ hồ sơ sau này.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
-                  <input required type="text" value={newPatientData.fullName} onChange={e => setNewPatientData({...newPatientData, fullName: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nguyễn Văn A" />
+                  <p className="text-sm text-gray-500">Mã BN</p>
+                  <p className="font-bold text-blue-600">{selectedPatient.patientCode}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại <span className="text-red-500">*</span></label>
-                  <input required type="tel" value={newPatientData.phone} onChange={e => setNewPatientData({...newPatientData, phone: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0901234567" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
-                  <input required type="email" value={newPatientData.email} onChange={e => setNewPatientData({...newPatientData, email: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="email@example.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
-                  <select value={newPatientData.gender} onChange={e => setNewPatientData({...newPatientData, gender: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh (YYYY-MM-DD)</label>
-                  <input type="text" value={newPatientData.dob} onChange={e => setNewPatientData({...newPatientData, dob: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="1990-01-01" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số CCCD</label>
-                  <input type="text" value={newPatientData.cccd} onChange={e => setNewPatientData({...newPatientData, cccd: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0123456789" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số BHYT</label>
-                  <input type="text" value={newPatientData.bhyt} onChange={e => setNewPatientData({...newPatientData, bhyt: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="GD123456789" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-                  <input type="text" value={newPatientData.address} onChange={e => setNewPatientData({...newPatientData, address: e.target.value})} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Số nhà, Tên đường, Quận, Thành phố" />
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Họ và tên</p>
+                  <p className="font-bold text-gray-900">{selectedPatient.fullName}</p>
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-gray-100 flex justify-end gap-3 mt-6">
-                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-5 py-2.5 text-gray-700 font-medium rounded-xl hover:bg-gray-100 transition-colors">
-                  Hủy bỏ
-                </button>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors flex items-center gap-2">
-                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Lưu hồ sơ'}
-                </button>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Số điện thoại</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.phone}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Email</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Giới tính</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.gender}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Ngày sinh</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.dob ? new Date(selectedPatient.dob).toLocaleDateString('vi-VN') : 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Số CCCD</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.cccd || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Số BHYT</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.bhyt || 'N/A'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-500 mb-1">Địa chỉ</p>
+                  <p className="font-medium text-gray-900">{selectedPatient.address || 'N/A'}</p>
+                </div>
               </div>
-            </form>
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setIsViewModalOpen(false)} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors">
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

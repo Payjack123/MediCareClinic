@@ -365,7 +365,7 @@ export default function MyAppointmentsPage() {
               <div className="text-center p-5 pt-6 border-b-2 border-dashed border-gray-300">
                 <p className="text-xs font-bold uppercase text-gray-500">Hệ thống Y tế</p>
                 <p className="text-sm font-bold uppercase text-gray-800">{selectedAppointment.clinic}</p>
-                <p className="text-xs font-medium text-gray-500 mt-1">Mã lịch: {selectedAppointment.appointmentCode}</p>
+                <p className="text-[15px] font-bold text-[#2563EB] mt-2 bg-blue-50/80 px-3 py-1 rounded-full inline-block border border-blue-100">Mã lịch: {selectedAppointment.appointmentCode}</p>
                 <div className="flex justify-center my-4">
                   <div className="p-2 bg-white border border-gray-200 rounded-xl shadow-sm">
                     <QRCode value={selectedAppointment.appointmentCode} size={100} level="M" />

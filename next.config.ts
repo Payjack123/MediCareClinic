@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS
-    ? process.env.ALLOWED_DEV_ORIGINS.split(',').concat(['192.17.13.11'])
-    : ['192.17.13.11'],
+    ? process.env.ALLOWED_DEV_ORIGINS.split(',').concat(['192.17.13.15'])
+    : ['192.17.13.15'],
 };
 
 export default nextConfig;

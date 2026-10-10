@@ -171,7 +171,7 @@ export async function getDoctorSchedules(doctorId: number) {
 }
 
 // 3. XÁC NHẬN ĐẶT LỊCH
-export async function createAppointment(data: { doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string, paymentMethod?: string }) {
+export async function createAppointment(data: { patientId?: number, doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string, paymentMethod?: string }) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
@@ -217,9 +217,11 @@ export async function createAppointment(data: { doctorId: number, specialty: str
       return { success: false, message: 'Bác sĩ đã kín lịch trong ngày này. Vui lòng chọn ngày khác.' };
     }
 
+    const finalPatientId = data.patientId || parseInt(userIdStr);
+
     const newApt = await prisma.appointment.create({
       data: {
-        patientId: parseInt(userIdStr),
+        patientId: finalPatientId,
         doctorId: assignedDoctorId,
         specialty: data.specialty || 'Đa khoa',
         bookingDate: data.date,
@@ -338,13 +340,31 @@ export async function findPatientByQuery(query: string) {
 // 6. GIẢ LẬP THANH TOÁN THÀNH CÔNG (Dành cho mock payment)
 export async function mockConfirmPayment(paymentCode: string) {
   try {
+    if (paymentCode.startsWith('HD')) {
+      const invoice = await prisma.invoice.findUnique({ where: { invoiceCode: paymentCode } });
+      if (invoice) {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { status: 'Đã thanh toán', paymentDate: new Date(), paymentMethod: 'Chuyển khoản' }
+        });
+        if (invoice.appointmentId) {
+          await prisma.appointment.update({
+            where: { id: invoice.appointmentId },
+            data: { paymentStatus: 'ĐÃ THANH TOÁN', status: 'HOÀN THÀNH' }
+          });
+        }
+      }
+      return { success: true };
+    }
+
     await prisma.appointment.updateMany({
       where: {
         reason: { contains: paymentCode }
       },
       data: {
         status: 'CHỜ XÁC NHẬN',
-        paymentStatus: 'ĐÃ THANH TOÁN'
+        paymentStatus: 'ĐÃ THANH TOÁN',
+        paymentMethod: 'BANK'
       }
     });
     return { success: true };
@@ -546,6 +566,14 @@ export async function searchAndLinkPatient(cccd: string, dob: string, relationsh
 export async function checkPayment(code: string) {
   try {
     if (!code) return { paid: false };
+
+    if (code.startsWith('HD')) {
+      const invoice = await prisma.invoice.findUnique({ where: { invoiceCode: code } });
+      if (invoice && invoice.status === 'Đã thanh toán') {
+        return { paid: true };
+      }
+      return { paid: false };
+    }
 
     const appointments = await prisma.appointment.findMany({
       where: {

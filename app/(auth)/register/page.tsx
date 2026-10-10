@@ -148,10 +148,7 @@ export default function RegisterPage() {
               className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'RECEPTIONIST' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <ClipboardList size={18} /> Lễ tân
             </button>
-            <button type="button" onClick={() => { setError(''); setSelectedRole('COORDINATOR'); }}
-              className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'COORDINATOR' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-              <Network size={18} /> Điều phối
-            </button>
+
             <button type="button" onClick={() => { setError(''); setSelectedRole('ADMIN'); }}
               className={`flex-1 min-w-[65px] flex flex-col items-center justify-center gap-1.5 py-2 text-[10px] sm:text-xs font-semibold rounded-lg transition-all ${selectedRole === 'ADMIN' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
               <ShieldCheck size={18} /> Admin

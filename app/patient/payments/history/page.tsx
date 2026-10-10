@@ -9,11 +9,17 @@ import {
 } from 'lucide-react';
 import PatientSidebar from '@/app/patient/Sidebar';
 import { getPaymentHistoryData } from '@/app/patient/payments/history/actions';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function PaymentHistoryPage() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Tất cả trạng thái');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,6 +42,37 @@ export default function PaymentHistoryPage() {
   }
 
   const { patientInfo, history } = data;
+
+  const filteredHistory = history.filter((inv: any) => {
+    const searchLower = searchQuery.toLowerCase();
+    const matchSearch = inv.id.toLowerCase().includes(searchLower) ||
+                        inv.content.toLowerCase().includes(searchLower) ||
+                        inv.clinic.toLowerCase().includes(searchLower);
+
+    const matchStatus = statusFilter === 'Tất cả trạng thái' || inv.status === statusFilter;
+
+    let matchDate = true;
+    if (startDate || endDate) {
+      const parts = inv.date.split('/');
+      if (parts.length === 3) {
+        const invDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        
+        if (startDate) {
+          const startOfDay = new Date(startDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          if (invDate < startOfDay) matchDate = false;
+        }
+        
+        if (endDate) {
+          const endOfDay = new Date(endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (invDate > endOfDay) matchDate = false;
+        }
+      }
+    }
+
+    return matchSearch && matchStatus && matchDate;
+  });
 
   const renderPaymentIcon = (iconName: string) => {
     switch(iconName) {
@@ -106,7 +143,7 @@ export default function PaymentHistoryPage() {
               <div className="flex-1 min-w-[250px]">
                 <label className="block text-xs font-bold text-gray-500 mb-2">Tìm kiếm</label>
                 <div className="relative">
-                  <input type="text" placeholder="Nhập mã hóa đơn, dịch vụ, phòng khám..." className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#2563EB]" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Nhập mã hóa đơn, dịch vụ, phòng khám..." className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#2563EB]" />
                   <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
@@ -114,7 +151,7 @@ export default function PaymentHistoryPage() {
               <div className="w-full md:w-[220px]">
                 <label className="block text-xs font-bold text-gray-500 mb-2">Trạng thái</label>
                 <div className="relative">
-                  <select className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#2563EB] appearance-none font-medium text-gray-700">
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#2563EB] appearance-none font-medium text-gray-700">
                     <option>Tất cả trạng thái</option>
                     <option>Đã thanh toán</option>
                     <option>Chờ thanh toán</option>
@@ -124,16 +161,33 @@ export default function PaymentHistoryPage() {
                 </div>
               </div>
 
-              <div className="w-full md:w-[280px]">
+              <div className="w-full md:w-[320px]">
                 <label className="block text-xs font-bold text-gray-500 mb-2">Khoảng thời gian</label>
-                <div className="relative">
-                  <input type="text" defaultValue="01/01/2025 - 31/05/2025" className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#2563EB] font-medium text-gray-700" />
-                  <Calendar size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <div className="flex gap-2 items-center">
+                  <div className="relative w-full">
+                    <DatePicker 
+                      selected={startDate} 
+                      onChange={(date: Date | null) => setStartDate(date)} 
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Từ ngày"
+                      className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#2563EB] font-medium text-gray-700 uppercase"
+                    />
+                  </div>
+                  <span className="text-gray-400 font-bold">-</span>
+                  <div className="relative w-full">
+                    <DatePicker 
+                      selected={endDate} 
+                      onChange={(date: Date | null) => setEndDate(date)} 
+                      dateFormat="dd/MM/yyyy"
+                      placeholderText="Đến ngày"
+                      className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#2563EB] font-medium text-gray-700 uppercase"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3 mt-4 md:mt-0 shrink-0">
-                <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold bg-white hover:bg-gray-50 shadow-sm transition">
+                <button onClick={() => { setSearchQuery(''); setStatusFilter('Tất cả trạng thái'); setStartDate(null); setEndDate(null); }} className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-bold bg-white hover:bg-gray-50 shadow-sm transition">
                   <RotateCcw size={16} /> Xóa bộ lọc
                 </button>
                 <button className="flex items-center gap-2 px-5 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-bold hover:bg-blue-600 shadow-sm transition">
@@ -159,7 +213,14 @@ export default function PaymentHistoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {history.map((inv: any, idx: number) => {
+                    {filteredHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                          Không có hóa đơn nào khớp với bộ lọc
+                        </td>
+                      </tr>
+                    )}
+                    {filteredHistory.map((inv: any, idx: number) => {
                       const isPending = inv.status === 'Chờ thanh toán' || inv.status === 'Quá hạn';
                       return (
                         <tr key={idx} className="hover:bg-gray-50/50 transition">
@@ -213,7 +274,7 @@ export default function PaymentHistoryPage() {
 
               {/* PAGINATION */}
               <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50 text-sm">
-                <span className="text-gray-500 font-medium">Hiển thị <span className="font-bold text-gray-900">1 - 8</span> trong tổng số <span className="font-bold text-gray-900">18</span> hóa đơn</span>
+                <span className="text-gray-500 font-medium">Hiển thị <span className="font-bold text-gray-900">{filteredHistory.length > 0 ? 1 : 0} - {filteredHistory.length}</span> trong tổng số <span className="font-bold text-gray-900">{filteredHistory.length}</span> hóa đơn</span>
                 
                 <div className="flex items-center gap-6">
                   <div className="flex bg-white shadow-sm rounded-lg">

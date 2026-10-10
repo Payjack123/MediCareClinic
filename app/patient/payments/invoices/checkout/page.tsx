@@ -3,9 +3,11 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ChevronLeft, Loader2, Landmark, Wallet, Users, ShieldCheck, Lock
+  ChevronLeft, Loader2, Landmark, Wallet, Users, ShieldCheck, Lock, ArrowLeft
 } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { getPatientBillingData, confirmInvoicePayment } from '@/app/patient/payments/invoices/actions';
+import { checkPayment } from '@/app/patient/appointments/actions';
 
 function InvoicePaymentContent() {
   const router = useRouter();
@@ -14,7 +16,25 @@ function InvoicePaymentContent() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'BANK' | 'EWALLET' | 'COUNTER'>('ONLINE');
+  const [paymentMethod, setPaymentMethod] = useState<'BANK' | 'COUNTER'>('COUNTER');
+  const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showQR && id) {
+      interval = setInterval(async () => {
+        try {
+          const res = await checkPayment(id);
+          if (res.paid) {
+            clearInterval(interval);
+            alert("Thanh toán thành công!");
+            router.push('/patient/payments/history');
+          }
+        } catch (e) { }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [showQR, id, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,6 +51,11 @@ function InvoicePaymentContent() {
   }, [router]);
 
   const handleConfirmPayment = async (rawId: number) => {
+    if (paymentMethod === 'BANK') {
+      setShowQR(true);
+      return;
+    }
+
     setIsSubmitting(true);
     const res = await confirmInvoicePayment(rawId);
     setIsSubmitting(false);
@@ -66,6 +91,64 @@ function InvoicePaymentContent() {
     );
   }
 
+  if (showQR) {
+    return (
+      <div className="w-full max-w-2xl mx-auto space-y-6">
+        <div className="p-8 flex-1 flex flex-col animate-in slide-in-from-right-8 bg-gray-50/50 rounded-2xl border border-gray-200">
+          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+            <button onClick={() => setShowQR(false)} className="p-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900">Quét mã QR thanh toán</h2>
+              <p className="text-gray-500 text-sm mt-1">Mở ứng dụng ngân hàng của bạn và quét mã QR bên dưới.</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center max-w-lg mx-auto w-full">
+            <div className="bg-[#2563EB] text-white w-full py-4 rounded-t-xl text-center font-bold text-lg mb-6 shadow-md">
+              MB Bank (Mock)
+            </div>
+
+            <div className="p-4 bg-white border-2 border-dashed border-[#2563EB] rounded-2xl shadow-sm mb-8 flex justify-center">
+              <QRCode
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/mock-payment?code=${activeInvoice.id}&amount=${activeInvoice.finalRaw}`}
+                size={200}
+                level="M"
+              />
+            </div>
+
+            <div className="w-full space-y-4 text-sm mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                <span className="text-gray-500 font-medium">Số tiền:</span>
+                <strong className="text-[#2563EB] text-xl">{activeInvoice.final} ₫</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Số tài khoản:</span>
+                <strong className="text-gray-900 text-base tracking-wider">0968973608</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Ngân hàng:</span>
+                <strong className="text-gray-900">MB Bank</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Nội dung bắt buộc:</span>
+                <strong className="text-gray-900 bg-yellow-100 px-2 py-1 rounded">{activeInvoice.id}</strong>
+              </div>
+            </div>
+
+            <button
+              disabled={true}
+              className="w-full bg-blue-50 text-[#2563EB] border border-blue-200 py-4 rounded-xl font-bold text-lg shadow-sm transition-all flex justify-center items-center gap-2"
+            >
+              <Loader2 size={24} className="animate-spin" />
+              Hệ thống đang tự động xác nhận...
+            </button>
+            <p className="text-xs text-gray-400 mt-4 text-center">Hãy quét mã QR bằng điện thoại (Camera, Zalo) để mở giao diện thanh toán giả lập. Màn hình này sẽ tự động chuyển tiếp.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       
@@ -89,20 +172,7 @@ function InvoicePaymentContent() {
         
         <div className="space-y-4 mb-8">
           
-          {/* Phương thức 1 */}
-          <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'ONLINE' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
-            <div className="pt-0.5">
-              <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'ONLINE'} onChange={() => setPaymentMethod('ONLINE')} />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-900 text-base">Thanh toán thẻ Online</p>
-              <p className="text-sm text-gray-500 mt-1">Hỗ trợ thẻ ATM, Visa, MasterCard, JCB</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="h-6 w-9 bg-[#1434CB] rounded flex items-center justify-center text-[10px] text-white font-bold italic">VISA</div>
-              <div className="h-6 w-9 bg-red-500 rounded flex items-center justify-center text-[10px] text-white font-bold">MC</div>
-            </div>
-          </label>
+
 
           {/* Phương thức 2 */}
           <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'BANK' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
@@ -118,20 +188,7 @@ function InvoicePaymentContent() {
             </div>
           </label>
 
-          {/* Phương thức 3 */}
-          <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'EWALLET' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
-            <div className="pt-0.5">
-              <input type="radio" name="paymentMethod" className="w-4 h-4 text-[#2563EB] mt-1" checked={paymentMethod === 'EWALLET'} onChange={() => setPaymentMethod('EWALLET')} />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-900 text-base">Ví điện tử</p>
-              <p className="text-sm text-gray-500 mt-1">Thanh toán qua ứng dụng MoMo, ZaloPay, VNPay</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="h-8 w-8 bg-[#A50064] rounded flex items-center justify-center text-xs text-white font-bold">mo</div>
-              <div className="h-8 w-8 bg-[#0068FF] rounded flex items-center justify-center text-xs text-white font-bold">Zalo</div>
-            </div>
-          </label>
+
 
           {/* Phương thức 4 */}
           <label className={`flex gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'COUNTER' ? 'border-[#2563EB] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20 transform scale-[1.01]' : 'border-gray-100 hover:border-blue-300'}`}>
