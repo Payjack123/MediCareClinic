@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  Search, Bell, Clock, Plus, Eye, Filter, CalendarDays, Edit
+  Search, Bell, Clock, Plus, Eye, Filter, CalendarDays
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
 
 import Sidebar from '@/app/admin/Sidebar';
-import { getAppointments, updateAppointmentStatus } from '@/app/admin/appointments/actions';
+import { getAppointments } from '@/app/admin/appointments/actions';
 
 export default function AdminAppointmentsPage() {
   const router = useRouter();

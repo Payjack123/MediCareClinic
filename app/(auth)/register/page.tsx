@@ -2,12 +2,15 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { Mail, Lock, User, Activity, ArrowLeft, Loader2, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Send, Network } from 'lucide-react';
 import { registerUser, UserRole } from '@/app/(auth)/actions/auth';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,7 +42,7 @@ export default function RegisterPage() {
       const res = await registerUser(fullName, email, password, selectedRole);
       if (res.success) {
         alert(res.message || 'Thành công! Vui lòng đăng nhập.');
-        router.push('/login'); 
+        router.push(redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'); 
       } else {
         setError(res.message); 
       }
@@ -122,7 +125,7 @@ export default function RegisterPage() {
           <div className="bg-blue-600 p-1.5 rounded-lg">
             <Activity className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-xl text-slate-800 tracking-tight">HEALTHCARE</span>
+          <span className="font-bold text-xl text-slate-800 tracking-tight">MediCare</span>
         </div>
 
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100 my-auto">
@@ -258,11 +261,19 @@ export default function RegisterPage() {
           
           <div className="mt-8 text-center bg-slate-50 p-4 rounded-xl border border-slate-100">
              <p className="text-sm text-slate-600">
-                Đã có tài khoản? <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">Đăng nhập ngay</Link>
+                Đã có tài khoản? <Link href={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">Đăng nhập ngay</Link>
              </p>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

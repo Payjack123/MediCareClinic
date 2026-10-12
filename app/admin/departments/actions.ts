@@ -11,29 +11,30 @@ export async function getDepartments() {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    let setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
+    const departments = await prisma.department.findMany({
+      include: {
+        doctors: { include: { user: true } },
+        clinics: true
+      }
     });
 
-    if (!setting) {
-      // Mock dữ liệu mặc định nếu chưa có
-      const defaultData = [
-        { id: 'NTQ001', name: 'Nội tổng quát', headDoctor: 'BS. Nguyễn Văn Bình', status: 'Hoạt động', desc: 'Khám và điều trị các bệnh nội khoa', doctors: [], rooms: [], services: [] },
-        { id: 'NKH001', name: 'Ngoại khoa', headDoctor: 'BS. Trần B', status: 'Hoạt động', desc: 'Chuyên phẫu thuật', doctors: [], rooms: [], services: [] },
-        { id: 'NHI001', name: 'Nhi khoa', headDoctor: 'BS. Lê C', status: 'Hoạt động', desc: 'Khám nhi đồng', doctors: [], rooms: [], services: [] },
-        { id: 'TMH001', name: 'Tai Mũi Họng', headDoctor: 'BS. Hoàng D', status: 'Tạm dừng', desc: 'Điều trị TMH', doctors: [], rooms: [], services: [] },
-      ];
-      setting = await prisma.systemSetting.create({
-        data: {
-          key: 'departments_data',
-          value: JSON.stringify(defaultData),
-          description: 'Lưu trữ danh sách khoa phòng (do chưa có bảng db)'
-        }
-      });
-    }
+    const data = departments.map(s => ({
+      id: s.departmentCode || s.id.toString(),
+      name: s.name,
+      headDoctor: s.headDoctor || (s.doctors.length > 0 ? s.doctors[0].user.fullName : 'Chưa chỉ định'),
+      status: s.status,
+      desc: s.description || '',
+      doctors: s.doctors.map(d => ({ id: d.userId, name: d.user.fullName })),
+      rooms: s.clinics.map(c => ({
+        id: c.id.toString(),
+        name: c.name,
+        type: c.type,
+        floor: c.roomNumber || '',
+        status: c.status
+      }))
+    }));
 
-    const departments = JSON.parse(setting.value);
-    return { success: true, data: departments };
+    return { success: true, data };
   } catch (error) {
     console.error("Lỗi lấy danh sách khoa:", error);
     return { success: false, message: 'Lỗi máy chủ' };
@@ -48,30 +49,14 @@ export async function saveDepartment(data: any) {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
-    });
-    
-    let departments = [];
-    if (setting) {
-      departments = JSON.parse(setting.value);
-    }
-
-    // Gắn id nếu chưa có
-    const newDept = {
-      ...data,
-      id: data.id || `KHOA${Date.now()}`,
-      doctors: data.doctors || [],
-      rooms: data.rooms || [],
-      services: data.services || []
-    };
-
-    departments.push(newDept);
-
-    await prisma.systemSetting.upsert({
-      where: { key: 'departments_data' },
-      update: { value: JSON.stringify(departments) },
-      create: { key: 'departments_data', value: JSON.stringify(departments), description: 'Dữ liệu khoa phòng' }
+    await prisma.department.create({
+      data: {
+        departmentCode: data.id, 
+        name: data.name,
+        description: data.desc || '',
+        headDoctor: data.headDoctor || null,
+        status: data.status || 'Hoạt động'
+      }
     });
 
     return { success: true, message: 'Thêm khoa thành công!' };
@@ -84,22 +69,17 @@ export async function saveDepartment(data: any) {
 // Cập nhật trạng thái khoa
 export async function updateDepartmentStatus(id: string, newStatus: string) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
+    const sId = parseInt(id);
+    const whereCondition = isNaN(sId) ? { departmentCode: id } : { OR: [{ id: sId }, { departmentCode: id }] };
+    
+    const department = await prisma.department.findFirst({ where: whereCondition });
+    if (!department) return { success: false, message: 'Không tìm thấy khoa' };
+
+    await prisma.department.update({
+      where: { id: department.id },
+      data: { status: newStatus }
     });
-    if (!setting) return { success: false, message: 'Không tìm thấy dữ liệu' };
-
-    let departments = JSON.parse(setting.value);
-    const index = departments.findIndex((d: any) => d.id === id);
-    if (index === -1) return { success: false, message: 'Không tìm thấy khoa' };
-
-    departments[index].status = newStatus;
-
-    await prisma.systemSetting.update({
-      where: { key: 'departments_data' },
-      data: { value: JSON.stringify(departments) }
-    });
-
+    
     return { success: true, message: 'Cập nhật trạng thái thành công' };
   } catch (error) {
     console.error("Lỗi cập nhật khoa:", error);
@@ -116,11 +96,20 @@ export async function getAvailableDoctors() {
         id: true,
         fullName: true,
         doctorProfile: {
-          select: { specialty: true, doctorCode: true }
+          select: { specialtyId: true, departmentId: true, doctorCode: true, specialty: true }
         }
       }
     });
-    return { success: true, data: doctors };
+    // Gắn thêm tên chuyên môn để hiển thị (do đổi từ bảng cũ)
+    const result = doctors.map(d => ({
+      id: d.id,
+      fullName: d.fullName,
+      doctorProfile: {
+        ...d.doctorProfile,
+        specialty: d.doctorProfile?.specialty?.name || 'Đa khoa'
+      }
+    }));
+    return { success: true, data: result };
   } catch (error) {
     return { success: false, message: 'Lỗi lấy danh sách bác sĩ' };
   }
@@ -129,15 +118,35 @@ export async function getAvailableDoctors() {
 // Lấy chi tiết 1 khoa
 export async function getDepartmentDetail(id: string) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
-    });
-    if (!setting) return { success: false, message: 'Không tìm thấy khoa' };
+    const sId = parseInt(id);
+    const whereCondition = isNaN(sId) ? { departmentCode: id } : { OR: [{ id: sId }, { departmentCode: id }] };
 
-    const departments = JSON.parse(setting.value);
-    const department = departments.find((d: any) => d.id === id);
+    const s = await prisma.department.findFirst({
+      where: whereCondition,
+      include: {
+        doctors: { include: { user: true } },
+        clinics: true
+      }
+    });
     
-    if (!department) return { success: false, message: 'Không tìm thấy khoa' };
+    if (!s) return { success: false, message: 'Không tìm thấy khoa' };
+
+    const department = {
+      id: s.departmentCode || s.id.toString(),
+      name: s.name,
+      headDoctor: s.headDoctor || (s.doctors.length > 0 ? s.doctors[0].user.fullName : 'Chưa chỉ định'),
+      status: s.status,
+      desc: s.description || '',
+      doctors: s.doctors.map(d => ({ id: d.userId, name: d.user.fullName })),
+      rooms: s.clinics.map(c => ({
+        id: c.id.toString(),
+        name: c.name,
+        type: c.type,
+        floor: c.roomNumber || '',
+        status: c.status
+      }))
+    };
+
     return { success: true, data: department };
   } catch (error) {
     return { success: false, message: 'Lỗi máy chủ' };
@@ -147,28 +156,31 @@ export async function getDepartmentDetail(id: string) {
 // Phân công Bác sĩ vào Khoa
 export async function assignDoctorToDepartment(deptId: string, doctorId: number, doctorName: string) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
-    });
-    if (!setting) return { success: false, message: 'Lỗi dữ liệu' };
+    const sId = parseInt(deptId);
+    const whereCondition = isNaN(sId) ? { departmentCode: deptId } : { OR: [{ id: sId }, { departmentCode: deptId }] };
+    
+    const department = await prisma.department.findFirst({ where: whereCondition });
+    if (!department) return { success: false, message: 'Khoa không tồn tại' };
 
-    let departments = JSON.parse(setting.value);
-    const deptIndex = departments.findIndex((d: any) => d.id === deptId);
-    if (deptIndex === -1) return { success: false, message: 'Khoa không tồn tại' };
-
-    // Kiểm tra trùng lặp
-    const exists = departments[deptIndex].doctors.find((d: any) => d.id === doctorId);
-    if (!exists) {
-      departments[deptIndex].doctors.push({ id: doctorId, name: doctorName });
-      
-      await prisma.systemSetting.update({
-        where: { key: 'departments_data' },
-        data: { value: JSON.stringify(departments) }
+    const docProfile = await prisma.doctorProfile.findUnique({ where: { userId: doctorId } });
+    if (!docProfile) {
+      await prisma.doctorProfile.create({
+        data: {
+          userId: doctorId,
+          experience: 'Chưa cập nhật',
+          departmentId: department.id
+        }
       });
-      return { success: true, message: 'Đã phân công bác sĩ vào khoa!' };
+    } else {
+      await prisma.doctorProfile.update({
+        where: { userId: doctorId },
+        data: { departmentId: department.id }
+      });
     }
-    return { success: false, message: 'Bác sĩ này đã thuộc khoa' };
+
+    return { success: true, message: 'Đã phân công bác sĩ vào khoa!' };
   } catch (error) {
+    console.error(error);
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }
@@ -176,20 +188,9 @@ export async function assignDoctorToDepartment(deptId: string, doctorId: number,
 // Xóa Bác sĩ khỏi Khoa
 export async function removeDoctorFromDepartment(deptId: string, doctorId: number) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
-    });
-    if (!setting) return { success: false, message: 'Lỗi dữ liệu' };
-
-    let departments = JSON.parse(setting.value);
-    const deptIndex = departments.findIndex((d: any) => d.id === deptId);
-    if (deptIndex === -1) return { success: false, message: 'Khoa không tồn tại' };
-
-    departments[deptIndex].doctors = departments[deptIndex].doctors.filter((d: any) => d.id !== doctorId);
-      
-    await prisma.systemSetting.update({
-      where: { key: 'departments_data' },
-      data: { value: JSON.stringify(departments) }
+    await prisma.doctorProfile.update({
+      where: { userId: doctorId },
+      data: { departmentId: null }
     });
     return { success: true, message: 'Đã xóa bác sĩ khỏi khoa!' };
   } catch (error) {
@@ -200,29 +201,32 @@ export async function removeDoctorFromDepartment(deptId: string, doctorId: numbe
 // Thêm Phòng vào Khoa
 export async function addRoomToDepartment(deptId: string, roomName: string, floor: string, type: string) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
-    });
-    if (!setting) return { success: false, message: 'Lỗi dữ liệu' };
+    const sId = parseInt(deptId);
+    const whereCondition = isNaN(sId) ? { departmentCode: deptId } : { OR: [{ id: sId }, { departmentCode: deptId }] };
+    
+    const department = await prisma.department.findFirst({ where: whereCondition });
+    if (!department) return { success: false, message: 'Khoa không tồn tại' };
 
-    let departments = JSON.parse(setting.value);
-    const deptIndex = departments.findIndex((d: any) => d.id === deptId);
-    if (deptIndex === -1) return { success: false, message: 'Khoa không tồn tại' };
+    let facility = await prisma.facility.findFirst();
+    if (!facility) {
+      facility = await prisma.facility.create({
+        data: { name: 'Cơ sở chính', address: 'Hà Nội' }
+      });
+    }
 
-    departments[deptIndex].rooms.push({ 
-      id: `ROOM${Date.now()}`,
-      name: roomName,
-      floor,
-      type,
-      status: 'Hoạt động'
+    await prisma.clinic.create({
+      data: {
+        name: roomName,
+        roomNumber: floor,
+        type: type,
+        departmentId: department.id,
+        facilityId: facility.id
+      }
     });
-      
-    await prisma.systemSetting.update({
-      where: { key: 'departments_data' },
-      data: { value: JSON.stringify(departments) }
-    });
+
     return { success: true, message: 'Đã thêm phòng khám!' };
   } catch (error) {
+    console.error(error);
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }
@@ -230,26 +234,17 @@ export async function addRoomToDepartment(deptId: string, roomName: string, floo
 // Đổi trạng thái Phòng
 export async function updateRoomStatus(deptId: string, roomId: string, newStatus: string) {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'departments_data' }
+    const rId = parseInt(roomId);
+    if (isNaN(rId)) return { success: false, message: 'ID phòng không hợp lệ' };
+    
+    await prisma.clinic.update({
+      where: { id: rId },
+      data: { status: newStatus }
     });
-    if (!setting) return { success: false, message: 'Lỗi dữ liệu' };
-
-    let departments = JSON.parse(setting.value);
-    const deptIndex = departments.findIndex((d: any) => d.id === deptId);
-    if (deptIndex !== -1) {
-      const rIdx = departments[deptIndex].rooms.findIndex((r: any) => r.id === roomId);
-      if (rIdx !== -1) {
-        departments[deptIndex].rooms[rIdx].status = newStatus;
-        await prisma.systemSetting.update({
-          where: { key: 'departments_data' },
-          data: { value: JSON.stringify(departments) }
-        });
-        return { success: true, message: 'Đã cập nhật trạng thái phòng!' };
-      }
-    }
-    return { success: false, message: 'Lỗi cập nhật' };
+    
+    return { success: true, message: 'Đã cập nhật trạng thái phòng!' };
   } catch (error) {
     return { success: false, message: 'Lỗi máy chủ' };
   }
 }
+

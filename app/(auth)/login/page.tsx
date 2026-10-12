@@ -3,16 +3,20 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Mail, Lock, Activity, ArrowLeft, Loader2, User, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse, Apple, Network } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { loginUser } from '@/app/(auth)/actions/auth';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [selectedRole, setSelectedRole] = useState<'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST' | 'COORDINATOR'>('PATIENT');
+  const [selectedRole, setSelectedRole] = useState<'PATIENT' | 'DOCTOR' | 'ADMIN' | 'RECEPTIONIST'>('PATIENT');
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +32,7 @@ export default function LoginPage() {
       if (res.success) {
         switch (res.role) {
           case 'patient':
-            router.push('/patient/dashboard');
+            router.push(redirectUrl || '/patient/dashboard');
             break;
           case 'doctor':
             router.push('/doctor/dashboard');
@@ -39,11 +43,8 @@ export default function LoginPage() {
           case 'receptionist':
             router.push('/receptionist/dashboard');
             break;
-          case 'coordinator':
-            router.push('/coordinator/dashboard');
-            break;
           default:
-            router.push('/patient/dashboard');
+            router.push(redirectUrl || '/patient/dashboard');
             break;
         }
       } else {
@@ -76,7 +77,7 @@ export default function LoginPage() {
             <div className="bg-white p-2 rounded-xl shadow-lg shadow-blue-900/20">
               <Activity className="h-8 w-8 text-blue-600" />
             </div>
-            <span className="font-bold text-3xl text-white tracking-tight">HEALTHCARE</span>
+            <span className="font-bold text-3xl text-white tracking-tight">MEDICARE</span>
           </div>
 
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
@@ -129,16 +130,23 @@ export default function LoginPage() {
           <div className="bg-blue-600 p-1.5 rounded-lg">
             <Activity className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-xl text-slate-800 tracking-tight">HEALTHCARE</span>
+          <span className="font-bold text-xl text-slate-800 tracking-tight">MediCare</span>
         </div>
 
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 border border-slate-100 my-auto">
 
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Đăng nhập</h2>
-            <p className="text-slate-500 text-sm">
-              Chào mừng trở lại! Vui lòng điền thông tin để tiếp tục.
-            </p>
+            {redirectUrl ? (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <HeartPulse size={16} className="text-blue-600 shrink-0" />
+                <span>Vui lòng đăng nhập để tiến hành đặt lịch khám tại MediCare.</span>
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm">
+                Chào mừng trở lại! Vui lòng điền thông tin để tiếp tục.
+              </p>
+            )}
           </div>
 
           {/* Role Toggle Tabs */}
@@ -257,7 +265,7 @@ export default function LoginPage() {
           <div className="mt-8 text-center bg-slate-50 p-4 rounded-xl border border-slate-100">
             <p className="text-sm text-slate-600">
               Chưa có tài khoản?{' '}
-              <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">
+              <Link href={redirectUrl ? `/register?redirect=${encodeURIComponent(redirectUrl)}` : "/register"} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">
                 Đăng ký ngay
               </Link>
             </p>
@@ -265,5 +273,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

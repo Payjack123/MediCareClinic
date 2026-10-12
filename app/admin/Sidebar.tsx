@@ -1,15 +1,21 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Users, CalendarDays, FileText, Pill, TestTube, 
   Settings, Activity, Building2, ShieldCheck, Receipt, Stethoscope, 
-  BriefcaseMedical, CreditCard, TrendingUp
+  BriefcaseMedical, CreditCard, TrendingUp, LogOut
 } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Navigate to login, handling of cookie clear can be done in login page if needed
+    router.push('/login');
+  };
 
   const navItems = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -64,6 +70,15 @@ export default function Sidebar() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="p-4 border-t border-slate-800 mt-auto bg-slate-900">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300 font-medium text-sm"
+        >
+          <LogOut size={18} /> Đăng xuất
+        </button>
       </div>
     </aside>
   );

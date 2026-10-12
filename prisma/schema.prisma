@@ -73,6 +73,7 @@ model DoctorProfile {
   id                Int        @id @default(autoincrement())
   userId            Int        @unique
   specialtyId       Int?
+  departmentId      Int?
   experience        String
   status            String     @default("Đang làm việc")
   rating            Float      @default(5)
@@ -89,6 +90,7 @@ model DoctorProfile {
   maxPatientsPerDay Int        @default(10)
   user              User       @relation(fields: [userId], references: [id])
   specialty         Specialty? @relation(fields: [specialtyId], references: [id])
+  department        Department? @relation(fields: [departmentId], references: [id])
   clinics           Clinic[]
 }
 
@@ -287,25 +289,16 @@ model InvoiceItem {
   @@index([invoiceId], map: "InvoiceItem_invoiceId_fkey")
 }
 
-model OtpCode {
-  id        Int      @id @default(autoincrement())
-  email     String   @db.VarChar(100)
-  code      String   @db.VarChar(10)
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([email])
-}
 
 model Facility {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(255)
-  address   String   @db.VarChar(255)
-  status    String   @default("Hoạt động")
-  clinics   Clinic[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(255)
+  address        String          @db.VarChar(255)
+  status         String          @default("Hoạt động")
+  clinics        Clinic[]
+  healthPackages HealthPackage[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Specialty {
@@ -320,15 +313,31 @@ model Specialty {
   updatedAt   DateTime        @updatedAt
 }
 
+model Department {
+  id            Int             @id @default(autoincrement())
+  departmentCode String?        @unique @db.VarChar(50)
+  name          String          @db.VarChar(100)
+  description   String?         @db.Text
+  status        String          @default("Hoạt động")
+  headDoctor    String?         @db.VarChar(100)
+  doctors       DoctorProfile[]
+  clinics       Clinic[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
 model Clinic {
   id              Int              @id @default(autoincrement())
   name            String           @db.VarChar(100)
   roomNumber      String?          @db.VarChar(50)
   type            String           @db.VarChar(100)
+  status          String           @default("Hoạt động")
   facilityId      Int
   specialtyId     Int?
+  departmentId    Int?
   facility        Facility         @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   specialty       Specialty?       @relation(fields: [specialtyId], references: [id], onDelete: SetNull)
+  department      Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   doctors         DoctorProfile[]
   doctorSchedules DoctorSchedule[] @relation("ClinicSchedules")
   createdAt       DateTime         @default(now())
@@ -350,5 +359,29 @@ model DoctorSchedule {
   @@index([doctorId])
   @@index([clinicId])
   @@index([date])
+}
+
+model HealthPackage {
+  id           Int       @id @default(autoincrement())
+  code         String    @unique @db.VarChar(50)
+  name         String    @db.VarChar(255)
+  category     String    @db.VarChar(100)
+  price        Int       @default(0)
+  oldPrice     Int?
+  discount     String?   @db.VarChar(20)
+  description  String?   @db.Text
+  targetGender String?   @default("Tất cả") @db.VarChar(20)
+  targetAge    String?   @default("Mọi lứa tuổi") @db.VarChar(100)
+  features     Json?
+  details      Json?
+  image        String?   @db.Text
+  status       String    @default("Hoạt động")
+  facilityId   Int?
+  facility     Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([facilityId])
+  @@index([category])
 }
 

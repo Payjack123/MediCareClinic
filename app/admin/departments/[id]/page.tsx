@@ -331,34 +331,31 @@ export default function DepartmentDetailsPage({ params }: { params: Promise<{ id
               
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Tên / Số phòng</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Tên phòng khám (hiển thị trên web)</label>
                   <input 
                     type="text" 
-                    placeholder="VD: Phòng 201" 
+                    placeholder="VD: Phòng khám Nội 1" 
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 outline-none"
                     value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Tầng</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Số phòng / Tầng</label>
                   <input 
                     type="text" 
-                    placeholder="VD: Tầng 2" 
+                    placeholder="VD: 201" 
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 outline-none"
                     value={newRoom.floor} onChange={e => setNewRoom({...newRoom, floor: e.target.value})}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Loại phòng</label>
-                  <select 
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Tòa nhà / Khu vực</label>
+                  <input 
+                    type="text" 
+                    placeholder="VD: Nhà K1" 
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-indigo-500 outline-none"
                     value={newRoom.type} onChange={e => setNewRoom({...newRoom, type: e.target.value})}
-                  >
-                    <option value="Phòng khám">Phòng khám bệnh</option>
-                    <option value="Phòng xét nghiệm">Phòng xét nghiệm</option>
-                    <option value="Phòng phẫu thuật">Phòng phẫu thuật</option>
-                    <option value="Phòng cấp cứu">Phòng cấp cứu</option>
-                  </select>
+                  />
                 </div>
               </div>
 

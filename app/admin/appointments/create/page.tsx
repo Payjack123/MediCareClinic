@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  Bell, Clock, ArrowLeft, Save, Loader2, CalendarDays, User, Stethoscope, MapPin, Hash, Search
+  Clock, ArrowLeft, Save, Loader2, CalendarDays, User, Stethoscope, MapPin, Search
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
