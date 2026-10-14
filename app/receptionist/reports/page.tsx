@@ -2,6 +2,8 @@ import React from 'react';
 import ReportsClient from './ReportsClient';
 import { getReceptionistReportData, getFilterOptions } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Báo Cáo Trong Ngày - Lễ Tân | MediCare',
   description: 'Báo cáo tiếp đón bệnh nhân và đối soát doanh thu chốt két quầy lễ tân trong ngày',

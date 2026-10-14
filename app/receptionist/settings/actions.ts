@@ -87,7 +87,10 @@ export async function getReceptionistSettings() {
         preferences
       }
     };
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.digest === 'DYNAMIC_SERVER_USAGE') {
+      throw error;
+    }
     console.error('Lỗi khi lấy thông tin cài đặt lễ tân:', error);
     return { success: false, message: 'Lỗi hệ thống khi tải cài đặt' };
   }

@@ -7,6 +7,8 @@ import {
 import Link from 'next/link';
 import { getDashboardData } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReceptionistDashboard() {
   const result = await getDashboardData();
   const { stats, appointments, queue, activeRooms, currentDate } = result.data || {};

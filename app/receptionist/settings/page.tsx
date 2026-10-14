@@ -2,6 +2,8 @@ import React from 'react';
 import SettingsClient from './SettingsClient';
 import { getReceptionistSettings } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Cài Đặt Cá Nhân - Lễ Tân | MediCare',
   description: 'Quản lý thông tin cá nhân, cấu hình quầy tiếp đón và bảo mật tài khoản lễ tân',
