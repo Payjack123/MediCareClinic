@@ -205,7 +205,7 @@ export default async function BenhVienDetailPage({ params }: Props) {
               <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
               <Link href="/landing/goi-kham" className="hover:text-blue-600 transition">Gói khám</Link>
               <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
-              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu</Link>
+              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu AI</Link>
             </div>
 
             {/* Right Actions */}
@@ -656,7 +656,7 @@ export default async function BenhVienDetailPage({ params }: Props) {
                 <li><Link href={`/landing/benh-vien/${facility.id === 1 ? 2 : 1}`} className="hover:text-blue-500 transition">
                   {facility.id === 1 ? 'MediCare TP.HCM' : 'MediCare Hà Nội'}
                 </Link></li>
-                <li><Link href="/landing/tra-cuu" className="hover:text-blue-500 transition">Tra cứu lịch khám</Link></li>
+                <li><Link href="/landing/tra-cuu" className="hover:text-blue-500 transition">Tra cứu AI</Link></li>
                 <li><Link href="/landing/bai-viet" className="hover:text-blue-500 transition">Tin tức y khoa</Link></li>
               </ul>
             </div>

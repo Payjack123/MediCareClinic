@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Phone, Activity, Users, Menu, Calendar, MapPin, Mail } from 'lucide-react';
+import { Phone, Activity, Users, Menu, MapPin, Mail } from 'lucide-react';
 import MediCareAIChatbot from './MediCareAIChatbot';
 
 export default function TraCuuPage() {
@@ -169,17 +169,6 @@ export default function TraCuuPage() {
           </div>
         </div>
       </footer>
-
-      {/* FAB (Floating Action Buttons) */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-        <button className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:scale-110 transition-all">
-          <Calendar size={24} />
-        </button>
-        <button className="w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-600 hover:scale-110 transition-all">
-          <Phone size={24} />
-        </button>
-      </div>
-
     </div>
   );
 }

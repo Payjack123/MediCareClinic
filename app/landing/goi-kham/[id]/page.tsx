@@ -86,7 +86,7 @@ export default async function PackageDetailPage({ params }: Props) {
               <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
               <Link href="/landing/goi-kham" className="text-blue-600 transition border-b-2 border-blue-600 py-1">Gói khám</Link>
               <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
-              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu</Link>
+              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu AI</Link>
             </div>
 
             {/* Right Actions */}

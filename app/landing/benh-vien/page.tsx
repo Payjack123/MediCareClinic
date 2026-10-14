@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { 
-  Phone, Mail, MapPin, Calendar,
+  Phone, Mail, MapPin,
   Activity, Building2, Users, Menu
 } from 'lucide-react';
 import BenhVienSearchSection from './BenhVienSearchSection';
@@ -72,7 +72,7 @@ export default async function BenhVienPage() {
               <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
               <Link href="/landing/goi-kham" className="hover:text-blue-600 transition">Gói khám</Link>
               <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
-              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu</Link>
+              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu AI</Link>
             </div>
 
             {/* Right Actions */}
@@ -204,15 +204,7 @@ export default async function BenhVienPage() {
         </div>
       </footer>
 
-      {/* FAB (Floating Action Buttons) */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-        <button className="w-14 h-14 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 hover:scale-110 transition-all">
-          <Calendar size={24} />
-        </button>
-        <button className="w-14 h-14 bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-600 hover:scale-110 transition-all">
-          <Phone size={24} />
-        </button>
-      </div>
+
 
     </div>
   );
