@@ -29,47 +29,59 @@ const DOCTOR_AVATARS = [
   '/images/doctors/doctor-3.jpg',
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu thật 2 bệnh viện từ database
-  const rawFacilities = await prisma.facility.findMany({
-    include: {
-      clinics: {
-        include: {
-          specialty: true
-        }
-      }
-    },
-    orderBy: { id: 'asc' }
-  });
-
-  // Lấy dữ liệu thật danh sách Bác sĩ từ database
-  const rawDoctors = await prisma.doctorProfile.findMany({
-    where: {
-      status: 'Đang làm việc'
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          avatar: true,
-          phone: true,
-          address: true
+  let rawFacilities: any[] = [];
+  try {
+    rawFacilities = await prisma.facility.findMany({
+      include: {
+        clinics: {
+          include: {
+            specialty: true
+          }
         }
       },
-      specialty: true,
-      department: true,
-      clinics: {
-        include: {
-          facility: true
+      orderBy: { id: 'asc' }
+    });
+  } catch (e) {
+    console.error('Error fetching facilities:', e);
+  }
+
+  // Lấy dữ liệu thật danh sách Bác sĩ từ database
+  let rawDoctors: any[] = [];
+  try {
+    rawDoctors = await prisma.doctorProfile.findMany({
+      where: {
+        status: 'Đang làm việc'
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            avatar: true,
+            phone: true,
+            address: true
+          }
+        },
+        specialty: true,
+        department: true,
+        clinics: {
+          include: {
+            facility: true
+          }
         }
-      }
-    },
-    orderBy: { id: 'asc' },
-    take: 8
-  });
+      },
+      orderBy: { id: 'asc' },
+      take: 8
+    });
+  } catch (e) {
+    console.error('Error fetching doctors:', e);
+  }
 
   // Lấy dữ liệu 3 gói khám tiêu biểu từ database
   let featuredPackages: any[] = [];

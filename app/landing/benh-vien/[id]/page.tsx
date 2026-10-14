@@ -88,6 +88,8 @@ const DOCTOR_AVATARS = [
   '/images/doctors/doctor-3.jpg',
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default async function BenhVienDetailPage({ params }: Props) {
   const { id } = await params;
   const facilityId = parseInt(id, 10);
@@ -97,51 +99,42 @@ export default async function BenhVienDetailPage({ params }: Props) {
   }
 
   // Truy vấn dữ liệu bệnh viện từ database
-  const facility = await prisma.facility.findUnique({
-    where: { id: facilityId },
-    include: {
-      clinics: {
-        include: {
-          specialty: true,
-          department: true,
-          doctors: {
-            include: {
-              user: true,
-              specialty: true
+  let facility: any = null;
+  let doctors: any[] = [];
+  try {
+    facility = await prisma.facility.findUnique({
+      where: { id: facilityId },
+      include: {
+        clinics: {
+          include: {
+            specialty: true,
+            department: true,
+            doctors: {
+              include: {
+                user: true,
+                specialty: true
+              }
             }
-          }
-        },
-        orderBy: { id: 'asc' }
-      }
-    }
-  });
-
-  if (!facility) {
-    notFound();
-  }
-
-  // Lấy danh sách bác sĩ làm việc tại cơ sở này
-  let doctors = await prisma.doctorProfile.findMany({
-    where: {
-      status: 'Đang làm việc',
-      clinics: {
-        some: {
-          facilityId: facilityId
+          },
+          orderBy: { id: 'asc' }
         }
       }
-    },
-    include: {
-      user: true,
-      specialty: true,
-      department: true
-    },
-    take: 6
-  });
+    });
 
-  // Nếu relation clinic-doctor chưa map hết, lấy bác sĩ active phù hợp
-  if (doctors.length === 0) {
-    const allDoctors = await prisma.doctorProfile.findMany({
-      where: { status: 'Đang làm việc' },
+    if (!facility) {
+      notFound();
+    }
+
+    // Lấy danh sách bác sĩ làm việc tại cơ sở này
+    doctors = await prisma.doctorProfile.findMany({
+      where: {
+        status: 'Đang làm việc',
+        clinics: {
+          some: {
+            facilityId: facilityId
+          }
+        }
+      },
       include: {
         user: true,
         specialty: true,
@@ -149,7 +142,26 @@ export default async function BenhVienDetailPage({ params }: Props) {
       },
       take: 6
     });
-    doctors = allDoctors;
+
+    // Nếu relation clinic-doctor chưa map hết, lấy bác sĩ active phù hợp
+    if (doctors.length === 0) {
+      const allDoctors = await prisma.doctorProfile.findMany({
+        where: { status: 'Đang làm việc' },
+        include: {
+          user: true,
+          specialty: true,
+          department: true
+        },
+        take: 6
+      });
+      doctors = allDoctors;
+    }
+  } catch (error) {
+    console.error('Lỗi lấy chi tiết bệnh viện:', error);
+  }
+
+  if (!facility) {
+    notFound();
   }
 
   const extra = FACILITY_EXTRA[facility.id] || FACILITY_EXTRA[1];
@@ -413,7 +425,7 @@ export default async function BenhVienDetailPage({ params }: Props) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {facility.clinics.map((clinic) => {
+                  {facility.clinics.map((clinic: any) => {
                     const specName = clinic.specialty?.name || clinic.department?.name || 'Khám chuyên khoa';
                     return (
                       <div key={clinic.id} className="p-4 rounded-2xl border border-gray-100 bg-slate-50/70 hover:bg-white hover:border-blue-200 hover:shadow-md transition-all group">

@@ -7,20 +7,27 @@ import {
 } from 'lucide-react';
 import BenhVienSearchSection from './BenhVienSearchSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function BenhVienPage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu 2 bệnh viện từ DB
-  const facilities = await prisma.facility.findMany({
-    include: {
-      clinics: {
-        include: {
-          specialty: true
+  let facilities: any[] = [];
+  try {
+    facilities = await prisma.facility.findMany({
+      include: {
+        clinics: {
+          include: {
+            specialty: true
+          }
         }
-      }
-    },
-    orderBy: { id: 'asc' }
-  });
+      },
+      orderBy: { id: 'asc' }
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách bệnh viện:', error);
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans relative">

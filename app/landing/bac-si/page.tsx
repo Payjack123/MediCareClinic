@@ -7,24 +7,31 @@ import {
 } from 'lucide-react';
 import BacSiSearchSection from './BacSiSearchSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function BacSiPage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu thật Bác sĩ từ database
-  const doctors = await prisma.doctorProfile.findMany({
-    where: { status: 'Đang làm việc' },
-    include: {
-      user: true,
-      specialty: true,
-      department: true,
-      clinics: {
-        include: {
-          facility: true
+  let doctors: any[] = [];
+  try {
+    doctors = await prisma.doctorProfile.findMany({
+      where: { status: 'Đang làm việc' },
+      include: {
+        user: true,
+        specialty: true,
+        department: true,
+        clinics: {
+          include: {
+            facility: true
+          }
         }
-      }
-    },
-    orderBy: { id: 'asc' }
-  });
+      },
+      orderBy: { id: 'asc' }
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách bác sĩ:', error);
+  }
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans relative">
       

@@ -13,6 +13,8 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function PackageDetailPage({ params }: Props) {
   const { id } = await params;
   const packageId = parseInt(id, 10);
@@ -22,10 +24,15 @@ export default async function PackageDetailPage({ params }: Props) {
   }
 
   // Lấy dữ liệu chi tiết gói khám từ database
-  const pkg = await prisma.healthPackage.findUnique({
-    where: { id: packageId },
-    include: { facility: true }
-  });
+  let pkg: any = null;
+  try {
+    pkg = await prisma.healthPackage.findUnique({
+      where: { id: packageId },
+      include: { facility: true }
+    });
+  } catch (error) {
+    console.error('Lỗi lấy chi tiết gói khám:', error);
+  }
 
   if (!pkg) {
     notFound();

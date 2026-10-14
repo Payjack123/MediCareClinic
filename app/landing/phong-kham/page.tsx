@@ -7,27 +7,34 @@ import {
 } from 'lucide-react';
 import PhongKhamSearchSection from './PhongKhamSearchSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PhongKhamPage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu thật phòng khám từ database
-  const clinics = await prisma.clinic.findMany({
-    where: { status: 'Hoạt động' },
-    include: {
-      facility: true,
-      specialty: true,
-      department: true,
-      doctors: {
-        include: {
-          user: true
+  let clinics: any[] = [];
+  try {
+    clinics = await prisma.clinic.findMany({
+      where: { status: 'Hoạt động' },
+      include: {
+        facility: true,
+        specialty: true,
+        department: true,
+        doctors: {
+          include: {
+            user: true
+          }
         }
-      }
-    },
-    orderBy: [
-      { facilityId: 'asc' },
-      { id: 'asc' }
-    ]
-  });
+      },
+      orderBy: [
+        { facilityId: 'asc' },
+        { id: 'asc' }
+      ]
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách phòng khám:', error);
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans relative">

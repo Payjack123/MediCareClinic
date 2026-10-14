@@ -213,6 +213,8 @@ const CLINIC_METADATA: Record<string, {
 
 const DEFAULT_META = CLINIC_METADATA['Nội tổng quát'];
 
+export const dynamic = 'force-dynamic';
+
 export default async function ClinicDetailPage({ params }: Props) {
   const { id } = await params;
   const clinicId = parseInt(id, 10);
@@ -222,20 +224,25 @@ export default async function ClinicDetailPage({ params }: Props) {
   }
 
   // Lấy dữ liệu chi tiết phòng khám từ database
-  const clinic = await prisma.clinic.findUnique({
-    where: { id: clinicId },
-    include: {
-      facility: true,
-      specialty: true,
-      department: true,
-      doctors: {
-        include: {
-          user: true,
-          specialty: true
+  let clinic: any = null;
+  try {
+    clinic = await prisma.clinic.findUnique({
+      where: { id: clinicId },
+      include: {
+        facility: true,
+        specialty: true,
+        department: true,
+        doctors: {
+          include: {
+            user: true,
+            specialty: true
+          }
         }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Lỗi lấy chi tiết phòng khám:', error);
+  }
 
   if (!clinic) {
     notFound();
@@ -488,7 +495,7 @@ export default async function ClinicDetailPage({ params }: Props) {
 
               {clinic.doctors.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {clinic.doctors.map((doctor) => {
+                  {clinic.doctors.map((doctor: any) => {
                     const avatar = doctor.user.avatar || '/images/doctors/doctor-3.jpg';
                     const degree = doctor.degree || 'Thạc sĩ Y Khoa';
                     const exp = doctor.experience ? (doctor.experience.includes('năm') ? doctor.experience : `${doctor.experience} năm KN`) : 'Nhiều năm KN';

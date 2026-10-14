@@ -7,20 +7,27 @@ import {
 } from 'lucide-react';
 import GoiKhamSearchSection from './GoiKhamSearchSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function GoiKhamPage() {
   const bookingLink = '/login';
 
   // Lấy danh sách gói khám thật từ database
-  const packages = await prisma.healthPackage.findMany({
-    where: { status: 'Hoạt động' },
-    include: { facility: true },
-    orderBy: { price: 'asc' }
-  });
+  let packages: any[] = [];
+  let facilities: any[] = [];
+  try {
+    packages = await prisma.healthPackage.findMany({
+      where: { status: 'Hoạt động' },
+      include: { facility: true },
+      orderBy: { price: 'asc' }
+    });
 
-  // Lấy các cơ sở bệnh viện
-  const facilities = await prisma.facility.findMany({
-    orderBy: { id: 'asc' }
-  });
+    facilities = await prisma.facility.findMany({
+      orderBy: { id: 'asc' }
+    });
+  } catch (error) {
+    console.error('Lỗi lấy danh sách gói khám:', error);
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans relative">

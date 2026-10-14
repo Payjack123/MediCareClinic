@@ -18,6 +18,8 @@ const DOCTOR_AVATARS = [
   '/images/doctors/doctor-3.jpg',
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default async function BacSiDetailPage({ params }: Props) {
   const { id } = await params;
   const doctorId = parseInt(id, 10);
@@ -27,24 +29,29 @@ export default async function BacSiDetailPage({ params }: Props) {
   }
 
   // Truy vấn thông tin bác sĩ từ database
-  const doctor = await prisma.doctorProfile.findFirst({
-    where: {
-      OR: [
-        { id: doctorId },
-        { userId: doctorId }
-      ]
-    },
-    include: {
-      user: true,
-      specialty: true,
-      department: true,
-      clinics: {
-        include: {
-          facility: true
+  let doctor: any = null;
+  try {
+    doctor = await prisma.doctorProfile.findFirst({
+      where: {
+        OR: [
+          { id: doctorId },
+          { userId: doctorId }
+        ]
+      },
+      include: {
+        user: true,
+        specialty: true,
+        department: true,
+        clinics: {
+          include: {
+            facility: true
+          }
         }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Lỗi lấy chi tiết bác sĩ:', error);
+  }
 
   if (!doctor) {
     notFound();
