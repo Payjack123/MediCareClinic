@@ -29,7 +29,7 @@ export async function getDoctors(filters?: { search?: string, specialty?: string
     let hasProfileFilter = false;
 
     if (filters?.specialty) {
-      profileFilter.specialty = filters.specialty;
+      profileFilter.specialty = { name: filters.specialty };
       hasProfileFilter = true;
     }
     
@@ -48,7 +48,11 @@ export async function getDoctors(filters?: { search?: string, specialty?: string
     const doctors = await prisma.user.findMany({
       where: whereClause,
       include: {
-        doctorProfile: true
+        doctorProfile: {
+          include: {
+            specialty: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -62,11 +66,10 @@ export async function getDoctors(filters?: { search?: string, specialty?: string
 
 export async function getDoctorSpecialties() {
   try {
-    const specialties = await prisma.doctorProfile.findMany({
-      select: { specialty: true },
-      distinct: ['specialty']
+    const specialties = await prisma.specialty.findMany({
+      select: { name: true }
     });
-    return { success: true, data: specialties.map(s => s.specialty).filter(Boolean) };
+    return { success: true, data: specialties.map(s => s.name).filter(Boolean) };
   } catch (error) {
     return { success: false, data: [] };
   }
@@ -106,6 +109,18 @@ export async function createDoctor(data: any) {
 
     // Create user and profile in a transaction
     const newDoctor = await prisma.$transaction(async (tx) => {
+      let specialtyRecord = null;
+      if (data.specialty) {
+        specialtyRecord = await tx.specialty.findFirst({
+          where: { name: data.specialty }
+        });
+        if (!specialtyRecord) {
+          specialtyRecord = await tx.specialty.create({
+            data: { name: data.specialty }
+          });
+        }
+      }
+
       const user = await tx.user.create({
         data: {
           fullName: data.fullName,
@@ -120,7 +135,7 @@ export async function createDoctor(data: any) {
         data: {
           userId: user.id,
           doctorCode: data.doctorCode,
-          specialty: data.specialty,
+          specialtyId: specialtyRecord?.id || null,
           degree: data.degree,
           experience: data.experience,
           status: 'Hoạt động', // Đang làm việc / Hoạt động
@@ -142,7 +157,13 @@ export async function getDoctorById(id: number) {
   try {
     const doctor = await prisma.user.findUnique({
       where: { id, role: 'DOCTOR' },
-      include: { doctorProfile: true }
+      include: {
+        doctorProfile: {
+          include: {
+            specialty: true
+          }
+        }
+      }
     });
 
     if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
@@ -170,6 +191,18 @@ export async function updateDoctor(id: number, data: any) {
     }
 
     await prisma.$transaction(async (tx) => {
+      let specialtyRecord = null;
+      if (data.specialty) {
+        specialtyRecord = await tx.specialty.findFirst({
+          where: { name: data.specialty }
+        });
+        if (!specialtyRecord) {
+          specialtyRecord = await tx.specialty.create({
+            data: { name: data.specialty }
+          });
+        }
+      }
+
       await tx.user.update({
         where: { id },
         data: {
@@ -183,7 +216,7 @@ export async function updateDoctor(id: number, data: any) {
         where: { userId: id },
         data: {
           doctorCode: data.doctorCode,
-          specialty: data.specialty,
+          specialtyId: specialtyRecord?.id || null,
           degree: data.degree,
           experience: data.experience,
           certificateNumber: data.certificateNumber

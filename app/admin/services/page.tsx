@@ -47,7 +47,7 @@ export default function AdminServicesPage() {
     
     // Tải danh sách Khoa phòng để filter & tạo dịch vụ mới
     const deptRes = await getDepartments();
-    if (deptRes.success) setDepartments(deptRes.data);
+    if (deptRes.success && deptRes.data) setDepartments(deptRes.data);
 
     // Tải danh sách dịch vụ
     const res = await getServices();

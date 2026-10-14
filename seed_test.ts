@@ -20,7 +20,7 @@ async function main() {
       data: {
         id: 30001,
         email: 'binh.nguyen@medicare.com',
-        password: 'hash',
+        passwordHash: 'hash',
         fullName: 'BS. Nguyễn Văn Bình',
         phone: '0988888888',
         role: 'DOCTOR',
@@ -65,7 +65,7 @@ async function main() {
     patient = await prisma.user.create({
       data: {
         email: 'patient@test.com',
-        password: 'hash',
+        passwordHash: 'hash',
         fullName: 'Bệnh Nhân Test',
         phone: '0123456789',
         role: 'PATIENT'

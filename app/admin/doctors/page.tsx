@@ -201,7 +201,7 @@ export default function AdminDoctorsPage() {
                             </div>
                             {doc.fullName}
                           </td>
-                          <td className="px-6 py-4 text-slate-600">{profile?.specialty}</td>
+                          <td className="px-6 py-4 text-slate-600">{profile?.specialty?.name || profile?.specialty || 'Chưa cập nhật'}</td>
                           <td className="px-6 py-4 text-slate-600">{doc.phone}</td>
                           <td className="px-6 py-4">
                             <span className={`px-3 py-1 text-xs font-bold rounded-lg flex items-center gap-1.5 w-max ${statusBadge}`}>

@@ -45,7 +45,9 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
     const doctor = await prisma.user.findUnique({
       where: { id: doctorIdToFetch },
       include: {
-        doctorProfile: true,
+        doctorProfile: {
+          include: { specialty: true }
+        },
         appointmentsAsDoctor: { select: { id: true, status: true } },
       }
     });
@@ -57,17 +59,8 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
       select: { patientId: true }
     }));
 
-    const dProfile = doctor.doctorProfile || {
-      specialty: 'Chưa cập nhật',
-      degree: 'Chưa cập nhật',
-      university: 'Chưa cập nhật',
-      experience: '0',
-      languages: 'Chưa cập nhật',
-      rating: 5.0,
-      status: 'Đang làm việc',
-      certificates: null,
-      schedule: null
-    };
+    const dProfile = doctor.doctorProfile;
+    const specialtyName = dProfile?.specialty?.name || 'Chưa cập nhật';
 
     const profileData = {
       id: `DOC-${doctor.id.toString().padStart(3, '0')}`,
@@ -79,17 +72,17 @@ export async function getDoctorProfileData(targetDoctorId?: number) {
       address: doctor.address || 'Chưa cập nhật',
       avatar: doctor.avatar || `https://ui-avatars.com/api/?name=${doctor.fullName.replace(/ /g, '+')}&background=random`,
       
-      specialty: dProfile.specialty || 'Chưa cập nhật',
-      status: dProfile.status || 'Đang làm việc',
-      degree: dProfile.degree || 'Chưa cập nhật',
-      university: dProfile.university || 'Chưa cập nhật',
-      experience: parseInt(dProfile.experience) || 0,
-      languages: dProfile.languages || 'Chưa cập nhật',
-      rating: dProfile.rating || 5.0,
+      specialty: specialtyName,
+      status: dProfile?.status || 'Đang làm việc',
+      degree: dProfile?.degree || 'Chưa cập nhật',
+      university: dProfile?.university || 'Chưa cập nhật',
+      experience: parseInt(dProfile?.experience || '0') || 0,
+      languages: dProfile?.languages || 'Chưa cập nhật',
+      rating: dProfile?.rating || 5.0,
       
-      certificates: dProfile.certificates || [{ id: 1, name: 'Bằng Bác sĩ Đa khoa', year: '2015' }],
+      certificates: dProfile?.certificates || [{ id: 1, name: 'Bằng Bác sĩ Đa khoa', year: '2015' }],
       // Nếu DB chưa có lịch, tự động sinh lịch tuần hiện tại
-      schedule: dProfile.schedule || generateCurrentWeekSchedule(),
+      schedule: dProfile?.schedule || generateCurrentWeekSchedule(),
       
       stats: {
         totalPatients: uniquePatients.size,
@@ -125,12 +118,24 @@ export async function updateDoctorProfileData(formData: any) {
       }
     });
 
+    let specialtyRecord = null;
+    if (formData.specialty) {
+      specialtyRecord = await prisma.specialty.findFirst({
+        where: { name: formData.specialty }
+      });
+      if (!specialtyRecord) {
+        specialtyRecord = await prisma.specialty.create({
+          data: { name: formData.specialty }
+        });
+      }
+    }
+
     await prisma.doctorProfile.upsert({
       where: { userId: doctorId },
       update: {
-        specialty: formData.specialty,
+        specialtyId: specialtyRecord?.id || null,
         status: formData.status, 
-        experience: formData.experience.toString(),
+        experience: (formData.experience ?? '0').toString(),
         degree: formData.degree,
         university: formData.university,
         languages: formData.languages,
@@ -138,9 +143,9 @@ export async function updateDoctorProfileData(formData: any) {
       },
       create: {
         userId: doctorId,
-        specialty: formData.specialty,
+        specialtyId: specialtyRecord?.id || null,
         status: formData.status || 'Đang làm việc',
-        experience: formData.experience.toString(),
+        experience: (formData.experience ?? '0').toString(),
         degree: formData.degree,
         university: formData.university,
         languages: formData.languages,

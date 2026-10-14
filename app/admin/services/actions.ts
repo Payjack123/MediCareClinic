@@ -62,7 +62,7 @@ export async function saveService(data: any) {
     let deptName = 'Chưa xác định';
     if (data.departmentId) {
       const deptsRes = await getDepartments();
-      if (deptsRes.success) {
+      if (deptsRes.success && deptsRes.data) {
         const dept = deptsRes.data.find((d: any) => d.id === data.departmentId);
         if (dept) deptName = dept.name;
       }

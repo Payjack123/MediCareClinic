@@ -23,11 +23,10 @@ export async function getFilterOptions() {
     }
 
     // Lấy danh sách Khoa (Specialties)
-    const specialtiesData = await prisma.doctorProfile.findMany({
-      select: { specialty: true },
-      distinct: ['specialty']
+    const specialtiesData = await prisma.specialty.findMany({
+      select: { name: true }
     });
-    const specialties = specialtiesData.map(s => s.specialty).filter(Boolean);
+    const specialties = specialtiesData.map(s => s.name).filter(Boolean);
 
     // Lấy danh sách Bác sĩ
     const doctorsData = await prisma.user.findMany({

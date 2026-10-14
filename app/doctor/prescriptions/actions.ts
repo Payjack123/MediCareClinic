@@ -13,7 +13,11 @@ export async function getDoctorPrescriptionsData() {
 
     const doctor = await prisma.user.findUnique({
       where: { id: doctorId },
-      include: { doctorProfile: true }
+      include: {
+        doctorProfile: {
+          include: { specialty: true }
+        }
+      }
     });
 
     if (!doctor) return { success: false, message: 'Không tìm thấy bác sĩ' };
@@ -108,7 +112,7 @@ export async function getDoctorPrescriptionsData() {
           name: doctor.fullName,
           avatar: doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.fullName)}&background=172554&color=fff`,
           rating: doctor.doctorProfile?.rating || 5.0,
-          specialty: doctor.doctorProfile?.specialty || 'Đa khoa'
+          specialty: doctor.doctorProfile?.specialty?.name || 'Đa khoa'
         },
         patients: patients,
         prescriptions: formattedPrescriptions,

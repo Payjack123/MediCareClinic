@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Search, Plus, Trash2,
@@ -9,7 +9,7 @@ import {
 import DoctorSidebar from "@/app/doctor/Sidebar";
 import { getDoctorPrescriptionsData, createFullPrescription } from '@/app/doctor/prescriptions/actions';
 
-export default function CreatePrescriptionPage() {
+function CreatePrescriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<any>(null);
@@ -395,5 +395,13 @@ export default function CreatePrescriptionPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function CreatePrescriptionPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+      <CreatePrescriptionContent />
+    </Suspense>
   );
 }

@@ -46,7 +46,7 @@ export default function DoctorDetailsPage({ params }: { params: Promise<{ doctor
         email: doc.email || '',
         phone: doc.phone || '',
         doctorCode: profile?.doctorCode || '',
-        specialty: profile?.specialty || '',
+        specialty: profile?.specialty?.name || (profile as any)?.specialty || '',
         degree: profile?.degree || '',
         experience: profile?.experience || '',
         certificateNumber: profile?.certificateNumber || '',

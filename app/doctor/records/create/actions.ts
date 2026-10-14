@@ -12,7 +12,11 @@ export async function getInitialCreateData(patientId: number) {
 
     const doctor = await prisma.user.findUnique({
       where: { id: doctorId },
-      include: { doctorProfile: true }
+      include: {
+        doctorProfile: {
+          include: { specialty: true }
+        }
+      }
     });
 
     const patient = await prisma.user.findUnique({
@@ -59,7 +63,7 @@ export async function getInitialCreateData(patientId: number) {
       data: {
         doctor: {
           name: doctor.fullName,
-          specialty: doctor.doctorProfile?.specialty || 'Nội tổng quát'
+          specialty: doctor.doctorProfile?.specialty?.name || 'Nội tổng quát'
         },
         patient: {
           id: patient.id,
