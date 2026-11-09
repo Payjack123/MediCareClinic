@@ -42,3 +42,4 @@ export async function GET() {
     return NextResponse.json({ isLoggedIn: false, user: null }, { status: 500 });
   }
 }
+

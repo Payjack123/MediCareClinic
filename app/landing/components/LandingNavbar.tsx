@@ -68,7 +68,7 @@ export default function LandingNavbar({
     { name: 'Bệnh viện', href: '/landing/benh-vien', match: '/landing/benh-vien' },
     { name: 'Phòng khám', href: '/landing/phong-kham', match: '/landing/phong-kham' },
     { name: 'Bác sĩ', href: '/landing/bac-si', match: '/landing/bac-si' },
-    { name: 'Đặt lịch khám', href: '/landing/dat-lich', match: ['/landing/dat-lich', '/landing/goi-kham'] },
+    { name: 'Đặt lịch khám', href: '/landing/dat-lich', match: '/landing/dat-lich' },
     { name: 'Tin sức khỏe', href: '/landing/bai-viet', match: '/landing/bai-viet' },
     { name: 'Tra cứu AI', href: '/landing/tra-cuu', match: '/landing/tra-cuu' }
   ];
@@ -246,3 +246,4 @@ export default function LandingNavbar({
     </>
   );
 }
+
