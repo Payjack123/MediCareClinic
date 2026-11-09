@@ -4,9 +4,50 @@ import prisma from '@/lib/prisma';
 import { 
   Phone, Mail, MapPin, Search, ChevronRight,
   Shield, CheckCircle2, Clock, Activity, Building2,
-  Users, Stethoscope, HeartPulse, Award, MessageSquare, 
-  Menu, Star
+  Users, Stethoscope, Award, 
+  Menu, Star, CalendarDays
 } from 'lucide-react';
+import LandingBookingSection from './components/LandingBookingSection';
+
+interface FacilityItem {
+  id: number;
+  name: string;
+  address: string;
+  clinics: Array<{
+    id: number;
+    name: string;
+    facilityId: number;
+    specialty?: { id: number; name: string } | null;
+  }>;
+}
+
+interface DoctorItem {
+  id: number;
+  userId: number;
+  user: {
+    id: number;
+    fullName: string;
+    avatar: string | null;
+    phone: string | null;
+    address: string | null;
+  };
+  degree: string | null;
+  experience: string | null;
+  price: number | null;
+  specialty?: { id: number; name: string } | null;
+  department?: { id: number; name: string } | null;
+  clinics?: Array<{
+    id: number;
+    name: string;
+    facilityId: number;
+    facility?: { id: number; name: string } | null;
+  }>;
+}
+
+interface SpecialtyItem {
+  id: number;
+  name: string;
+}
 
 const FACILITY_METADATA: Record<number, { image: string; tag: string; city: string; desc: string }> = {
   1: {
@@ -35,7 +76,7 @@ export default async function HomePage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu thật 2 bệnh viện từ database
-  let rawFacilities: any[] = [];
+  let rawFacilities: FacilityItem[] = [];
   try {
     rawFacilities = await prisma.facility.findMany({
       include: {
@@ -52,7 +93,7 @@ export default async function HomePage() {
   }
 
   // Lấy dữ liệu thật danh sách Bác sĩ từ database
-  let rawDoctors: any[] = [];
+  let rawDoctors: DoctorItem[] = [];
   try {
     rawDoctors = await prisma.doctorProfile.findMany({
       where: {
@@ -83,16 +124,14 @@ export default async function HomePage() {
     console.error('Error fetching doctors:', e);
   }
 
-  // Lấy dữ liệu 3 gói khám tiêu biểu từ database
-  let featuredPackages: any[] = [];
+  // Lấy dữ liệu danh sách Chuyên khoa từ database
+  let rawSpecialties: SpecialtyItem[] = [];
   try {
-    featuredPackages = await (prisma as any).healthPackage.findMany({
-      where: { status: 'HOAT_DONG' },
-      orderBy: { price: 'asc' },
-      take: 3
+    rawSpecialties = await prisma.specialty.findMany({
+      orderBy: { name: 'asc' }
     });
   } catch (e) {
-    console.error('Error fetching featured health packages:', e);
+    console.error('Error fetching specialties:', e);
   }
 
   return (
@@ -143,7 +182,7 @@ export default async function HomePage() {
               <Link href="/landing/benh-vien" className="hover:text-blue-600 transition">Bệnh viện</Link>
               <Link href="/landing/phong-kham" className="hover:text-blue-600 transition">Phòng khám</Link>
               <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
-              <Link href="/landing/goi-kham" className="hover:text-blue-600 transition">Gói khám</Link>
+              <Link href="/landing/dat-lich" className="hover:text-blue-600 transition">Đặt lịch khám</Link>
               <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
               <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu AI</Link>
             </div>
@@ -247,7 +286,7 @@ export default async function HomePage() {
               { title: 'Đặt lịch bệnh viện', desc: 'Chọn khám tại 2 cơ sở MediCare Hà Nội hoặc TP.HCM', icon: <Building2 size={32} />, href: '/landing/benh-vien' },
               { title: 'Đặt lịch phòng khám', desc: 'Khám chuyên khoa tiêu chuẩn với 14+ phòng khám hiện đại', icon: <Activity size={32} />, href: '/landing/phong-kham' },
               { title: 'Đặt khám bác sĩ', desc: 'Chọn bác sĩ giỏi, đặt trước giờ khám nhanh chóng', icon: <Stethoscope size={32} />, href: '/landing/bac-si' },
-              { title: 'Đặt khám theo gói', desc: 'Gói khám sức khỏe tổng quát, tầm soát chuyên sâu', icon: <HeartPulse size={32} />, href: '/landing/goi-kham' },
+              { title: 'Đặt lịch khám trực tuyến', desc: 'Chủ động chọn bác sĩ, chuyên khoa và giờ khám không phải chờ đợi', icon: <CalendarDays size={32} />, href: '#dat-lich' },
             ].map((item, idx) => (
               <Link 
                 key={idx} 
@@ -451,80 +490,13 @@ export default async function HomePage() {
       </section>
 
       {/* ==========================================
-          7. HEALTH PACKAGES
+          7. ĐẶT LỊCH KHÁM TRỰC TUYẾN
       ========================================== */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end mb-12">
-            <div className="text-center sm:text-left">
-              <div className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
-                📦 Gói khám sức khỏe
-              </div>
-              <h2 className="text-3xl font-bold text-gray-900">Gói khám tiết kiệm & toàn diện</h2>
-              <p className="text-gray-500 text-sm mt-1">Đa dạng lựa chọn tầm soát từ cơ bản đến chuyên sâu cho mọi lứa tuổi</p>
-            </div>
-            <Link href="/landing/goi-kham" className="mt-4 sm:mt-0 text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-1">
-              Xem tất cả gói khám <ChevronRight size={18} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {(featuredPackages.length > 0 ? featuredPackages : [
-              { id: 1, name: 'Gói Khám Tổng Quát Cơ Bản', price: 1500000, features: ['Khám nội tổng quát', 'Xét nghiệm máu cơ bản', 'Siêu âm ổ bụng', 'Chụp X-Quang tim phổi'] },
-              { id: 3, name: 'Gói Khám Nâng Cao (VIP)', price: 3200000, discount: 15, features: ['Khám chuyên khoa', 'Tầm soát ung thư (3 chỉ số)', 'Siêu âm tuyến giáp', 'Điện tâm đồ', 'Nội soi Tiêu hóa'] },
-              { id: 4, name: 'Gói Tầm Soát Toàn Diện (VVIP)', price: 6500000, features: ['Tầm soát ung thư toàn diện', 'MRI/CT Scanner', 'Xét nghiệm chuyên sâu', 'Khám phụ/nam khoa', 'Tư vấn dinh dưỡng'] },
-            ]).map((pkg: any, idx: number) => {
-              const isRecommended = idx === 1 || pkg.discount > 10;
-              const colors = ['bg-gradient-to-br from-teal-600 to-teal-700', 'bg-gradient-to-br from-blue-600 to-blue-700', 'bg-gradient-to-br from-indigo-600 to-purple-700'];
-              const headerColor = colors[idx % colors.length];
-              const featuresList = Array.isArray(pkg.features) 
-                ? pkg.features 
-                : typeof pkg.features === 'string' 
-                  ? JSON.parse(pkg.features) 
-                  : ['Khám nội tổng quát', 'Xét nghiệm cơ bản', 'Chẩn đoán hình ảnh'];
-
-              return (
-                <div key={pkg.id || idx} className={`bg-white rounded-3xl overflow-hidden border ${isRecommended ? 'border-blue-500 shadow-2xl scale-105 z-10' : 'border-gray-200 shadow-sm'} relative flex flex-col hover:shadow-xl transition-all`}>
-                  {isRecommended && (
-                    <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-sm">
-                      {pkg.discount ? `ƯU ĐÃI -${pkg.discount}%` : 'ĐƯỢC CHỌN NHIỀU'}
-                    </div>
-                  )}
-                  <div className={`${headerColor} text-white p-7 text-center`}>
-                    <h3 className="font-bold text-lg mb-2 line-clamp-2 min-h-[3.5rem] flex items-center justify-center">{pkg.name}</h3>
-                    <div className="text-3xl font-black mb-1">
-                      {Number(pkg.price).toLocaleString('vi-VN')}đ
-                    </div>
-                    {pkg.oldPrice ? (
-                      <p className="text-white/70 line-through text-xs font-medium">
-                        {Number(pkg.oldPrice).toLocaleString('vi-VN')}đ
-                      </p>
-                    ) : (
-                      <p className="text-white/80 text-xs">Giá trọn gói niêm yết</p>
-                    )}
-                  </div>
-                  <div className="p-7 flex-1 flex flex-col justify-between">
-                    <ul className="space-y-3 mb-8 flex-1">
-                      {featuresList.slice(0, 5).map((feature: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2.5">
-                          <CheckCircle2 size={18} className="text-blue-500 shrink-0 mt-0.5" />
-                          <span className="text-gray-600 text-sm line-clamp-2">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Link 
-                      href={`/landing/goi-kham/${pkg.id}`} 
-                      className={`w-full font-bold py-3.5 rounded-xl transition-all block text-center ${isRecommended ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200' : 'bg-blue-50 hover:bg-blue-100 text-blue-700'}`}
-                    >
-                      Xem chi tiết & Đặt khám
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      <LandingBookingSection
+        facilities={rawFacilities}
+        doctors={rawDoctors}
+        specialties={rawSpecialties}
+      />
 
       {/* ==========================================
           8. WHY CHOOSE MEDICARE
@@ -607,11 +579,11 @@ export default async function HomePage() {
             <div>
               <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Danh mục</h4>
               <ul className="space-y-3">
-                <li><Link href="#" className="hover:text-blue-500 transition">Bệnh viện</Link></li>
-                <li><Link href="#" className="hover:text-blue-500 transition">Phòng khám</Link></li>
-                <li><Link href="#" className="hover:text-blue-500 transition">Bác sĩ chuyên khoa</Link></li>
-                <li><Link href="#" className="hover:text-blue-500 transition">Gói khám sức khỏe</Link></li>
-                <li><Link href="#" className="hover:text-blue-500 transition">Tin tức y tế</Link></li>
+                <li><Link href="/landing/benh-vien" className="hover:text-blue-500 transition">Bệnh viện</Link></li>
+                <li><Link href="/landing/phong-kham" className="hover:text-blue-500 transition">Phòng khám</Link></li>
+                <li><Link href="/landing/bac-si" className="hover:text-blue-500 transition">Bác sĩ chuyên khoa</Link></li>
+                <li><Link href="/landing/dat-lich" className="hover:text-blue-500 transition">Đặt lịch khám</Link></li>
+                <li><Link href="/landing/bai-viet" className="hover:text-blue-500 transition">Tin tức y tế</Link></li>
               </ul>
             </div>
 

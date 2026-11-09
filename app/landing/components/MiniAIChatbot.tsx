@@ -42,7 +42,7 @@ function MiniAIChatbotInner() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Xin chào! Tôi là **Bác sĩ Trợ lý AI MediCare** 🩺.\n\nTôi có thể giải đáp nhanh triệu chứng bất thường, tư vấn dùng thuốc an toàn, hoặc gợi ý chuyên khoa và gói khám phù hợp.\n\nBạn đang cần tư vấn vấn đề sức khỏe nào?`,
+      content: `Xin chào! Tôi là **Bác sĩ Trợ lý AI MediCare** 🩺.\n\nTôi có thể giải đáp nhanh triệu chứng bất thường, tư vấn dùng thuốc an toàn, hoặc gợi ý chuyên khoa và đặt lịch khám phù hợp.\n\nBạn đang cần tư vấn vấn đề sức khỏe nào?`,
       timestamp: 'Vừa xong'
     }
   ]);

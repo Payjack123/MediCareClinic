@@ -34,9 +34,9 @@ const DEFAULT_PROMPTS = [
     prompt: 'Dấu hiệu nào cho thấy cơn đau ngực có nguy cơ nhồi máu cơ tim cần cấp cứu ngay?'
   },
   {
-    icon: '📦',
-    title: 'Tư vấn gói khám',
-    prompt: 'MediCare có những gói khám sức khỏe tổng quát nào cho nam và nữ?'
+    icon: '📅',
+    title: 'Đặt lịch khám bệnh',
+    prompt: 'Tôi muốn đặt lịch khám chuyên khoa tại MediCare thì cần chuẩn bị những gì?'
   }
 ];
 
@@ -45,7 +45,7 @@ export default function MediCareAIChatbot() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Xin chào! Tôi là **Bác sĩ Trợ lý AI của Hệ thống Y tế MediCare** 🩺.\n\nTôi được trang bị trí tuệ nhân tạo y khoa để giải đáp mọi thắc mắc của bạn: từ phân tích triệu chứng bất thường, hướng dẫn dùng thuốc an toàn, giải thích chỉ số xét nghiệm, đến tư vấn chuyên khoa và gói khám phù hợp.\n\nBạn có thể gõ bất kỳ câu hỏi hoặc yêu cầu nào bên dưới, tôi sẽ giải đáp chi tiết ngay!`,
+      content: `Xin chào! Tôi là **Bác sĩ Trợ lý AI của Hệ thống Y tế MediCare** 🩺.\n\nTôi được trang bị trí tuệ nhân tạo y khoa để giải đáp mọi thắc mắc của bạn: từ phân tích triệu chứng bất thường, hướng dẫn dùng thuốc an toàn, giải thích chỉ số xét nghiệm, đến tư vấn chuyên khoa và hỗ trợ đặt lịch khám phù hợp.\n\nBạn có thể gõ bất kỳ câu hỏi hoặc yêu cầu nào bên dưới, tôi sẽ giải đáp chi tiết ngay!`,
       timestamp: 'Vừa xong'
     }
   ]);

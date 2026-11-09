@@ -52,7 +52,7 @@ export default function TraCuuPage() {
               <Link href="/landing/benh-vien" className="hover:text-blue-600 transition">Bệnh viện</Link>
               <Link href="/landing/phong-kham" className="hover:text-blue-600 transition">Phòng khám</Link>
               <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
-              <Link href="/landing/goi-kham" className="hover:text-blue-600 transition">Gói khám</Link>
+              <Link href="/landing/dat-lich" className="hover:text-blue-600 transition">Đặt lịch khám</Link>
               <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
               <Link href="/landing/tra-cuu" className="text-blue-600 transition border-b-2 border-blue-600 py-1">Tra cứu AI</Link>
             </div>
@@ -127,7 +127,7 @@ export default function TraCuuPage() {
                 <li><Link href="/landing/benh-vien" className="hover:text-blue-500 transition">Bệnh viện</Link></li>
                 <li><Link href="/landing/phong-kham" className="hover:text-blue-500 transition">Phòng khám</Link></li>
                 <li><Link href="/landing/bac-si" className="hover:text-blue-500 transition">Bác sĩ chuyên khoa</Link></li>
-                <li><Link href="/landing/goi-kham" className="hover:text-blue-500 transition">Gói khám sức khỏe</Link></li>
+                <li><Link href="/landing/dat-lich" className="hover:text-blue-500 transition">Đặt lịch khám</Link></li>
                 <li><Link href="/landing/bai-viet" className="hover:text-blue-500 transition">Tin tức y tế</Link></li>
               </ul>
             </div>
