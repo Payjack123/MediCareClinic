@@ -35,3 +35,4 @@ export async function performLogout(redirectTo: string = '/login') {
     window.location.href = redirectTo;
   }
 }
+

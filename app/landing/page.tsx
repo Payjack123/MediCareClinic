@@ -9,7 +9,7 @@ import {
   Menu, Star, CalendarDays
 } from 'lucide-react';
 import LandingBookingSection from './components/LandingBookingSection';
-import LogoutButton from '@/components/LogoutButton';
+import LandingNavbar from './components/LandingNavbar';
 
 interface FacilityItem {
   id: number;
@@ -165,84 +165,8 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-gray-800 font-sans relative">
       
-      {/* ==========================================
-          1. TOP BAR
-      ========================================== */}
-      <div className="bg-[#0b53c1] text-white text-sm py-2 hidden md:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2 font-medium">
-              <Phone size={14} /> Hotline: 0941.298.865
-            </span>
-            <span className="text-blue-200">|</span>
-            <Link href="#" className="hover:text-blue-200 transition font-medium">Hệ thống Y tế MediCare</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="font-medium">Hệ thống đặt lịch khám trực tuyến</span>
-            <span className="text-blue-200">|</span>
-            <button className="flex items-center gap-1 hover:text-blue-200 transition font-medium">
-              Tiếng Việt
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ==========================================
-          2. HEADER / NAVBAR
-      ========================================== */}
-      <nav className="bg-white sticky top-0 z-50 shadow-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 cursor-pointer">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-2 shadow-sm">
-                  <Activity size={24} className="text-white" />
-                </div>
-                <span className="font-bold text-3xl tracking-tight text-gray-900">
-                  Medi<span className="text-blue-600">Care</span>
-                </span>
-              </div>
-            </Link>
-
-            {/* Menu Desktop */}
-            <div className="hidden lg:flex space-x-8 font-semibold text-gray-700 items-center">
-              <Link href="/landing/benh-vien" className="hover:text-blue-600 transition">Bệnh viện</Link>
-              <Link href="/landing/phong-kham" className="hover:text-blue-600 transition">Phòng khám</Link>
-              <Link href="/landing/bac-si" className="hover:text-blue-600 transition">Bác sĩ</Link>
-              <Link href="/landing/dat-lich" className="hover:text-blue-600 transition">Đặt lịch khám</Link>
-              <Link href="/landing/bai-viet" className="hover:text-blue-600 transition">Tin sức khỏe</Link>
-              <Link href="/landing/tra-cuu" className="hover:text-blue-600 transition">Tra cứu AI</Link>
-            </div>
-
-            {/* Right Actions */}
-            <div className="hidden md:flex items-center gap-4">
-              {isLoggedIn && currentUser ? (
-                <div className="flex items-center gap-3">
-                  <Link href="/patient/dashboard" className="text-blue-600 font-bold hover:underline flex items-center gap-1.5 text-sm">
-                    <Users size={16} /> {currentUser.fullName}
-                  </Link>
-                  <LogoutButton redirectTo="/landing" />
-                </div>
-              ) : (
-                <>
-                  <Link href="/login" className="text-gray-700 font-semibold hover:text-blue-600 transition flex items-center gap-2">
-                    <Users size={18} /> Đăng nhập
-                  </Link>
-                  <Link href="/register" className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all text-sm">
-                    Đăng ký
-                  </Link>
-                </>
-              )}
-            </div>
-            
-            {/* Mobile Menu Button */}
-            <button className="lg:hidden text-gray-700 p-2">
-              <Menu size={24} />
-            </button>
-          </div>
-        </div>
-      </nav>
+      {/* NAVBAR DÙNG CHUNG ĐỒNG BỘ ĐĂNG NHẬP / ĐĂNG KÝ */}
+      <LandingNavbar initialUser={currentUser} isLoggedIn={isLoggedIn} />
 
       {/* ==========================================
           3. HERO & SEARCH SECTION
