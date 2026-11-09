@@ -76,15 +76,48 @@ export async function loginUser(email: string, password: string, loginRole: User
       return { success: false, message: 'Mật khẩu không chính xác!' };
     }
 
-    // Set cookie sau khi đăng nhập
+    // Set cookie sau khi đăng nhập (chuẩn hóa path: '/', sameSite: 'lax')
     const cookieStore = await cookies();
-    cookieStore.set('user_role', user.role.toLowerCase(), { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-    cookieStore.set('user_id', user.id.toString(), { httpOnly: true, secure: process.env.NODE_ENV === 'production' });  
+    cookieStore.set('user_role', user.role.toLowerCase(), { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7
+    });
+    cookieStore.set('user_id', user.id.toString(), { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7
+    });  
 
     // Trả về role chữ thường để Next.js điều hướng (patient, doctor, admin)
     return { success: true, role: user.role.toLowerCase(), name: user.fullName };
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
     return { success: false, message: 'Lỗi hệ thống, vui lòng thử lại sau.' };
+  }
+}
+
+// 3. HÀM ĐĂNG XUẤT (LOGOUT TOÀN DIỆN)
+export async function logoutUser() {
+  try {
+    const cookieStore = await cookies();
+    
+    cookieStore.delete('user_id');
+    cookieStore.delete('user_role');
+    cookieStore.delete('auth_token');
+    cookieStore.delete('token');
+
+    // Ghi đè để xoá triệt để với path: '/'
+    cookieStore.set('user_id', '', { path: '/', maxAge: 0, expires: new Date(0) });
+    cookieStore.set('user_role', '', { path: '/', maxAge: 0, expires: new Date(0) });
+
+    return { success: true, message: 'Đăng xuất thành công' };
+  } catch (error) {
+    console.error('Lỗi khi đăng xuất:', error);
+    return { success: false, message: 'Lỗi hệ thống khi đăng xuất' };
   }
 }

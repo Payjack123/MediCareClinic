@@ -1,3 +1,4 @@
+import { performLogout } from '@/lib/auth-client';
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -80,7 +81,7 @@ export default function AdminUsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, activeTab]);
 
-  const handleLogout = () => router.push('/login');
+  const handleLogout = async () => { await performLogout('/login'); };
 
   // --- HANDLERS CHO USERS ---
   const handleCreateUser = async () => {

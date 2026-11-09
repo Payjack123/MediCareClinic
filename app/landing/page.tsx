@@ -9,6 +9,7 @@ import {
   Menu, Star, CalendarDays
 } from 'lucide-react';
 import LandingBookingSection from './components/LandingBookingSection';
+import LogoutButton from '@/components/LogoutButton';
 
 interface FacilityItem {
   id: number;
@@ -217,9 +218,12 @@ export default async function HomePage() {
             {/* Right Actions */}
             <div className="hidden md:flex items-center gap-4">
               {isLoggedIn && currentUser ? (
-                <Link href="/patient/dashboard" className="text-blue-600 font-bold hover:underline flex items-center gap-2">
-                  <Users size={18} /> {currentUser.fullName}
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link href="/patient/dashboard" className="text-blue-600 font-bold hover:underline flex items-center gap-1.5 text-sm">
+                    <Users size={16} /> {currentUser.fullName}
+                  </Link>
+                  <LogoutButton redirectTo="/landing" />
+                </div>
               ) : (
                 <>
                   <Link href="/login" className="text-gray-700 font-semibold hover:text-blue-600 transition flex items-center gap-2">

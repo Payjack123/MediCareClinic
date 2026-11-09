@@ -1,3 +1,4 @@
+import { performLogout } from '@/lib/auth-client';
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -43,7 +44,7 @@ export default function AdminSettingsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogout = () => router.push('/login');
+  const handleLogout = async () => { await performLogout('/login'); };
 
   const handleSave = async () => {
     const tId = toast.loading('Đang lưu cấu hình...');

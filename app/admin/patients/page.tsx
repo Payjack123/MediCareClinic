@@ -1,3 +1,4 @@
+import { performLogout } from '@/lib/auth-client';
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -43,9 +44,7 @@ export default function AdminPatientsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogout = () => {
-    router.push('/login');
-  };
+  const handleLogout = async () => { await performLogout('/login'); };
 
   const toggleStatus = async (id: number, currentStatus: string) => {
     const newStatus = currentStatus === 'Khóa' ? 'Hoạt động' : 'Khóa';

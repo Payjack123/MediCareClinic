@@ -1,3 +1,4 @@
+import { performLogout } from '@/lib/auth-client';
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -86,9 +87,7 @@ export default function AdminServicesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const handleLogout = () => {
-    router.push('/login');
-  };
+  const handleLogout = async () => { await performLogout('/login'); };
 
   const handleSaveService = async () => {
     if (!newService.id || !newService.name || !newService.departmentId) {

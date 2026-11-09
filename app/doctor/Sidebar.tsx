@@ -9,6 +9,7 @@ import {
   ChevronUp, ChevronDown, Edit, ImageIcon, Stethoscope, ClipboardList,
   Microscope, HeartPulse, ArrowLeftToLine, Shield
 } from 'lucide-react';
+import { performLogout } from '@/lib/auth-client';
 
 type SubItem = {
   name: string;
@@ -51,7 +52,9 @@ export default function DoctorSidebar({ activePage }: { activePage: string }) {
     sessionStorage.setItem('doctorSidebarScroll', e.currentTarget.scrollTop.toString());
   };
 
-  const handleLogout = () => router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
+  };
 
   const navigation: NavGroup[] = [
     {

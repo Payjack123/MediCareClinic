@@ -8,6 +8,7 @@ import {
   Search, MessageSquare, LogOut, HeartPulse, CreditCard, FileText, ShieldPlus, BarChart3, Settings, Headset
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import { performLogout } from '@/lib/auth-client';
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -98,10 +99,14 @@ export default function ReceptionistLayout({ children }: { children: React.React
         </div>
 
         <div className="p-4 border-t border-gray-100">
-          <Link href="/" className="flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl font-medium transition-colors">
+          <button
+            type="button"
+            onClick={() => performLogout('/login')}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl font-medium transition-colors cursor-pointer"
+          >
             <LogOut size={20} />
             Đăng xuất
-          </Link>
+          </button>
         </div>
       </aside>
 

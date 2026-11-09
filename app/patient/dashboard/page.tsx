@@ -11,6 +11,7 @@ import {
 
 import { getPatientDashboardData } from '@/app/patient/dashboard/actions';
 import PatientSidebar from '@/app/patient/Sidebar';
+import { performLogout } from '@/lib/auth-client';
 
 export default function PatientDashboard() {
   const router = useRouter();
@@ -33,8 +34,8 @@ export default function PatientDashboard() {
     fetchData();
   }, [router]);
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   const parseDate = (dateString: string) => {
@@ -103,10 +104,16 @@ export default function PatientDashboard() {
             <button className="relative p-2.5 text-gray-500 hover:bg-blue-50 hover:text-[#2563EB] rounded-full transition bg-white border border-gray-200 shadow-sm">
               <Bell size={20} />
             </button>
-            <div className="flex items-center gap-3 pl-5 border-l border-gray-200 cursor-pointer group">
+            <div className="flex items-center gap-3 pl-5 border-l border-gray-200">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-900 group-hover:text-[#2563EB] transition">{data.user.fullName}</p>
-
+                <p className="text-sm font-bold text-gray-900">{data.user.fullName}</p>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="text-xs text-red-500 hover:text-red-700 font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <LogOut size={12} /> Đăng xuất
+                </button>
               </div>
               <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.fullName)}&background=2563EB&color=fff`} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-white shadow-sm" />
             </div>

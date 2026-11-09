@@ -12,6 +12,7 @@ import {
 import { getAdminDashboardData } from '@/app/admin/dashboard/actions';
 import dayjs from 'dayjs';
 import Sidebar from '@/app/admin/Sidebar';
+import { performLogout } from '@/lib/auth-client';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -31,8 +32,8 @@ export default function AdminDashboardPage() {
     fetchData();
   }, [router]);
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   if (isLoading || !data) {

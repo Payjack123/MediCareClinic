@@ -11,6 +11,7 @@ import {
 
 import { getPatientSettingsData, updatePatientProfile, updatePatientPassword } from '@/app/patient/settings/actions';
 import PatientSidebar from '@/app/patient/Sidebar';
+import { performLogout } from '@/lib/auth-client';
 
 export default function PatientSettingsPage() {
   const router = useRouter();
@@ -48,8 +49,8 @@ export default function PatientSettingsPage() {
     fetchData();
   }, [router]);
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   const toggleNoti = (key: keyof typeof notiSettings) => {

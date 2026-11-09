@@ -7,14 +7,14 @@ import {
   Settings, Activity, Building2, ShieldCheck, Receipt, Stethoscope, 
   BriefcaseMedical, CreditCard, TrendingUp, LogOut
 } from 'lucide-react';
+import { performLogout } from '@/lib/auth-client';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleLogout = () => {
-    // Navigate to login, handling of cookie clear can be done in login page if needed
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   const navItems = [

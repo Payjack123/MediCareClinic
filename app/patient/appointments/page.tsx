@@ -8,6 +8,7 @@ import QRCode from 'react-qr-code';
 import PatientSidebar from '@/app/patient/Sidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { toast } from 'react-hot-toast';
+import { performLogout } from '@/lib/auth-client';
 
 import { getPatientAppointmentData, getBookedTimes, getAvailableSchedules, createAppointment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
 import Step1Patient from './components/Step1Patient';
@@ -311,7 +312,9 @@ export default function PatientAppointmentsPage() {
     }
   };
 
-  const handleLogout = () => router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
+  };
 
   // FIX LỖI Ở ĐÂY: Lọc không phân biệt hoa thường và bỏ khoảng trắng thừa
   const filteredDoctors = doctorsList.filter(doc =>

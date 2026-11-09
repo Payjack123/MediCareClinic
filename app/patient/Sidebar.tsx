@@ -6,6 +6,7 @@ import {
   LayoutDashboard, CalendarDays, CalendarCheck, FileText, Pill, HeartPulse,
   Settings, LogOut, Activity, Wallet, History
 } from 'lucide-react';
+import { performLogout } from '@/lib/auth-client';
 
 export default function PatientSidebar({ activePage }: { activePage: string }) {
   const router = useRouter();
@@ -23,8 +24,8 @@ export default function PatientSidebar({ activePage }: { activePage: string }) {
     sessionStorage.setItem('patientSidebarScroll', e.currentTarget.scrollTop.toString());
   };
 
-  const handleLogout = () => {
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   const getMenuItemClass = (pageName: string) => {

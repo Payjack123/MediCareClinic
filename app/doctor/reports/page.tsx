@@ -1,7 +1,8 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // <-- Import useRouter
+import { useRouter } from 'next/navigation';
+import { performLogout } from '@/lib/auth-client'; // <-- Import useRouter
 import {
   LayoutDashboard, CalendarDays, Users, FileText, Pill, TestTube,
   BarChart3, Bell, User, Settings, LogOut, Search,
@@ -16,12 +17,8 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState('Tháng này');
 
   // Hàm xử lý đăng xuất
-  const handleLogout = () => {
-    // Có thể xóa localStorage token ở đây nếu có
-    // localStorage.removeItem('token');
-
-    // Chuyển hướng về trang đăng nhập
-    router.push('/login');
+  const handleLogout = async () => {
+    await performLogout('/login');
   };
 
   return (
