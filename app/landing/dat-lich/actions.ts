@@ -25,45 +25,45 @@ export interface BookingPayload {
 // Lấy dữ liệu khởi tạo cho trang đặt lịch
 export async function getBookingInitialData() {
   try {
-    const [facilities, specialties, doctors] = await Promise.all([
-      prisma.facility.findMany({
-        include: {
-          clinics: {
-            include: {
-              specialty: true
-            }
+    const facilities = await prisma.facility.findMany({
+      include: {
+        clinics: {
+          include: {
+            specialty: true
+          }
+        }
+      },
+      orderBy: { id: 'asc' }
+    });
+
+    const specialties = await prisma.specialty.findMany({
+      orderBy: { name: 'asc' }
+    });
+
+    const doctors = await prisma.doctorProfile.findMany({
+      where: {
+        status: 'Đang làm việc'
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            avatar: true,
+            phone: true,
+            address: true
           }
         },
-        orderBy: { id: 'asc' }
-      }),
-      prisma.specialty.findMany({
-        orderBy: { name: 'asc' }
-      }),
-      prisma.doctorProfile.findMany({
-        where: {
-          status: 'Đang làm việc'
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              avatar: true,
-              phone: true,
-              address: true
-            }
-          },
-          specialty: true,
-          department: true,
-          clinics: {
-            include: {
-              facility: true
-            }
+        specialty: true,
+        department: true,
+        clinics: {
+          include: {
+            facility: true
           }
-        },
-        orderBy: { id: 'asc' }
-      })
-    ]);
+        }
+      },
+      orderBy: { id: 'asc' }
+    });
 
     return {
       success: true,

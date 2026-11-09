@@ -64,45 +64,45 @@ export default async function DatLichPage() {
   let doctors: DoctorItem[] = [];
 
   try {
-    const [rawFacilities, rawSpecialties, rawDoctors] = await Promise.all([
-      prisma.facility.findMany({
-        include: {
-          clinics: {
-            include: {
-              specialty: true
-            }
+    const rawFacilities = await prisma.facility.findMany({
+      include: {
+        clinics: {
+          include: {
+            specialty: true
+          }
+        }
+      },
+      orderBy: { id: 'asc' }
+    });
+
+    const rawSpecialties = await prisma.specialty.findMany({
+      orderBy: { name: 'asc' }
+    });
+
+    const rawDoctors = await prisma.doctorProfile.findMany({
+      where: {
+        status: 'Đang làm việc'
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            avatar: true,
+            phone: true,
+            address: true
           }
         },
-        orderBy: { id: 'asc' }
-      }),
-      prisma.specialty.findMany({
-        orderBy: { name: 'asc' }
-      }),
-      prisma.doctorProfile.findMany({
-        where: {
-          status: 'Đang làm việc'
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-              avatar: true,
-              phone: true,
-              address: true
-            }
-          },
-          specialty: true,
-          department: true,
-          clinics: {
-            include: {
-              facility: true
-            }
+        specialty: true,
+        department: true,
+        clinics: {
+          include: {
+            facility: true
           }
-        },
-        orderBy: { id: 'asc' }
-      })
-    ]);
+        }
+      },
+      orderBy: { id: 'asc' }
+    });
 
     facilities = rawFacilities;
     specialties = rawSpecialties;
