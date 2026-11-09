@@ -1,7 +1,6 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
@@ -125,79 +124,32 @@ export async function createLandingAppointment(payload: BookingPayload) {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
 
-    let targetUserId: number;
+    if (!userIdStr) {
+      return {
+        success: false,
+        requireAuth: true,
+        message: 'Vui lòng đăng nhập hoặc đăng ký tài khoản để xác nhận và hoàn tất đặt lịch khám.'
+      };
+    }
 
-    if (userIdStr) {
-      targetUserId = parseInt(userIdStr, 10);
-      // Cập nhật thêm SĐT nếu user chưa có
-      const existingUser = await prisma.user.findUnique({
-        where: { id: targetUserId }
-      });
-      if (existingUser && !existingUser.phone) {
-        await prisma.user.update({
-          where: { id: targetUserId },
-          data: { phone: cleanPhone }
-        }).catch(() => {});
-      }
-    } else {
-      // Tìm xem đã có user nào có SĐT này chưa
-      let patientUser = await prisma.user.findFirst({
-        where: { phone: cleanPhone }
-      });
+    const targetUserId = parseInt(userIdStr, 10);
+    if (isNaN(targetUserId)) {
+      return {
+        success: false,
+        requireAuth: true,
+        message: 'Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại.'
+      };
+    }
 
-      if (!patientUser) {
-        // Tạo tài khoản Bệnh nhân mới tự động
-        const salt = await bcrypt.genSalt(10);
-        const tempPassword = `P@${cleanPhone.slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
-        const hashedPassword = await bcrypt.hash(tempPassword, salt);
-        const autoEmail = `${cleanPhone}@khach.medicare.vn`;
-
-        const patientCode = `BN${new Date().getFullYear().toString().slice(-2)}${Math.floor(1000 + Math.random() * 9000)}`;
-
-        patientUser = await prisma.user.create({
-          data: {
-            fullName: patientName.trim(),
-            email: autoEmail,
-            phone: cleanPhone,
-            passwordHash: hashedPassword,
-            role: 'PATIENT',
-            dob: dob || null,
-            gender: gender || 'Nam',
-            address: address || (facilityName?.includes('Hà Nội') ? 'Hà Nội' : 'TP. Hồ Chí Minh'),
-            patientProfile: {
-              create: {
-                patientCode: patientCode
-              }
-            }
-          }
-        });
-
-        // Tự động duy trì đăng nhập cho người dùng
-        cookieStore.set('user_id', patientUser.id.toString(), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 7 // 7 ngày
-        });
-        cookieStore.set('user_role', 'patient', {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 7
-        });
-      } else {
-        // Đã có tài khoản với SĐT này, tự động gắn session
-        cookieStore.set('user_id', patientUser.id.toString(), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 7
-        });
-        cookieStore.set('user_role', patientUser.role.toLowerCase(), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 7
-        });
-      }
-
-      targetUserId = patientUser.id;
+    // Cập nhật thêm SĐT nếu user chưa có
+    const existingUser = await prisma.user.findUnique({
+      where: { id: targetUserId }
+    });
+    if (existingUser && !existingUser.phone) {
+      await prisma.user.update({
+        where: { id: targetUserId },
+        data: { phone: cleanPhone }
+      }).catch(() => {});
     }
 
     // Xác định Bác sĩ được chỉ định

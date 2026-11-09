@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { 
   Phone, Mail, MapPin, Search, ChevronRight,
@@ -74,6 +75,32 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const bookingLink = '/login';
+
+  const cookieStore = await cookies();
+  const userIdStr = cookieStore.get('user_id')?.value;
+  let currentUser: { id: number; fullName: string; phone: string | null; dob: string | null; gender: string | null } | null = null;
+
+  if (userIdStr) {
+    const userId = parseInt(userIdStr, 10);
+    if (!isNaN(userId)) {
+      try {
+        currentUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            dob: true,
+            gender: true
+          }
+        });
+      } catch (err) {
+        console.error('Error fetching current user:', err);
+      }
+    }
+  }
+
+  const isLoggedIn = !!currentUser;
 
   // Lấy dữ liệu thật 2 bệnh viện từ database
   let rawFacilities: FacilityItem[] = [];
@@ -189,12 +216,20 @@ export default async function HomePage() {
 
             {/* Right Actions */}
             <div className="hidden md:flex items-center gap-4">
-              <Link href="/login" className="text-gray-700 font-semibold hover:text-blue-600 transition flex items-center gap-2">
-                <Users size={18} /> Đăng nhập
-              </Link>
-              <Link href="/register" className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all text-sm">
-                Đăng ký
-              </Link>
+              {isLoggedIn && currentUser ? (
+                <Link href="/patient/dashboard" className="text-blue-600 font-bold hover:underline flex items-center gap-2">
+                  <Users size={18} /> {currentUser.fullName}
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="text-gray-700 font-semibold hover:text-blue-600 transition flex items-center gap-2">
+                    <Users size={18} /> Đăng nhập
+                  </Link>
+                  <Link href="/register" className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all text-sm">
+                    Đăng ký
+                  </Link>
+                </>
+              )}
             </div>
             
             {/* Mobile Menu Button */}
@@ -496,6 +531,8 @@ export default async function HomePage() {
         facilities={rawFacilities}
         doctors={rawDoctors}
         specialties={rawSpecialties}
+        isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
       />
 
       {/* ==========================================

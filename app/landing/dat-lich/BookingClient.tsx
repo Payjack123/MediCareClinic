@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { 
@@ -8,7 +8,7 @@ import {
   Stethoscope, ArrowRight, ShieldCheck, 
   Building2, RotateCcw, AlertCircle, Loader2, Check, 
   CalendarDays, HelpCircle, ChevronDown, 
-  ChevronUp, ExternalLink
+  ChevronUp, ExternalLink, LogIn, UserPlus, Lock, X
 } from 'lucide-react';
 import { createLandingAppointment } from './actions';
 
@@ -74,6 +74,14 @@ interface Props {
   specialties: Specialty[];
   doctors: Doctor[];
   bookingLink?: string;
+  isLoggedIn?: boolean;
+  currentUser?: {
+    id?: number;
+    fullName?: string;
+    phone?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+  } | null;
 }
 
 const MORNING_SLOTS = [
@@ -111,7 +119,9 @@ export default function BookingClient({
   facilities = [],
   specialties = [],
   doctors = [],
-  bookingLink = '/login'
+  bookingLink = '/login',
+  isLoggedIn = false,
+  currentUser = null
 }: Props) {
   // Mode: 'quick' | 'by-doctor'
   const [bookingMode, setBookingMode] = useState<'quick' | 'by-doctor'>('quick');
@@ -162,8 +172,54 @@ export default function BookingClient({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [successData, setSuccessData] = useState<BookingConfirmation | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(0);
+
+  // Khôi phục bản ghi tạm từ localStorage nếu có
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('medicare_draft_booking');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.facilityId) setSelectedFacilityId(parsed.facilityId);
+        if (parsed.specialtyName) setSelectedSpecialty(parsed.specialtyName);
+        if (parsed.doctorId) setSelectedDoctorId(parsed.doctorId);
+        if (parsed.bookingDate) setSelectedDate(parsed.bookingDate);
+        if (parsed.bookingTime) setSelectedTime(parsed.bookingTime);
+        if (parsed.patientName) setPatientName(parsed.patientName);
+        if (parsed.phone) setPhone(parsed.phone);
+        if (parsed.dob) setDob(parsed.dob);
+        if (parsed.gender) setGender(parsed.gender);
+        if (parsed.reason) setReason(parsed.reason);
+      }
+    } catch (e) {
+      console.error('Failed to restore draft booking:', e);
+    }
+  }, []);
+
+  // Tự động điền thông tin người dùng nếu đã đăng nhập
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.fullName && !patientName) {
+        setPatientName(currentUser.fullName);
+      }
+      if (currentUser.phone && !phone) {
+        setPhone(currentUser.phone);
+      }
+      if (currentUser.dob && !dob) {
+        try {
+          const d = new Date(currentUser.dob);
+          if (!isNaN(d.getTime())) {
+            setDob(d.toISOString().split('T')[0]);
+          }
+        } catch {}
+      }
+      if (currentUser.gender && !gender) {
+        setGender(currentUser.gender);
+      }
+    }
+  }, [currentUser]);
 
   // Filtered doctors
   const filteredDoctors = useMemo(() => {
@@ -184,6 +240,26 @@ export default function BookingClient({
 
   const selectedFacilityObj = facilities.find(f => f.id === selectedFacilityId);
   const selectedDoctorObj = doctors.find(d => (d.userId || d.user?.id || d.id) === selectedDoctorId);
+
+  // Lưu thông tin draft vào localStorage
+  const saveBookingDraft = () => {
+    try {
+      localStorage.setItem('medicare_draft_booking', JSON.stringify({
+        facilityId: selectedFacilityId,
+        specialtyName: selectedSpecialty,
+        doctorId: selectedDoctorId,
+        bookingDate: selectedDate,
+        bookingTime: selectedTime,
+        patientName: patientName.trim(),
+        phone: phone.trim(),
+        gender,
+        dob,
+        reason: reason.trim()
+      }));
+    } catch (err) {
+      console.error('Failed to save draft:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,6 +282,15 @@ export default function BookingClient({
       return;
     }
 
+    // Luôn lưu dữ liệu tạm để không bị mất khi chuyển sang Đăng nhập / Đăng ký
+    saveBookingDraft();
+
+    // KIỂM TRA ĐĂNG NHẬP: Bắt buộc đăng nhập hoặc đăng ký mới được đặt lịch
+    if (!isLoggedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await createLandingAppointment({
@@ -224,8 +309,13 @@ export default function BookingClient({
       });
 
       if (res.success && res.details) {
+        try {
+          localStorage.removeItem('medicare_draft_booking');
+        } catch {}
         setSuccessData(res.details);
         window.scrollTo({ top: 200, behavior: 'smooth' });
+      } else if (res.requireAuth) {
+        setShowAuthModal(true);
       } else {
         setErrorMessage(res.message || 'Đặt lịch chưa thành công, vui lòng thử lại');
       }
@@ -723,6 +813,42 @@ export default function BookingClient({
                   </div>
                 )}
 
+                {/* Thông báo trạng thái tài khoản */}
+                {!isLoggedIn ? (
+                  <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-amber-900">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
+                        <Lock size={16} />
+                      </div>
+                      <div>
+                        <div className="font-bold">Yêu cầu đăng nhập hoặc đăng ký</div>
+                        <div className="text-amber-700/80 text-xs mt-0.5">Quý khách cần có tài khoản để hệ thống xác nhận lịch và lưu phiếu khám.</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      <Link 
+                        href="/login?redirect=/landing/dat-lich"
+                        onClick={saveBookingDraft}
+                        className="px-3.5 py-1.5 bg-white border border-amber-300 text-amber-900 font-bold rounded-lg hover:bg-amber-100 transition-colors text-xs flex items-center gap-1.5"
+                      >
+                        <LogIn size={13} /> Đăng nhập
+                      </Link>
+                      <Link 
+                        href="/register?redirect=/landing/dat-lich"
+                        onClick={saveBookingDraft}
+                        className="px-3.5 py-1.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors text-xs flex items-center gap-1.5 shadow-sm"
+                      >
+                        <UserPlus size={13} /> Đăng ký
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2.5 text-xs sm:text-sm text-emerald-900">
+                    <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                    <span>Đang đặt lịch với tài khoản: <strong>{currentUser?.fullName}</strong> ({currentUser?.phone || 'Chưa cập nhật SĐT'})</span>
+                  </div>
+                )}
+
                 {/* Submit button */}
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-xs text-gray-500 flex items-center gap-1.5">
@@ -857,6 +983,96 @@ export default function BookingClient({
           </div>
         </div>
       </section>
+
+      {/* ==========================================
+          MODAL XÁC THỰC: YÊU CẦU ĐĂNG NHẬP / ĐĂNG KÝ
+      ========================================== */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-gray-100 animate-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Lock size={28} />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900">Yêu cầu Đăng nhập hoặc Đăng ký</h3>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                Để bảo vệ thông tin sức khỏe và xuất phiếu khám điện tử, quý khách vui lòng đăng nhập hoặc đăng ký tài khoản MediCare.
+              </p>
+            </div>
+
+            {/* Tóm tắt lịch hẹn đã chọn */}
+            <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 mb-6 text-xs sm:text-sm text-gray-700 space-y-2">
+              <div className="font-bold text-blue-900 border-b border-blue-100 pb-1.5 flex items-center gap-1.5">
+                <CalendarDays size={16} className="text-blue-600" /> Thông tin lịch hẹn của bạn:
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Cơ sở:</span>
+                <span className="font-semibold text-gray-900">{selectedFacilityObj?.name || 'MediCare'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Chuyên khoa:</span>
+                <span className="font-semibold text-gray-900">{selectedSpecialty || selectedDoctorObj?.specialty?.name || 'Đa khoa'}</span>
+              </div>
+              {selectedDoctorObj && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Bác sĩ:</span>
+                  <span className="font-semibold text-gray-900">{selectedDoctorObj.user?.fullName}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Thời gian:</span>
+                <span className="font-bold text-blue-700">{selectedTime} - {selectedDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Người khám:</span>
+                <span className="font-semibold text-gray-900">{patientName} ({phone})</span>
+              </div>
+            </div>
+
+            {/* Các nút hành động */}
+            <div className="space-y-3">
+              <Link
+                href="/login?redirect=/landing/dat-lich"
+                onClick={saveBookingDraft}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-200 hover:scale-[1.01] transition-all text-sm sm:text-base cursor-pointer"
+              >
+                <LogIn size={18} />
+                <span>Đăng nhập để xác nhận lịch khám</span>
+              </Link>
+
+              <Link
+                href="/register?redirect=/landing/dat-lich"
+                onClick={saveBookingDraft}
+                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-2 border-emerald-500 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.01] transition-all text-sm sm:text-base cursor-pointer"
+              >
+                <UserPlus size={18} />
+                <span>Đăng ký tài khoản mới</span>
+              </Link>
+            </div>
+
+            <div className="mt-5 text-center">
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                💡 Thông tin lịch hẹn đã được lưu an toàn. Sau khi đăng nhập, hệ thống sẽ tự động đưa bạn quay lại hoàn tất việc đặt khám.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="mt-3 text-xs text-gray-500 hover:text-gray-800 underline font-medium"
+              >
+                Quay lại chỉnh sửa thông tin khám
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
