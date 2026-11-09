@@ -5,10 +5,22 @@ import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { 
   Calendar, Clock, User, Phone, FileText, CheckCircle2, 
-  MapPin, Stethoscope, ArrowRight, ShieldCheck, Sparkles, 
+  Stethoscope, ArrowRight, ShieldCheck, Sparkles, 
   Building2, RotateCcw, AlertCircle, Loader2, Check, ExternalLink
 } from 'lucide-react';
 import { createLandingAppointment } from '@/app/landing/dat-lich/actions';
+
+interface BookingConfirmation {
+  appointmentCode: string;
+  patientName: string;
+  phone: string;
+  bookingDate: string;
+  bookingTime: string;
+  doctorName: string;
+  specialty: string;
+  facilityName: string;
+  room?: string;
+}
 
 interface Facility {
   id: number;
@@ -43,7 +55,7 @@ interface Doctor {
     facility?: {
       id: number;
       name: string;
-    };
+    } | null;
   }>;
 }
 
@@ -114,7 +126,7 @@ export default function LandingBookingSection({
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [successData, setSuccessData] = useState<any>(null);
+  const [successData, setSuccessData] = useState<BookingConfirmation | null>(null);
 
   // Lọc bác sĩ theo cơ sở và chuyên khoa đã chọn
   const filteredDoctors = useMemo(() => {
@@ -174,13 +186,12 @@ export default function LandingBookingSection({
         reason: reason.trim() || 'Đặt lịch khám trực tuyến qua website MediCare'
       });
 
-      if (res.success) {
+      if (res.success && res.details) {
         setSuccessData(res.details);
       } else {
         setErrorMessage(res.message || 'Đặt lịch chưa thành công, vui lòng thử lại');
       }
-    } catch (err: any) {
-      console.error('Error booking appointment:', err);
+    } catch {
       setErrorMessage('Không thể kết nối máy chủ, vui lòng thử lại sau');
     } finally {
       setIsSubmitting(false);

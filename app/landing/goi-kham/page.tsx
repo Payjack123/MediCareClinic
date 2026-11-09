@@ -1,7 +1,2 @@
-import { redirect } from 'next/navigation';
-
+export { default, metadata } from '../dat-lich/page';
 export const dynamic = 'force-dynamic';
-
-export default function GoiKhamRedirect() {
-  redirect('/landing/dat-lich');
-}

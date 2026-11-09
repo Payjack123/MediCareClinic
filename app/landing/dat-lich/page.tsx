@@ -3,9 +3,50 @@ import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { 
   Phone, Mail, MapPin, Activity, Users, Menu, 
-  CalendarDays, Shield, HeartPulse, Clock, Sparkles
+  CalendarDays, Clock
 } from 'lucide-react';
 import BookingClient from './BookingClient';
+
+interface FacilityItem {
+  id: number;
+  name: string;
+  address: string;
+  clinics: Array<{
+    id: number;
+    name: string;
+    facilityId: number;
+    specialty?: { id: number; name: string } | null;
+  }>;
+}
+
+interface SpecialtyItem {
+  id: number;
+  name: string;
+}
+
+interface DoctorItem {
+  id: number;
+  userId: number;
+  user: {
+    id: number;
+    fullName: string;
+    avatar: string | null;
+    phone: string | null;
+    address: string | null;
+  };
+  degree: string | null;
+  experience: string | null;
+  price: number | null;
+  bio: string | null;
+  specialty?: { id: number; name: string } | null;
+  department?: { id: number; name: string } | null;
+  clinics?: Array<{
+    id: number;
+    name: string;
+    facilityId: number;
+    facility?: { id: number; name: string } | null;
+  }>;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -18,9 +59,9 @@ export default async function DatLichPage() {
   const bookingLink = '/login';
 
   // Lấy dữ liệu thật từ cơ sở dữ liệu
-  let facilities: any[] = [];
-  let specialties: any[] = [];
-  let doctors: any[] = [];
+  let facilities: FacilityItem[] = [];
+  let specialties: SpecialtyItem[] = [];
+  let doctors: DoctorItem[] = [];
 
   try {
     const [rawFacilities, rawSpecialties, rawDoctors] = await Promise.all([

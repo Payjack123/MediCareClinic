@@ -205,7 +205,7 @@ export async function createLandingAppointment(payload: BookingPayload) {
 
     if (!assignedDoctorId || assignedDoctorId === 0) {
       // Tìm bác sĩ phù hợp với chuyên khoa hoặc cơ sở
-      let matchedDoctor: any = null;
+      let matchedDoctor: { id: number; userId: number; user?: { id: number; fullName: string } } | null = null;
 
       if (specialtyName && specialtyName !== 'Tất cả chuyên khoa') {
         matchedDoctor = await prisma.doctorProfile.findFirst({
@@ -286,7 +286,7 @@ export async function createLandingAppointment(payload: BookingPayload) {
         appointmentCode: appointmentCode,
         paymentMethod: paymentMethod,
         paymentStatus: 'CHƯA THANH TOÁN'
-      } as any
+      }
     });
 
     // Tạo thông báo cho bệnh nhân

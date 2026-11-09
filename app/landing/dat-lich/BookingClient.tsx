@@ -5,18 +5,30 @@ import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { 
   Calendar, Clock, User, Phone, FileText, CheckCircle2, 
-  MapPin, Stethoscope, ArrowRight, ShieldCheck, Sparkles, 
-  Building2, RotateCcw, AlertCircle, Loader2, Check, Star, 
-  ChevronRight, CalendarDays, HelpCircle, ChevronDown, 
-  ChevronUp, ExternalLink, Shield
+  Stethoscope, ArrowRight, ShieldCheck, 
+  Building2, RotateCcw, AlertCircle, Loader2, Check, 
+  CalendarDays, HelpCircle, ChevronDown, 
+  ChevronUp, ExternalLink
 } from 'lucide-react';
 import { createLandingAppointment } from './actions';
+
+interface BookingConfirmation {
+  appointmentCode: string;
+  patientName: string;
+  phone: string;
+  bookingDate: string;
+  bookingTime: string;
+  doctorName: string;
+  specialty: string;
+  facilityName: string;
+  room?: string;
+}
 
 interface Facility {
   id: number;
   name: string;
   address: string;
-  clinics?: any[];
+  clinics?: Array<{ id: number; name: string }>;
 }
 
 interface Specialty {
@@ -53,7 +65,7 @@ interface Doctor {
     facility?: {
       id: number;
       name: string;
-    };
+    } | null;
   }>;
 }
 
@@ -149,7 +161,7 @@ export default function BookingClient({
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [successData, setSuccessData] = useState<any>(null);
+  const [successData, setSuccessData] = useState<BookingConfirmation | null>(null);
 
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(0);
 
@@ -211,14 +223,13 @@ export default function BookingClient({
         reason: reason.trim() || 'Đặt lịch khám trực tuyến qua website MediCare'
       });
 
-      if (res.success) {
+      if (res.success && res.details) {
         setSuccessData(res.details);
         window.scrollTo({ top: 200, behavior: 'smooth' });
       } else {
         setErrorMessage(res.message || 'Đặt lịch chưa thành công, vui lòng thử lại');
       }
-    } catch (err: any) {
-      console.error('Error booking appointment:', err);
+    } catch {
       setErrorMessage('Không thể kết nối máy chủ, vui lòng thử lại sau');
     } finally {
       setIsSubmitting(false);
@@ -796,7 +807,7 @@ export default function BookingClient({
                   Đăng nhập để tự động điền thông tin, quản lý lịch sử khám, kết quả xét nghiệm và đơn thuốc điện tử.
                 </p>
                 <Link
-                  href="/login?redirect=/patient/appointments"
+                  href={`${bookingLink}?redirect=/patient/appointments`}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs block text-center transition-colors shadow-sm"
                 >
                   Đăng nhập cổng bệnh nhân &rarr;
