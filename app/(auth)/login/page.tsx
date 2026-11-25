@@ -6,11 +6,11 @@ import { Mail, Lock, Activity, ArrowLeft, Loader2, User, Stethoscope, ShieldChec
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { loginUser } from '@/app/(auth)/actions/auth';
+import { getDashboardPath } from '@/lib/auth-navigation';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect');
   const errorParam = searchParams.get('error');
 
   const [email, setEmail] = useState('');
@@ -48,23 +48,7 @@ function LoginForm() {
       const res = await loginUser(email, password, selectedRole);
 
       if (res.success) {
-        switch (res.role) {
-          case 'patient':
-            router.push(redirectUrl || '/patient/dashboard');
-            break;
-          case 'doctor':
-            router.push('/doctor/dashboard');
-            break;
-          case 'admin':
-            router.push('/admin/dashboard');
-            break;
-          case 'receptionist':
-            router.push('/receptionist/dashboard');
-            break;
-          default:
-            router.push(redirectUrl || '/patient/dashboard');
-            break;
-        }
+        router.replace(getDashboardPath(res.role));
       } else {
         setError(res.message || 'Đăng nhập không thành công.');
       }
@@ -155,16 +139,9 @@ function LoginForm() {
 
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-slate-900 mb-2">Đăng nhập</h2>
-            {redirectUrl ? (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-2">
-                <HeartPulse size={16} className="text-blue-600 shrink-0" />
-                <span>Vui lòng đăng nhập để tiến hành đặt lịch khám tại MediCare.</span>
-              </div>
-            ) : (
-              <p className="text-slate-500 text-sm">
-                Chào mừng trở lại! Vui lòng điền thông tin để tiếp tục.
-              </p>
-            )}
+            <p className="text-slate-500 text-sm">
+              Đăng nhập để vào trang tổng quan và quản lý tài khoản của bạn.
+            </p>
           </div>
 
           {/* Role Toggle Tabs */}
@@ -270,7 +247,7 @@ function LoginForm() {
           {/* Social Logins */}
           <div className="mt-6">
             <a
-              href={redirectUrl ? `/api/auth/google?redirect=${encodeURIComponent(redirectUrl)}` : "/api/auth/google"}
+              href="/api/auth/google"
               className="w-full flex justify-center items-center gap-2.5 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95 cursor-pointer text-slate-700 font-semibold shadow-sm text-sm"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -286,7 +263,7 @@ function LoginForm() {
           <div className="mt-8 text-center bg-slate-50 p-4 rounded-xl border border-slate-100">
             <p className="text-sm text-slate-600">
               Chưa có tài khoản?{' '}
-              <Link href={redirectUrl ? `/register?redirect=${encodeURIComponent(redirectUrl)}` : "/register"} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">
+              <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">
                 Đăng ký ngay
               </Link>
             </p>

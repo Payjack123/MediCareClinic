@@ -8,7 +8,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:booking": "node --test scripts/booking.test.mjs"
+    "test:booking": "node --test scripts/booking.test.mjs",
+    "test:auth": "node --test scripts/auth-navigation.test.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",

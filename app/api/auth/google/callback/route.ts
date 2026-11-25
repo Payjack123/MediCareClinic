@@ -3,11 +3,11 @@ import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { getDashboardPath } from '@/lib/auth-navigation';
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // URL redirect ban đầu nếu có
   const error = searchParams.get('error');
 
   // Xác định domain hiện tại
@@ -121,28 +121,8 @@ export async function GET(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    // 5. Điều hướng theo redirectUrl ban đầu (nếu có) hoặc theo vai trò người dùng
-    let destination = '/patient/dashboard';
-
-    if (state && state.startsWith('/') && !state.startsWith('//')) {
-      destination = state;
-    } else {
-      switch (user.role) {
-        case 'DOCTOR':
-          destination = '/doctor/dashboard';
-          break;
-        case 'ADMIN':
-          destination = '/admin/dashboard';
-          break;
-        case 'RECEPTIONIST':
-          destination = '/receptionist/dashboard';
-          break;
-        case 'PATIENT':
-        default:
-          destination = '/patient/dashboard';
-          break;
-      }
-    }
+    // Both password and Google sign-in open the dashboard for the account role.
+    const destination = getDashboardPath(user.role);
 
     return NextResponse.redirect(`${baseUrl}${destination}`);
   } catch (err) {

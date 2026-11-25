@@ -268,7 +268,7 @@ export default function BookingClient({ facilities, specialties, doctors, isLogg
                   {patient.phone ? <p className="mt-2">Số điện thoại: {patient.phone}</p> : <label className="mt-3 block space-y-2"><span>Bổ sung số điện thoại vào hồ sơ người khám</span><input type="tel" autoComplete="tel" required className={fieldClass} value={phone} onChange={event => setPhone(event.target.value)} placeholder="Số điện thoại 10 chữ số" /></label>}
                 </div>}
                 <p className="text-sm text-gray-500">Thông tin lấy từ hồ sơ đã liên kết để thống nhất với phiếu khám. <Link href="/patient/appointments" onClick={() => saveDraft()} className="font-semibold text-blue-600 underline">Quản lý hồ sơ người thân</Link></p>
-              </> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Đăng nhập để chọn hồ sơ của bạn hoặc người thân. Các lựa chọn cơ sở và giờ khám sẽ được giữ lại.<div className="mt-3 flex gap-4"><Link href="/login?redirect=/landing/dat-lich" onClick={() => saveDraft()} className="font-bold text-blue-700 underline">Đăng nhập</Link><Link href="/register?redirect=/landing/dat-lich" onClick={() => saveDraft()} className="font-bold text-blue-700 underline">Đăng ký</Link></div></div>}
+              </> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Đăng nhập để vào trang tổng quan bệnh nhân, quản lý hồ sơ và lịch khám.<div className="mt-3 flex gap-4"><Link href="/login" onClick={() => saveDraft()} className="font-bold text-blue-700 underline">Đăng nhập</Link><Link href="/register" onClick={() => saveDraft()} className="font-bold text-blue-700 underline">Đăng ký</Link></div></div>}
               <label className="block space-y-2"><span className="text-sm font-semibold text-gray-700">Triệu chứng hoặc lý do khám</span><textarea value={reason} maxLength={2000} onChange={event => setReason(event.target.value)} className={fieldClass} rows={3} placeholder="Mô tả ngắn gọn lý do khám..." /></label>
             </div>
           </fieldset>
@@ -294,11 +294,11 @@ export default function BookingClient({ facilities, specialties, doctors, isLogg
       {showAuth && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="booking-auth-title">
         <div className="relative w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
           <button type="button" aria-label="Đóng" onClick={() => setShowAuth(false)} className="absolute right-4 top-4 rounded-full bg-gray-100 p-2 text-gray-600"><X size={20} /></button>
-          <h2 id="booking-auth-title" className="pr-8 text-2xl font-bold text-gray-900">Đăng nhập để xác nhận lịch</h2>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600">Đăng nhập để chọn hồ sơ người khám. Hệ thống sẽ kiểm tra lại giờ trống khi bạn quay lại xác nhận.</p>
+          <h2 id="booking-auth-title" className="pr-8 text-2xl font-bold text-gray-900">Đăng nhập tài khoản bệnh nhân</h2>
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">Sau khi đăng nhập, bạn sẽ vào trang tổng quan bệnh nhân để đặt và quản lý lịch khám.</p>
           <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{facility?.name}<br />{selectedDate ? storedBookingDate(selectedDate) : ''} · {selectedTime}</div>
-          <Link href="/login?redirect=/landing/dat-lich" onClick={() => saveDraft()} className="mt-5 block rounded-xl bg-blue-600 p-3 text-center font-bold text-white">Đăng nhập</Link>
-          <Link href="/register?redirect=/landing/dat-lich" onClick={() => saveDraft()} className="mt-3 block rounded-xl border border-blue-600 p-3 text-center font-bold text-blue-600">Đăng ký tài khoản</Link>
+          <Link href="/login" onClick={() => saveDraft()} className="mt-5 block rounded-xl bg-blue-600 p-3 text-center font-bold text-white">Đăng nhập</Link>
+          <Link href="/register" onClick={() => saveDraft()} className="mt-3 block rounded-xl border border-blue-600 p-3 text-center font-bold text-blue-600">Đăng ký tài khoản</Link>
         </div>
       </div>}
     </div>

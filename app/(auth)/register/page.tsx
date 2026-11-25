@@ -2,15 +2,13 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Suspense } from 'react';
 import { Mail, Lock, User, Activity, ArrowLeft, Loader2, Stethoscope, ShieldCheck, ClipboardList, Eye, EyeOff, Shield, HeartPulse } from 'lucide-react';
 import { registerUser, UserRole } from '@/app/(auth)/actions/auth';
 
 function RegisterForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,7 +40,7 @@ function RegisterForm() {
       const res = await registerUser(fullName, email, password, selectedRole);
       if (res.success) {
         alert(res.message || 'Thành công! Vui lòng đăng nhập.');
-        router.push(redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'); 
+        router.push('/login');
       } else {
         setError(res.message); 
       }
@@ -269,7 +267,7 @@ function RegisterForm() {
           {/* Social Logins */}
           <div className="mt-5">
             <a
-              href={redirectUrl ? `/api/auth/google?redirect=${encodeURIComponent(redirectUrl)}` : "/api/auth/google"}
+              href="/api/auth/google"
               className="w-full flex justify-center items-center gap-2.5 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95 cursor-pointer text-slate-700 font-semibold shadow-sm text-sm"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -284,7 +282,7 @@ function RegisterForm() {
           
           <div className="mt-8 text-center bg-slate-50 p-4 rounded-xl border border-slate-100">
              <p className="text-sm text-slate-600">
-                Đã có tài khoản? <Link href={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">Đăng nhập ngay</Link>
+                Đã có tài khoản? <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors ml-1">Đăng nhập ngay</Link>
              </p>
           </div>
         </div>

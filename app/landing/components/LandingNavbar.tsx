@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Phone, Users, Activity, Menu, X, ArrowRight } from 'lucide-react';
 import LogoutButton from '@/components/LogoutButton';
+import { getDashboardPath } from '@/lib/auth-navigation';
 
 export interface UserAuth {
   id: number;
@@ -80,13 +81,7 @@ export default function LandingNavbar({
     return pathname.startsWith(match);
   };
 
-  const getDashboardHref = () => {
-    if (!user) return '/patient/dashboard';
-    if (user.role === 'DOCTOR') return '/doctor/dashboard';
-    if (user.role === 'ADMIN') return '/admin/dashboard';
-    if (user.role === 'RECEPTIONIST') return '/receptionist/dashboard';
-    return '/patient/dashboard';
-  };
+  const getDashboardHref = () => getDashboardPath(user?.role);
 
   return (
     <>
@@ -162,13 +157,13 @@ export default function LandingNavbar({
               ) : (
                 <>
                   <Link
-                    href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                    href="/login"
                     className="text-gray-700 font-semibold hover:text-blue-600 transition flex items-center gap-2 text-sm"
                   >
                     <Users size={18} /> Đăng nhập
                   </Link>
                   <Link
-                    href={`/register?redirect=${encodeURIComponent(pathname)}`}
+                    href="/register"
                     className="bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white px-5 py-2.5 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all text-sm"
                   >
                     Đăng ký
@@ -226,13 +221,13 @@ export default function LandingNavbar({
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <Link
-                    href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                    href="/login"
                     className="w-full py-2.5 rounded-xl border border-gray-300 font-bold text-gray-700 text-center text-sm hover:bg-gray-50 flex items-center justify-center gap-1.5"
                   >
                     <Users size={16} /> Đăng nhập
                   </Link>
                   <Link
-                    href={`/register?redirect=${encodeURIComponent(pathname)}`}
+                    href="/register"
                     className="w-full py-2.5 rounded-xl bg-blue-600 font-bold text-white text-center text-sm hover:bg-blue-700 shadow-md shadow-blue-200"
                   >
                     Đăng ký
