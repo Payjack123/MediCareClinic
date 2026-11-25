@@ -24,7 +24,10 @@ interface Props {
 type Confirmation = NonNullable<Awaited<ReturnType<typeof createLandingAppointment>>['details']>;
 const DRAFT_KEY = 'medicare_booking_v2';
 const fieldClass = 'w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60';
-const resetButtonClass = 'rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50';
+const choiceButtonClass = 'rounded-xl border px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50';
+const selectedChoiceClass = 'border-blue-600 bg-blue-600 text-white hover:border-blue-700 hover:bg-blue-700';
+const unselectedChoiceClass = 'border-gray-200 bg-white text-gray-700 hover:border-blue-400';
+const resetButtonClass = `${choiceButtonClass} ${unselectedChoiceClass}`;
 
 function storeDraft(draft: Record<string, unknown>) {
   try {
@@ -230,7 +233,7 @@ export default function BookingClient({ facilities, specialties, doctors, isLogg
                 <div className="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
                   {days.map(day => {
                     const available = matchingSchedules.some(s => s.date === day && s.availableTimes.length > 0);
-                    return <button type="button" key={day} disabled={!available} aria-pressed={selectedDate === day} onClick={() => { setDate(day); setTime(''); setError(''); requestId.current = ''; }} className={`${resetButtonClass} ${selectedDate === day ? 'border-blue-600 bg-blue-600 text-white' : ''}`}>
+                    return <button type="button" key={day} disabled={!available} aria-pressed={selectedDate === day} onClick={() => { setDate(day); setTime(''); setError(''); requestId.current = ''; }} className={`${choiceButtonClass} ${selectedDate === day ? selectedChoiceClass : unselectedChoiceClass}`}>
                       <span className="block">{day === vietnamDateTime().date ? 'Hôm nay' : new Intl.DateTimeFormat('vi-VN', { weekday: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(`${day}T00:00:00+07:00`))}</span>
                       <span className="block">{storedBookingDate(day).slice(0, 5)}</span>
                       {!available && <span className="block text-xs">Hết chỗ</span>}
@@ -243,7 +246,7 @@ export default function BookingClient({ facilities, specialties, doctors, isLogg
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {times.map(slot => {
                     const available = daySchedules.some(s => s.availableTimes.includes(slot));
-                    return <button type="button" key={slot} disabled={!available} aria-pressed={selectedTime === slot} onClick={() => { setTime(slot); setError(''); requestId.current = ''; }} className={`${resetButtonClass} ${selectedTime === slot ? 'border-blue-600 bg-blue-600 text-white' : ''}`}>{slot}{!available && <span className="mt-1 block text-xs">Hết chỗ</span>}</button>;
+                    return <button type="button" key={slot} disabled={!available} aria-pressed={selectedTime === slot} onClick={() => { setTime(slot); setError(''); requestId.current = ''; }} className={`${choiceButtonClass} ${selectedTime === slot ? selectedChoiceClass : unselectedChoiceClass}`}>{slot}{!available && <span className="mt-1 block text-xs">Hết chỗ</span>}</button>;
                   })}
                 </div>
                 {!times.length && <p className="text-sm text-gray-500">Không có giờ khám phù hợp. Vui lòng chọn ngày khác.</p>}
