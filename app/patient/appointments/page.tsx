@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Users, Bell, Check, ArrowLeft, ArrowRight, Info, HeartPulse, Activity, ShieldCheck, Stethoscope, X, Phone, User, Loader2, Eye, Calendar, History, Smile, Bone, CheckCircle2, Landmark, ChevronDown } from 'lucide-react';
@@ -10,7 +10,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { toast } from 'react-hot-toast';
 import { performLogout } from '@/lib/auth-client';
 
-import { getPatientAppointmentData, getBookedTimes, getAvailableSchedules, createAppointment, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
+import { getPatientAppointmentData, getBookedTimes, getAvailableSchedules, createAppointments, checkPayment, searchAndLinkPatient, verifyPatientForFamily } from '@/app/patient/appointments/actions';
 import Step1Patient from './components/Step1Patient';
 import Step2BookingMethod from './components/Step2BookingMethod';
 import Step3DateTime from './components/Step3DateTime';
@@ -21,6 +21,7 @@ export default function PatientAppointmentsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const bookingInFlight = useRef(false);
   const [paymentMethod, setPaymentMethod] = useState<'BANK' | 'EWALLET' | 'COUNTER'>('BANK');
   const [paymentCode, setPaymentCode] = useState('');
 
@@ -35,6 +36,8 @@ export default function PatientAppointmentsPage() {
 
   const [bookingData, setBookingData] = useState({
     facility: '',
+    clinicName: '',
+    roomNumber: '',
     specialty: '',
     doctor: '',
     doctorId: 0,
@@ -233,17 +236,18 @@ export default function PatientAppointmentsPage() {
   }, [router]);
 
   useEffect(() => {
+    let active = true;
     const fetchSchedules = async () => {
       if (bookingData.doctorId || bookingData.specialty || bookingData.facility) {
         const res = await getAvailableSchedules(bookingData);
-        if (res.success) setDoctorSchedules(res.schedules);
-        else setDoctorSchedules([]);
+        if (active) setDoctorSchedules(res.success ? res.schedules : []);
       } else {
         setDoctorSchedules([]);
       }
     };
     fetchSchedules();
-  }, [bookingData.doctorId, bookingData.specialty, bookingData.facility]);
+    return () => { active = false; };
+  }, [bookingData.doctorId, bookingData.specialty, bookingData.facility, bookingData.clinicName]);
 
   useEffect(() => {
     const fetchTimes = async () => {
@@ -274,41 +278,41 @@ export default function PatientAppointmentsPage() {
   }, [step, paymentCode]);
 
   const handleConfirmBooking = async (overrideCode?: string | null, overrideStatus?: string) => {
+    if (bookingInFlight.current) return;
+    bookingInFlight.current = true;
     setIsSubmitting(true);
     const fullDate = bookingData.date.split('-').reverse().join('/');
 
-    const codes: string[] = [];
     const pCode = overrideCode || '';
-
-    const bookingPatients = patients.filter(p => p.time);
-    for (const patient of bookingPatients) {
-      const res = await createAppointment({
+    const bookingPatients = patients.filter(p => p.time).map(patient => ({ ...patient, requestId: patient.requestId || crypto.randomUUID() }));
+    setPatients(prev => prev.map(patient => bookingPatients.find(p => p.id === patient.id) || patient));
+    try {
+      const res = await createAppointments(bookingPatients.map(patient => ({
         patientId: patient.id,
         doctorId: patient.doctorId,
+        scheduleId: patient.scheduleId,
+        requestId: patient.requestId,
         specialty: patient.specialty,
         date: fullDate,
         time: patient.time,
-        // serialize thêm tên/sđt vào reason
-        reason: (pCode ? `Mã thanh toán: ${pCode} - ` : '') + `Người khám: ${patient.name} - Mã BN: ${patient.patientCode || 'Không có'} - CCCD: ${patient.cccd || 'Không có'} - SĐT: ${patient.phone} - ĐC: ${patient.address}. Lý do: ${patient.reason}`,
+        reason: (pCode ? `Mã thanh toán: ${pCode} - ` : '') + (patient.reason || 'Đặt lịch khám trực tuyến'),
         status: overrideStatus || 'CHỜ XÁC NHẬN',
         paymentMethod: paymentMethod === 'BANK' ? 'CHUYỂN KHOẢN' : 'TẠI QUẦY'
-      });
-      if (res.success && res.appointmentCode) {
-        codes.push(res.appointmentCode);
-      }
-    }
-
-    setIsSubmitting(false);
-
-    if (codes.length > 0) {
-      setBookingData(prev => ({ ...prev, finalCodes: codes }));
-      if (overrideStatus === 'CHỜ THANH TOÁN') {
-        setStep(6);
+      })));
+      if (res.success && res.appointments) {
+        setBookingData(prev => ({ ...prev, finalCodes: res.appointments.map(appointment => appointment.appointmentCode) }));
+        setStep(overrideStatus === 'CHỜ THANH TOÁN' ? 6 : 7);
       } else {
-        setStep(7);
+        toast.error(res.message || 'Không thể đặt lịch. Vui lòng chọn lại giờ khám.');
+        const schedules = await getAvailableSchedules(bookingData);
+        setDoctorSchedules(schedules.success ? schedules.schedules : []);
+        setStep(3);
       }
-    } else {
-      alert("Đã xảy ra lỗi khi tạo lịch khám!");
+    } catch {
+      toast.error('Không thể kết nối máy chủ. Vui lòng thử lại yêu cầu này.');
+    } finally {
+      setIsSubmitting(false);
+      bookingInFlight.current = false;
     }
   };
 

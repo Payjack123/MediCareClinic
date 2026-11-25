@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { normalizeBookingDate, storedBookingDate } from '@/lib/booking-utils';
 
 // 1. Lấy dữ liệu cho trang Lịch hẹn của tôi
 export async function getMyAppointmentsData() {
@@ -15,20 +16,21 @@ export async function getMyAppointmentsData() {
 
     const user = await prisma.user.findUnique({ 
       where: { id: userId },
-      select: { id: true, fullName: true, phone: true, address: true, patientProfile: true } 
+      select: { id: true, fullName: true, phone: true, address: true, patientProfile: true, managedFamilyMembers: { select: { patientId: true } } }
     });
 
     if (!user) return { success: false, message: 'Không tìm thấy người dùng' };
 
     const appointments = await prisma.appointment.findMany({
       where: { 
-        patientId: userId
+        patientId: { in: [userId, ...user.managedFamilyMembers.map(member => member.patientId)] }
       },
       orderBy: [
         { bookingDate: 'desc' },
         { bookingTime: 'desc' }
       ],
       include: {
+        patient: { include: { patientProfile: true } },
         doctor: {
           select: {
             fullName: true,
@@ -43,7 +45,7 @@ export async function getMyAppointmentsData() {
     today.setHours(0, 0, 0, 0);
 
     const validAppointments = appointments.filter(apt => {
-      const parts = apt.bookingDate.split('/');
+      const parts = (normalizeBookingDate(apt.bookingDate) ? storedBookingDate(apt.bookingDate) : apt.bookingDate).split('/');
       if (parts.length === 3) {
         const aptDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
         if (apt.status === 'ĐÃ HỦY' && aptDate < today) {
@@ -56,7 +58,7 @@ export async function getMyAppointmentsData() {
     // Ánh xạ trạng thái và format data
     const formattedAppointments = validAppointments.map(apt => {
       // Giả sử bookingDate format: "15/08/2026"
-      const [day, month, year] = apt.bookingDate.split('/');
+      const [day, month, year] = (normalizeBookingDate(apt.bookingDate) ? storedBookingDate(apt.bookingDate) : apt.bookingDate).split('/');
       let dayOfWeek = 'Chưa rõ';
       if (day && month && year) {
         const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -89,21 +91,15 @@ export async function getMyAppointmentsData() {
       }
 
       let parsedNote = apt.reason || '';
-      let patientDetails = null;
+      const patientDetails = {
+        name: apt.patient.fullName, phone: apt.patient.phone || '', address: apt.patient.address || '',
+        patientCode: apt.patient.patientProfile?.patientCode || '', cccd: apt.patient.patientProfile?.cccd || '',
+      };
 
       if (parsedNote.startsWith('Người khám: ')) {
         const parts = parsedNote.split('. Lý do: ');
-        const patientPart = parts[0]; 
         parsedNote = parts[1] || '';
 
-        const subParts = patientPart.split(' - ');
-        patientDetails = {
-          name: subParts.find(p => p.startsWith('Người khám: '))?.replace('Người khám: ', '') || '',
-          patientCode: subParts.find(p => p.startsWith('Mã BN: '))?.replace('Mã BN: ', '') || '',
-          cccd: subParts.find(p => p.startsWith('CCCD: '))?.replace('CCCD: ', '') || '',
-          phone: subParts.find(p => p.startsWith('SĐT: '))?.replace('SĐT: ', '') || '',
-          address: subParts.find(p => p.startsWith('ĐC: '))?.replace('ĐC: ', '') || '',
-        };
       }
 
       return {
@@ -116,8 +112,8 @@ export async function getMyAppointmentsData() {
         specialty: apt.specialty,
         doctor: apt.doctor.fullName,
         doctorTitle: apt.doctor.doctorProfile?.degree ? `${apt.doctor.doctorProfile.degree} - ${apt.specialty}` : `Bác sĩ - ${apt.specialty}`,
-        room: 'Phòng khám - Tầng 1', // Placeholder as not in DB
-        clinic: 'Phòng Khám Đa Khoa N1',
+        room: apt.room || 'Chưa xếp phòng',
+        clinic: apt.room?.split(' - ')[0] || 'Chưa xếp cơ sở',
         status: uiStatus,
         statusColor: statusColor,
         type: 'Khám tại phòng khám',
@@ -173,7 +169,8 @@ export async function cancelAppointment(id: number) {
     const userId = parseInt(userIdStr);
 
     const apt = await prisma.appointment.findUnique({ where: { id } });
-    if (!apt || apt.patientId !== userId) {
+    const linked = apt && apt.patientId !== userId ? await prisma.familyMember.findUnique({ where: { userId_patientId: { userId, patientId: apt.patientId } } }) : null;
+    if (!apt || (apt.patientId !== userId && !linked)) {
       return { success: false, message: 'Không tìm thấy lịch hẹn hoặc không có quyền.' };
     }
 
@@ -187,6 +184,8 @@ export async function cancelAppointment(id: number) {
     });
 
     revalidatePath('/patient/my-appointments');
+    revalidatePath('/landing/dat-lich');
+    revalidatePath('/receptionist/appointments');
     return { success: true, message: 'Hủy lịch thành công' };
   } catch (error) {
     console.error('Lỗi hủy lịch:', error);

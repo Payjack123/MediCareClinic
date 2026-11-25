@@ -2,6 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { bookingDateAliases } from '@/lib/booking-utils';
 
 // Lấy danh sách lịch hẹn với bộ lọc
 export async function getAppointments(dateStr: string, search: string, statusFilter: string) {
@@ -10,7 +11,7 @@ export async function getAppointments(dateStr: string, search: string, statusFil
     
     // Lọc theo ngày (mặc định hôm nay nếu không có)
     if (dateStr) {
-      whereClause.bookingDate = dateStr;
+      whereClause.bookingDate = { in: bookingDateAliases(dateStr) };
     }
 
     // Lọc theo trạng thái

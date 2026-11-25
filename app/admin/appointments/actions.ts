@@ -2,7 +2,9 @@
 
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
-import dayjs from 'dayjs';
+import { bookAppointment, BookingError } from '@/lib/booking';
+import { bookingDateAliases } from '@/lib/booking-utils';
+import { revalidatePath } from 'next/cache';
 
 export async function getAppointments(filters?: { search?: string, date?: string, status?: string }) {
   try {
@@ -23,11 +25,7 @@ export async function getAppointments(filters?: { search?: string, date?: string
     }
 
     if (filters?.date) {
-      // Expected date format 'YYYY-MM-DD', DB stores as 'DD/MM/YYYY' or 'YYYY-MM-DD' depending on convention
-      // Let's assume DB stores as 'DD/MM/YYYY' since that's what we used in creating previously or we can check the format
-      // Let's just pass whatever the input is directly if it matches the format, 
-      // but usually the DB has string bookingDate
-      whereClause.bookingDate = filters.date;
+      whereClause.bookingDate = { in: bookingDateAliases(filters.date) };
     }
 
     if (filters?.status) {
@@ -68,7 +66,7 @@ export async function getInitialDataForCreate() {
 
     const doctors = await prisma.user.findMany({
       where: { role: 'DOCTOR' },
-      include: { doctorProfile: true },
+      include: { doctorProfile: { include: { specialty: true } } },
       orderBy: { fullName: 'asc' }
     });
 
@@ -95,61 +93,15 @@ export async function createAppointment(data: {
       return { success: false, message: 'Không có quyền truy cập' };
     }
 
-    // KIỂM TRA GIỚI HẠN SỐ LƯỢNG BỆNH NHÂN TRONG NGÀY
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: data.doctorId },
-      select: { maxPatientsPerDay: true }
+    const newAppointment = await bookAppointment({
+      bookedById: Number(cookieStore.get('user_id')?.value), patientId: Number(data.patientId), doctorId: Number(data.doctorId),
+      specialty: data.specialty, date: data.bookingDate, time: data.bookingTime,
+      room: data.room, reason: data.reason, admin: true, overrideLimit: data.overrideLimit,
     });
-
-    const maxPatients = doctorProfile?.maxPatientsPerDay || 10;
-
-    const currentAppointmentsCount = await prisma.appointment.count({
-      where: {
-        doctorId: data.doctorId,
-        bookingDate: data.bookingDate,
-        status: { not: 'ĐÃ HỦY' }
-      }
-    });
-
-    if (currentAppointmentsCount >= maxPatients && !data.overrideLimit) {
-      return {
-        success: false,
-        message: 'Bác sĩ đã kín lịch trong ngày này. Bạn có muốn sử dụng quyền ghi đè (override) không?',
-        requiresOverride: true
-      };
-    }
-
-    // Tự sinh mã lịch hẹn: LH[YYMMDD]-[PatientID]
-    const dateParts = data.bookingDate.split('/'); // DD/MM/YYYY
-    let shortDate = dayjs().format('YYMMDD');
-    if (dateParts.length === 3) {
-      shortDate = `${dateParts[2].slice(-2)}${dateParts[1]}${dateParts[0]}`;
-    }
-
-    // To ensure uniqueness, add random suffix if needed, but patientId + date should be unique enough for one day.
-    // We can just append a small random number or the count for that day.
-    const countToday = await prisma.appointment.count({
-      where: { bookingDate: data.bookingDate }
-    });
-
-    const code = `LH${shortDate}-${String(data.patientId).padStart(4, '0')}-${countToday + 1}`;
-
-    const newAppointment = await prisma.appointment.create({
-      data: {
-        appointmentCode: code,
-        patientId: data.patientId,
-        doctorId: data.doctorId,
-        specialty: data.specialty,
-        bookingDate: data.bookingDate,
-        bookingTime: data.bookingTime,
-        room: data.room || 'Chưa xếp',
-        reason: data.reason || '',
-        status: 'Đã đặt'
-      }
-    });
-
+    for (const path of ['/landing/dat-lich', '/patient/appointments', '/receptionist/appointments', '/admin/appointments']) revalidatePath(path);
     return { success: true, data: newAppointment, message: 'Tạo lịch hẹn thành công' };
   } catch (error) {
+    if (error instanceof BookingError) return { success: false, message: error.message, requiresOverride: error.code === 'DAILY_LIMIT' };
     console.error("Lỗi tạo lịch hẹn:", error);
     return { success: false, message: 'Lỗi máy chủ khi tạo lịch hẹn' };
   }

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import LandingBookingSection from './components/LandingBookingSection';
 import LandingNavbar from './components/LandingNavbar';
+import type { BookingPatient } from '@/lib/booking-utils';
 
 interface FacilityItem {
   id: number;
@@ -80,21 +81,34 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const userIdStr = cookieStore.get('user_id')?.value;
   let currentUser: { id: number; fullName: string; phone: string | null; dob: string | null; gender: string | null } | null = null;
+  let bookingPatients: BookingPatient[] = [];
 
   if (userIdStr) {
     const userId = parseInt(userIdStr, 10);
     if (!isNaN(userId)) {
       try {
-        currentUser = await prisma.user.findUnique({
-          where: { id: userId },
+        const user = await prisma.user.findUnique({
+          where: { id: userId, status: 'Hoạt động' },
           select: {
             id: true,
             fullName: true,
             phone: true,
             dob: true,
-            gender: true
+            gender: true,
+            role: true,
+            managedFamilyMembers: {
+              where: { patient: { role: 'PATIENT', status: 'Hoạt động' } },
+              select: { patient: { select: { id: true, fullName: true, phone: true, dob: true, gender: true } } },
+            },
           }
         });
+        if (user) {
+          currentUser = { id: user.id, fullName: user.fullName, phone: user.phone, dob: user.dob, gender: user.gender };
+          bookingPatients = [
+            ...(user.role === 'PATIENT' ? [currentUser] : []),
+            ...user.managedFamilyMembers.map(member => member.patient),
+          ];
+        }
       } catch (err) {
         console.error('Error fetching current user:', err);
       }
@@ -107,6 +121,7 @@ export default async function HomePage() {
   let rawFacilities: FacilityItem[] = [];
   try {
     rawFacilities = await prisma.facility.findMany({
+      where: { status: 'Hoạt động' },
       include: {
         clinics: {
           include: {
@@ -461,6 +476,7 @@ export default async function HomePage() {
         specialties={rawSpecialties}
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
+        patients={bookingPatients}
       />
 
       {/* ==========================================

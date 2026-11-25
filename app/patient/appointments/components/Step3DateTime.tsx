@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock, Check, MapPin, Edit3 } from 'lucide-react';
+import { bookingTimesOverlap, isFutureBooking, storedBookingDate, vietnamDateTime } from '@/lib/booking-utils';
 
 interface Step3DateTimeProps {
   setStep: (step: number) => void;
@@ -41,7 +42,6 @@ export default function Step3DateTime({
         <button onClick={() => setStep(2)} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 transition"><ArrowLeft size={20} /></button>
         <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <CalendarDays className="text-[#2563EB]" size={28} /> Chọn ngày và giờ khám
-          <span className="text-xs text-red-500">(Debug: {doctorSchedules?.length ?? 0} lịch)</span>
         </h2>
       </div>
 
@@ -63,37 +63,12 @@ export default function Step3DateTime({
           <h3 className="font-bold text-[#2563EB] mb-3 text-lg">Chọn ngày khám:</h3>
           <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {(() => {
-              // Chỉ lấy các ngày có lịch khám
-              const validDates = doctorSchedules ? doctorSchedules.map(s => s.date) : [];
-
-              const daysArray = [];
-              const currentHour = new Date().getHours();
-              
-              // LOGIC: Nếu sau 5h chiều (>= 17h), chuyển sang ngày mai, hôm nay không có lịch vì bác sĩ không nhận thêm khách tối
-              const startOffset = currentHour >= 17 ? 1 : 0;
-
-              for (let i = 0; i < 7; i++) {
-                const dateObj = new Date();
-                dateObj.setDate(dateObj.getDate() + i + startOffset);
-
-                const dayOfWeek = dateObj.getDay();
-
-                const dateNum = dateObj.getDate();
-                const monthNum = dateObj.getMonth() + 1;
-                const year = dateObj.getFullYear();
-                const dateString = `${year}-${String(monthNum).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
-
-                // Bỏ qua nếu có lịch của bác sĩ nhưng ngày này không có trong lịch
-                if (validDates && !validDates.includes(dateString)) {
-                  continue;
-                }
-
-                daysArray.push({
-                  dateString,
-                  displayDay: (i + startOffset) === 0 ? 'Hôm nay' : (i + startOffset) === 1 ? 'Ngày mai' : dayOfWeek === 0 ? 'CN' : `T${dayOfWeek + 1}`,
-                  displayDate: `${dateNum}/${monthNum}`
-                });
-              }
+              const dates = [...new Set((doctorSchedules || []).filter(s => JSON.parse(s.timeSlots || '[]').length > 0).map(s => s.date as string))].sort();
+              const daysArray = dates.map(dateString => ({
+                dateString,
+                displayDay: dateString === vietnamDateTime().date ? 'Hôm nay' : new Intl.DateTimeFormat('vi-VN', { weekday: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(`${dateString}T00:00:00+07:00`)),
+                displayDate: storedBookingDate(dateString).slice(0, 5),
+              }));
 
               if (daysArray.length === 0) {
                 return <div className="text-gray-500 italic p-4 w-full text-center bg-gray-50 rounded-xl">Hiện tại không có lịch khám trống. Vui lòng quay lại và chọn tiêu chí khác.</div>;
@@ -107,7 +82,7 @@ export default function Step3DateTime({
                     onClick={() => {
                       setBookingData({ ...bookingData, date: dateString });
                       // Reset time if it's not available in the new date
-                      setPatients(patients.map(p => p.id === activePatientId ? { ...p, time: '' } : p));
+                      setPatients(patients.map(p => ({ ...p, time: '', scheduleId: undefined, requestId: undefined })));
                       setIsEditingTime(true);
                     }}
                     className={`flex flex-col items-center justify-center shrink-0 w-[85px] h-[95px] rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? 'bg-[#2563EB] border-[#2563EB] text-white shadow-md transform scale-105' : 'bg-white border-gray-200 text-gray-700 hover:border-[#2563EB] hover:text-[#2563EB]'}`}
@@ -173,38 +148,7 @@ export default function Step3DateTime({
                   parsedTimeSlots = [];
                 }
                 
-                let allTimes = Array.isArray(parsedTimeSlots) ? parsedTimeSlots : [];
-                
-                // Lọc các khung giờ cho "Hôm nay"
-                const todayDateObj = new Date();
-                const todayDateString = `${todayDateObj.getFullYear()}-${String(todayDateObj.getMonth() + 1).padStart(2, '0')}-${String(todayDateObj.getDate()).padStart(2, '0')}`;
-                const isSelectedDateToday = bookingData.date === todayDateString;
-                const curHour = new Date().getHours();
-                
-                if (isSelectedDateToday) {
-                  allTimes = allTimes.filter((time: string) => {
-                    const [slotHourStr, slotMinStr] = time.split(':');
-                    const slotHour = parseInt(slotHourStr, 10);
-                    const slotMin = parseInt(slotMinStr, 10);
-                    const slotTimeFloat = slotHour + slotMin / 60;
-                    
-                    // LOGIC:
-                    // 1. Nếu đặt lúc sáng sớm (trước 11h), hiện các ca từ 11h trở đi (cuối sáng, chiều, tối)
-                    if (curHour < 11) {
-                      return slotTimeFloat >= 11;
-                    } 
-                    // 2. Nếu đặt buổi chiều sớm (11h đến trước 14h), hiện các ca từ 14h trở đi (chiều, tối)
-                    else if (curHour < 14) {
-                      return slotTimeFloat >= 14;
-                    }
-                    // 3. Nếu đặt buổi chiều muộn (14h đến trước 17h), chỉ hiện các ca từ 18h trở đi (buổi tối)
-                    else if (curHour < 17) {
-                      return slotTimeFloat >= 18;
-                    }
-                    // 4. Nếu đặt sau 17h, thì ngày hôm nay đã bị ẩn từ vòng lặp tạo ngày bên trên rồi
-                    return true;
-                  });
-                }
+                const allTimes = (Array.isArray(parsedTimeSlots) ? parsedTimeSlots : []).filter((time: string) => isFutureBooking(schedule.date, time));
                 
                 const morningTimes = allTimes.filter((t: string) => parseInt(t.split(':')[0]) < 12);
                 const afternoonTimes = allTimes.filter((t: string) => {
@@ -254,7 +198,7 @@ export default function Step3DateTime({
                           </div>
                           <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
                             {morningTimes.map((time: string) => {
-                              const isBooked = bookedTimes.includes(time);
+                              const isBooked = bookedTimes.includes(time) || patients.some(p => p.id !== activePatientId && p.doctorId === schedule.doctorId && bookingTimesOverlap(p.time, time));
                               const pData = patients.find(p => p.id === activePatientId);
                               const isSelected = pData?.time === time && pData?.doctorId === schedule.doctorId;
                               
@@ -264,7 +208,9 @@ export default function Step3DateTime({
                                   disabled={isBooked}
                                   onClick={() => {
                                     setPatients(patients.map(p => p.id === activePatientId ? { 
-                                      ...p, time, 
+                                      ...p, time, scheduleId: schedule.id, requestId: crypto.randomUUID(),
+                                      specialty: schedule.doctor?.doctorProfile?.specialty?.name || bookingData.specialty,
+                                      doctorPrice: schedule.doctor?.doctorProfile?.price || 0, room: schedule.clinic?.name || '',
                                       doctorId: schedule.doctorId, 
                                       doctor: schedule.doctor?.fullName,
                                       facility: bookingData.facility || 'Cơ sở chính'
@@ -295,7 +241,7 @@ export default function Step3DateTime({
                           </div>
                           <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
                             {afternoonTimes.map((time: string) => {
-                              const isBooked = bookedTimes.includes(time);
+                              const isBooked = bookedTimes.includes(time) || patients.some(p => p.id !== activePatientId && p.doctorId === schedule.doctorId && bookingTimesOverlap(p.time, time));
                               const pData = patients.find(p => p.id === activePatientId);
                               const isSelected = pData?.time === time && pData?.doctorId === schedule.doctorId;
                               
@@ -305,7 +251,9 @@ export default function Step3DateTime({
                                   disabled={isBooked}
                                   onClick={() => {
                                     setPatients(patients.map(p => p.id === activePatientId ? { 
-                                      ...p, time, 
+                                      ...p, time, scheduleId: schedule.id, requestId: crypto.randomUUID(),
+                                      specialty: schedule.doctor?.doctorProfile?.specialty?.name || bookingData.specialty,
+                                      doctorPrice: schedule.doctor?.doctorProfile?.price || 0, room: schedule.clinic?.name || '',
                                       doctorId: schedule.doctorId, 
                                       doctor: schedule.doctor?.fullName,
                                       facility: bookingData.facility || 'Cơ sở chính'
@@ -336,7 +284,7 @@ export default function Step3DateTime({
                           </div>
                           <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
                             {eveningTimes.map((time: string) => {
-                              const isBooked = bookedTimes.includes(time);
+                              const isBooked = bookedTimes.includes(time) || patients.some(p => p.id !== activePatientId && p.doctorId === schedule.doctorId && bookingTimesOverlap(p.time, time));
                               const pData = patients.find(p => p.id === activePatientId);
                               const isSelected = pData?.time === time && pData?.doctorId === schedule.doctorId;
                               
@@ -346,7 +294,9 @@ export default function Step3DateTime({
                                   disabled={isBooked}
                                   onClick={() => {
                                     setPatients(patients.map(p => p.id === activePatientId ? { 
-                                      ...p, time, 
+                                      ...p, time, scheduleId: schedule.id, requestId: crypto.randomUUID(),
+                                      specialty: schedule.doctor?.doctorProfile?.specialty?.name || bookingData.specialty,
+                                      doctorPrice: schedule.doctor?.doctorProfile?.price || 0, room: schedule.clinic?.name || '',
                                       doctorId: schedule.doctorId, 
                                       doctor: schedule.doctor?.fullName,
                                       facility: bookingData.facility || 'Cơ sở chính'

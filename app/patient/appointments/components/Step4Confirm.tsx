@@ -72,15 +72,14 @@ export default function Step4Confirm({
           <div className="space-y-3 text-sm">
             <div className="flex"><span className="w-36 text-gray-500">Cơ sở khám:</span> <span className="font-bold text-gray-900">{bookingData.facility || 'BỆNH VIỆN BẠCH MAI - NINH BÌNH'}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Phương thức:</span> <span className="font-bold text-gray-900">{bookingMethod === 'specialty' ? 'Theo chuyên khoa' : bookingMethod === 'clinic' ? 'Theo phòng khám' : 'Theo bác sĩ'}</span></div>
-            <div className="flex"><span className="w-36 text-gray-500">Chuyên khoa:</span> <span className="font-bold text-gray-900">{bookingMethod === 'clinic' ? getSpecialtyFromClinic(bookingData.specialty) : bookingData.specialty || 'Đang cập nhật'}</span></div>
+            <div className="flex"><span className="w-36 text-gray-500">Chuyên khoa:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.specialty || 'Đang cập nhật'}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Bác sĩ:</span> <span className="font-bold text-gray-900 uppercase">{patients.find(p => p.id === activePatientId)?.doctor || bookingData.doctor || 'Đang cập nhật'}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Ngày khám:</span> <span className="font-bold text-gray-900">{bookingData.date ? bookingData.date.split('-').reverse().join('/') : ''}</span></div>
             <div className="flex"><span className="w-36 text-gray-500">Giờ khám:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.time?.split(' - ')[0]}</span></div>
             <div className="flex">
               <span className="w-36 text-gray-500">Phòng khám:</span> 
               <span className="font-bold text-gray-900">
-                {bookingData.clinicName || getClinicName(bookingMethod, bookingData)}
-                {bookingData.roomNumber ? ` - Phòng: ${bookingData.roomNumber}` : ''}
+                {patients.find(p => p.id === activePatientId)?.room || 'Chưa xếp phòng'}
               </span>
             </div>
             <div className="flex"><span className="w-36 text-gray-500">Triệu chứng:</span> <span className="font-bold text-gray-900">{patients.find(p => p.id === activePatientId)?.reason || 'Không có'}</span></div>

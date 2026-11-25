@@ -117,7 +117,7 @@ export default function CreateAppointmentPage() {
 
   // Lọc bác sĩ theo chuyên khoa
   const availableDoctors = doctors.filter(doc => 
-    !formData.specialty || (doc.doctorProfile && doc.doctorProfile.specialty === formData.specialty)
+    !formData.specialty || doc.doctorProfile?.specialty?.name === formData.specialty
   );
 
   const currentDateTime = dayjs().format('DD/MM/YYYY HH:mm');

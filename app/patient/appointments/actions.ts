@@ -2,6 +2,9 @@
 
 import prisma from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+import { bookAppointments, BookingError, getBookableSchedules } from '@/lib/booking';
+import { bookingDateAliases, RELEASED_APPOINTMENT_STATUSES } from '@/lib/booking-utils';
 
 // 1. Lấy dữ liệu khởi tạo cho trang Đặt lịch Bệnh nhân
 export async function getPatientAppointmentData() {
@@ -83,7 +86,7 @@ export async function getPatientAppointmentData() {
 export async function getBookedTimes(doctorId: number, date: string) {
   try {
     const appointments = await prisma.appointment.findMany({
-      where: { doctorId, bookingDate: date, status: { not: 'ĐÃ HỦY' } },
+      where: { doctorId, bookingDate: { in: bookingDateAliases(date) }, status: { notIn: RELEASED_APPOINTMENT_STATUSES } },
       select: { bookingTime: true }
     });
     return { success: true, bookedTimes: appointments.map(a => a.bookingTime) };
@@ -92,64 +95,22 @@ export async function getBookedTimes(doctorId: number, date: string) {
   }
 }
 
-export async function getAvailableSchedules(bookingData: any) {
+export async function getAvailableSchedules(bookingData: { facility?: string; doctorId?: number; clinicName?: string; specialty?: string }) {
   try {
-    let conditions: any[] = [];
-
-    // Luôn luôn lọc lịch khám theo đúng Cơ sở (Bệnh viện) mà bệnh nhân đã chọn
-    // Tránh việc hiển thị lịch khám ở HCM khi bệnh nhân đang đặt lịch ở Hà Nội
-    if (bookingData.facility) {
-      conditions.push({ clinic: { facility: { name: bookingData.facility } } });
-    }
-
-    if (bookingData.doctorId) {
-      conditions.push({ doctorId: bookingData.doctorId });
-    } else if (bookingData.clinicName) {
-      conditions.push({
-        OR: [
-          { clinic: { name: bookingData.clinicName } },
-          { doctor: { doctorProfile: { clinics: { some: { name: bookingData.clinicName } } } } }
-        ]
-      });
-    } else if (bookingData.specialty) {
-      conditions.push({ doctor: { doctorProfile: { specialty: { name: bookingData.specialty } } } });
-    }
-
-    const whereClause = conditions.length > 0 ? { AND: conditions } : {};
-
-    const schedules = await prisma.doctorSchedule.findMany({
-      where: whereClause,
-      orderBy: { date: 'asc' },
-      include: {
-        doctor: {
-          select: { id: true, fullName: true, doctorProfile: { select: { specialty: { select: { name: true } } } } }
-        },
-        clinic: true
-      }
-    });
-
-    const dates = [...new Set(schedules.map(s => s.date))];
-    const doctorIds = [...new Set(schedules.map(s => s.doctorId))];
-    
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        doctorId: { in: doctorIds },
-        bookingDate: { in: dates.map(d => d.split('-').reverse().join('/')) },
-        status: { not: 'ĐÃ HỦY' }
-      },
-      select: { doctorId: true, bookingDate: true, bookingTime: true }
-    });
-
-    const schedulesWithBooked = schedules.map(s => {
-      const formattedDate = s.date.split('-').reverse().join('/');
-      const booked = appointments
-        .filter(a => a.doctorId === s.doctorId && a.bookingDate === formattedDate)
-        .map(a => a.bookingTime);
-      return { ...s, bookedTimes: booked };
-    });
-
-    return { success: true, schedules: schedulesWithBooked };
+    const schedules = (await getBookableSchedules()).filter(schedule =>
+      (!bookingData.facility || schedule.facilityName === bookingData.facility)
+      && (!bookingData.doctorId || schedule.doctorId === bookingData.doctorId)
+      && (bookingData.clinicName || !bookingData.specialty || schedule.specialty === bookingData.specialty)
+      && (!bookingData.clinicName || schedule.clinicName === bookingData.clinicName));
+    return { success: true, schedules: schedules.map(schedule => ({
+      id: schedule.id, date: schedule.date, doctorId: schedule.doctorId, clinicId: schedule.clinicId,
+      timeSlots: JSON.stringify(schedule.times),
+      bookedTimes: schedule.times.filter(time => !schedule.availableTimes.includes(time)),
+      doctor: { id: schedule.doctorId, fullName: schedule.doctorName, doctorProfile: { price: schedule.doctorPrice, specialty: { name: schedule.specialty } } },
+      clinic: { id: schedule.clinicId, name: schedule.room, roomNumber: null },
+    })) };
   } catch (error) {
+    console.error('Không thể tải lịch khám:', error);
     return { success: false, schedules: [] };
   }
 }
@@ -171,71 +132,33 @@ export async function getDoctorSchedules(doctorId: number) {
 }
 
 // 3. XÁC NHẬN ĐẶT LỊCH
-export async function createAppointment(data: { patientId?: number, doctorId: number, specialty: string, date: string, time: string, reason: string, status?: string, paymentMethod?: string }) {
+interface PatientBookingInput { patientId?: number; doctorId: number; specialty: string; date: string; time: string; reason: string; status?: string; paymentMethod?: string; scheduleId?: number; requestId?: string }
+
+export async function createAppointment(data: PatientBookingInput) {
+  const result = await createAppointments([data]);
+  return result.success && result.appointments
+    ? { success: true, appointmentCode: result.appointments[0].appointmentCode }
+    : { success: false, message: result.message };
+}
+
+export async function createAppointments(data: PatientBookingInput[]) {
   try {
     const cookieStore = await cookies();
     const userIdStr = cookieStore.get('user_id')?.value;
     if (!userIdStr) return { success: false, message: 'Chưa đăng nhập' };
 
-    // Sinh mã lịch hẹn tự động
-    const generatedCode = `LH${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
-    const paymentMethod = data.paymentMethod || 'TẠI QUẦY';
-    const paymentStatus = 'CHƯA THANH TOÁN';
-
-    let assignedDoctorId = data.doctorId;
-
-    // NẾU CHƯA CÓ BÁC SĨ (VÌ CHỌN THEO KHOA HOẶC PHÒNG KHÁM), TÌM BÁC SĨ RANDOM
-    if (!assignedDoctorId || assignedDoctorId === 0) {
-      const randomDoctor = await prisma.user.findFirst({
-        where: { role: 'DOCTOR' },
-        select: { id: true }
-      });
-      if (randomDoctor) {
-        assignedDoctorId = randomDoctor.id;
-      } else {
-        return { success: false, message: 'Không có bác sĩ nào trống để nhận lịch này.' };
-      }
-    }
-
-    // KIỂM TRA GIỚI HẠN SỐ LƯỢNG BỆNH NHÂN TRONG NGÀY
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: assignedDoctorId },
-      select: { maxPatientsPerDay: true }
-    });
-    
-    const maxPatients = doctorProfile?.maxPatientsPerDay || 10;
-    
-    const currentAppointmentsCount = await prisma.appointment.count({
-      where: {
-        doctorId: assignedDoctorId,
-        bookingDate: data.date,
-        status: { not: 'ĐÃ HỦY' }
-      }
-    });
-
-    if (currentAppointmentsCount >= maxPatients) {
-      return { success: false, message: 'Bác sĩ đã kín lịch trong ngày này. Vui lòng chọn ngày khác.' };
-    }
-
-    const finalPatientId = data.patientId || parseInt(userIdStr);
-
-    const newApt = await prisma.appointment.create({
-      data: {
-        patientId: finalPatientId,
-        doctorId: assignedDoctorId,
-        specialty: data.specialty || 'Đa khoa',
-        bookingDate: data.date,
-        bookingTime: data.time,
-        reason: data.reason,
-        status: data.status || 'CHỜ XÁC NHẬN',
-        appointmentCode: generatedCode,
-        paymentMethod: paymentMethod,
-        paymentStatus: paymentStatus
-      } as any // Use 'any' temporarily to avoid TS errors until prisma generate is recognized
-    });
-
-    return { success: true, appointmentCode: generatedCode };
+    const userId = Number(userIdStr);
+    if (!Array.isArray(data) || !data.length || data.length > 10) return { success: false, message: 'Vui lòng chọn từ 1 đến 10 người khám.' };
+    const appointments = await bookAppointments(data.map(item => ({
+      bookedById: userId, patientId: item.patientId || userId, doctorId: item.doctorId,
+      scheduleId: item.scheduleId, specialty: item.specialty || undefined,
+      date: item.date, time: item.time, reason: item.reason, requestId: item.requestId,
+      status: item.status === 'CHỜ THANH TOÁN' ? 'CHỜ THANH TOÁN' as const : 'CHỜ XÁC NHẬN' as const, paymentMethod: item.paymentMethod,
+    })));
+    for (const path of ['/landing/dat-lich', '/patient/appointments', '/receptionist/appointments', '/admin/appointments']) revalidatePath(path);
+    return { success: true, appointments: appointments.map(appointment => ({ patientId: appointment.patientId, appointmentCode: appointment.appointmentCode! })) };
   } catch (error) {
+    if (error instanceof BookingError) return { success: false, message: error.message };
     console.error('Lỗi đặt lịch:', error);
     return { success: false, message: 'Không thể đặt lịch lúc này.' };
   }

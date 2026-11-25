@@ -31,8 +31,8 @@ export default function Step2BookingMethod({
 }: Step2BookingMethodProps) {
   
   const handleBookingDataChange = (updates: any) => {
-    setBookingData({ ...bookingData, ...updates, date: '' });
-    setPatients(patients.map(p => p.id === activePatientId ? { ...p, time: '' } : p));
+    setBookingData({ ...bookingData, clinicName: '', roomNumber: '', ...updates, date: '' });
+    setPatients(patients.map(p => ({ ...p, time: '', scheduleId: undefined, requestId: undefined })));
   };
 
   return (
