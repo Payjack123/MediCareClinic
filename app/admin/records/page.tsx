@@ -1,5 +1,6 @@
-import { performLogout } from '@/lib/auth-client';
 'use client';
+
+import { performLogout } from '@/lib/auth-client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
